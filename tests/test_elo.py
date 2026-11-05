@@ -1,7 +1,10 @@
 import unittest
 
 from matchup_dna.elo import (
+    ELO_K,
     START_RATING,
+    SURFACE_ELO_K,
+    SURFACE_WEIGHT,
     expected_score,
     is_rated,
     k_factor,
@@ -34,6 +37,22 @@ class SingleMatchTests(unittest.TestCase):
         self.assertAlmostEqual(k_factor(("decaying", 250), 0), 250 / 5 ** 0.4)
         self.assertLess(k_factor(("decaying", 250), 100), k_factor(("decaying", 250), 10))
 
+    def test_both_sides_sum_to_one(self):
+        for a, b in ((1500, 1500), (1734.2, 1611.9), (2100, 1400), (1300, 1900)):
+            self.assertAlmostEqual(expected_score(a, b) + expected_score(b, a), 1.0)
+
+
+class ChosenSettingsTests(unittest.TestCase):
+    def test_phase_2_settings_are_unchanged(self):
+        self.assertEqual(ELO_K, ("fixed", 32))
+        self.assertEqual(SURFACE_ELO_K, ("fixed", 48))
+        self.assertEqual(SURFACE_WEIGHT, 0.5)
+        self.assertEqual(START_RATING, 1500)
+
+    def test_divisor_is_400(self):
+        self.assertAlmostEqual(expected_score(1500 + 400, 1500), 10 / 11)
+        self.assertAlmostEqual(expected_score(1500 + 800, 1500), 100 / 101)
+
 
 class HistoryTests(unittest.TestCase):
     def test_same_week_matches_use_start_of_week_ratings(self):
@@ -50,6 +69,14 @@ class HistoryTests(unittest.TestCase):
         self.assertEqual(later["match"]["tourney_date"], 20240108)
         self.assertAlmostEqual(later["loser_rating"], START_RATING + 16)
         self.assertAlmostEqual(later["winner_rating"], START_RATING)
+
+    def test_week_changes_apply_after_all_its_predictions(self):
+        matches = [make_match(20240101, 1, 2), make_match(20240101, 2, 3), make_match(20240108, 3, 1)]
+        predictions, ratings = run_elo(matches, FIXED_32)
+        self.assertEqual([p["loser_rating"] for p in predictions[:2]], [START_RATING, START_RATING])
+        self.assertAlmostEqual(predictions[2]["winner_rating"], START_RATING - 16)
+        self.assertAlmostEqual(predictions[2]["loser_rating"], START_RATING + 16)
+        self.assertAlmostEqual(ratings[("ATP", 2)]["rating"], START_RATING)
 
     def test_before_stops_at_that_week(self):
         matches = [make_match(20240101, 1, 2), make_match(20240108, 1, 3)]

@@ -1,11 +1,17 @@
 import math
 import unittest
 
+from matchup_dna.elo import is_rated
 from matchup_dna.evaluate import (
     accuracy,
     brier_score,
     calibration,
+    clustered_standard_error,
+    exclusion_counts,
+    exclusion_reason,
+    is_monday,
     log_loss,
+    log_loss_differences,
     paired_log_loss_difference,
     rank_accuracy,
 )
@@ -33,6 +39,44 @@ class MetricTests(unittest.TestCase):
     def test_paired_difference_sign(self):
         difference, _ = paired_log_loss_difference([0.6, 0.6], [0.7, 0.8])
         self.assertLess(difference, 0)
+
+
+class UncertaintyTests(unittest.TestCase):
+    def test_clustered_error_by_hand(self):
+        self.assertAlmostEqual(clustered_standard_error([1, 3, 2, 6], ["a", "a", "b", "b"]), 1.0)
+
+    def test_one_match_per_cluster_is_the_independent_error(self):
+        a, b = [0.6, 0.7, 0.55, 0.8, 0.4], [0.65, 0.72, 0.5, 0.85, 0.45]
+        _, independent = paired_log_loss_difference(a, b)
+        differences = log_loss_differences(a, b)
+        self.assertAlmostEqual(clustered_standard_error(differences, range(len(a))), independent)
+
+
+class ExclusionTests(unittest.TestCase):
+    def test_reasons_agree_with_is_rated(self):
+        matches = [
+            make_match(20240101, 1, 2),
+            make_match(20240101, 1, 2, score="6-3 2-0 RET"),
+            make_match(20240101, 1, 2, score="W/O"),
+            make_match(20240101, 1, 2, score="6-4 Def."),
+            make_match(20240101, 1, 2, score="UNK"),
+            make_match(20240101, 1, 2, best_of=1),
+            make_match(20240101, 1, 1),
+        ]
+        for match in matches:
+            self.assertEqual(exclusion_reason(match) is None, is_rated(match))
+        self.assertEqual(
+            [exclusion_reason(match) for match in matches],
+            [None, "retired", "walkover", "default", "unknown", "best of 1", "same winner and loser id"],
+        )
+
+    def test_counts_use_the_date_window(self):
+        matches = [make_match(20091228, 1, 2), make_match(20100104, 1, 2), make_match(20240101, 1, 2, score="W/O")]
+        self.assertEqual(exclusion_counts(matches, 20100101, 20240101), {None: 1})
+
+    def test_monday(self):
+        self.assertTrue(is_monday(20240101))
+        self.assertFalse(is_monday(20210106))
 
 
 class RankTests(unittest.TestCase):
