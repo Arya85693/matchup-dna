@@ -1,10 +1,10 @@
 # Matchup DNA
 
-**Status: Phase 0 complete · Phase 1 program built — local Python program**
+**Status: Phases 0 and 1 complete · Phase 2 Elo baseline built — local Python program**
 
 Matchup DNA is a long-term machine-learning and quantitative research project on professional tennis. It will start as a small local Python program and grow into a public site that serves match probabilities, player profiles, historical model evaluations, and, later, live match analysis.
 
-The repository holds the project brief, the Phase 0 feasibility report, and the Phase 1 program: it loads the Sackmann tour-level singles files, validates them, and compares two players using only matches from earlier tournament weeks.
+The repository holds the project brief, the Phase 0 feasibility report, the Phase 1 program, and the Phase 2 rating engine. Phase 1 loads the Sackmann tour-level singles files, validates them, and compares two players using only matches from earlier tournament weeks. Phase 2 replays those matches in date order to build Elo and surface-adjusted Elo ratings, and scores their win probabilities on 2010–2026 matches that were held out from tuning. The results are in [Phase 2 - Elo Report.md](Phase%202%20-%20Elo%20Report.md).
 
 ## Purpose
 
@@ -70,7 +70,7 @@ Sackmann-derived datasets need an attribution and licensing review before they a
 
 ## Running the project
 
-Phase 1 needs Python 3.10 or newer and no installed packages.
+Phases 1 and 2 need Python 3.10 or newer and no installed packages.
 
 ### Data
 
@@ -98,6 +98,18 @@ python -m matchup_dna.validate
 Prints the data-quality report: duplicate match keys, player ids missing from the player files, rows where winner and loser are the same id, surfaces, outcomes, and best-of counts.
 
 ```powershell
+python rate.py ATP 206173 ATP 104925 20240115
+```
+
+Elo and surface Elo ratings for Sinner and Djokovic from tournament weeks before 15 January 2024, and the probability that the first player wins on each surface. Both players must be on the same tour.
+
+```powershell
+python -m matchup_dna.evaluate
+```
+
+Runs the Phase 2 experiment: tunes K and the surface weight on 1990–2009, scores the chosen models once on 2010–2026, and writes the test predictions to `results/`. Takes about two minutes.
+
+```powershell
 python -m unittest discover -s tests
 ```
 
@@ -110,8 +122,13 @@ Runs the tests. The test that counts every match is skipped when `data/` is miss
 | `matchup_dna/load.py` | Reads the CSVs into match records and a player lookup, normalizes surfaces, and classifies each score |
 | `matchup_dna/validate.py` | Builds and prints the data-quality report |
 | `matchup_dna/stats.py` | Builds a player's record from matches before a date |
+| `matchup_dna/elo.py` | Elo probability and update, the week-by-week replay, and the chosen K and surface weight |
+| `matchup_dna/evaluate.py` | Log loss, Brier score, accuracy, calibration, and the tuning and test experiment |
 | `compare.py` | Command-line comparison of two players |
+| `rate.py` | Command-line ratings and win probability for two players |
 | `tests/test_stats.py` | Hand-countable cases for the date rule, outcomes, and serve rates |
+| `tests/test_elo.py` | Hand-computed Elo updates, the weekly freeze, skipped outcomes, tours, and surfaces |
+| `tests/test_evaluate.py` | Hand-computed metric values and the ranking baseline |
 
 ### Definitions
 
@@ -123,6 +140,7 @@ Runs the tests. The test that counts every match is skipped when `data/` is miss
 - **Serve rates:** summed over completed and retired matches where the player's serve points are present and above zero. First serve in is first serves made divided by serve points; ace rate is aces divided by serve points. A rate with no serve points is shown as `n/a`.
 - **Last rank:** the player's rank on their most recent earlier match that has one, with that match's tournament date.
 - Rows where the winner id equals the loser id (4 rows, mostly placeholder "Unknown" players) are reported by validation and left out of player records.
+- **Elo:** every player starts at 1500 overall and on each surface. Only completed best-of-3 and best-of-5 matches move ratings. A tournament week is predicted with start-of-week ratings, and its results are applied together afterwards. Surface Elo predicts from the average of the overall and surface ratings. The full definitions are in the Phase 2 report.
 
 ### Validation results
 
