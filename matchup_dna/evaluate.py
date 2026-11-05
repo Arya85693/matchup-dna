@@ -1,9 +1,7 @@
 import csv
 import math
 from collections import defaultdict
-from pathlib import Path
-
-from matchup_dna.elo import ELO_K, SURFACE_ELO_K, SURFACE_WEIGHT, run_elo, win_probability
+from matchup_dna.elo import ELO_K, RESULTS_DIR, SURFACE_ELO_K, SURFACE_WEIGHT, run_elo, win_probability
 from matchup_dna.load import load_matches
 
 # Ratings run from the first match. Weeks before TUNING_START are warm-up and never scored.
@@ -12,9 +10,6 @@ TEST_START = 20100101
 
 K_RULES = [("fixed", k) for k in (16, 24, 32, 48, 64)] + [("decaying", v) for v in (150, 250, 350)]
 SURFACE_WEIGHTS = (0.25, 0.5, 0.75, 1.0)
-
-RESULTS_DIR = Path(__file__).resolve().parent.parent / "results"
-
 
 # Every probability here is the pre-match probability given to the player who went on to win.
 

@@ -104,6 +104,12 @@ python rate.py ATP 206173 ATP 104925 20240115
 Elo and surface Elo ratings for Sinner and Djokovic from tournament weeks before 15 January 2024, and the probability that the first player wins on each surface. Both players must be on the same tour.
 
 ```powershell
+python -m matchup_dna.elo
+```
+
+Writes every rated player's final Elo and surface Elo ratings to `results/final_ratings.csv` and prints the top 10 active players on each tour.
+
+```powershell
 python -m matchup_dna.evaluate
 ```
 
@@ -122,7 +128,7 @@ Runs the tests. The test that counts every match is skipped when `data/` is miss
 | `matchup_dna/load.py` | Reads the CSVs into match records and a player lookup, normalizes surfaces, and classifies each score |
 | `matchup_dna/validate.py` | Builds and prints the data-quality report |
 | `matchup_dna/stats.py` | Builds a player's record from matches before a date |
-| `matchup_dna/elo.py` | Elo probability and update, the week-by-week replay, and the chosen K and surface weight |
+| `matchup_dna/elo.py` | Elo probability and update, the week-by-week replay, the chosen K and surface weight, and the final-ratings export |
 | `matchup_dna/evaluate.py` | Log loss, Brier score, accuracy, calibration, and the tuning and test experiment |
 | `compare.py` | Command-line comparison of two players |
 | `rate.py` | Command-line ratings and win probability for two players |

@@ -1,7 +1,11 @@
+import csv
 from collections import defaultdict
 from itertools import groupby
+from pathlib import Path
 
-from matchup_dna.load import SURFACES
+from matchup_dna.load import SURFACES, TOURS, load_matches, load_players
+
+RESULTS_DIR = Path(__file__).resolve().parent.parent / "results"
 
 START_RATING = 1500
 
@@ -118,3 +122,70 @@ def player_ratings(ratings, player_key):
         "overall": lookup(player_key),
         "surfaces": {surface: lookup(player_key + (surface,)) for surface in SURFACES.values()},
     }
+
+
+def final_ratings(matches, players):
+    """One row per rated player with both models' ratings after the last week in the data, best Elo first."""
+    elo_predictions, elo_ratings = run_elo(matches, ELO_K)
+    _, surface_ratings = run_elo(matches, SURFACE_ELO_K)
+
+    last_match = {}
+    for prediction in elo_predictions:
+        match = prediction["match"]
+        for side in ("winner_id", "loser_id"):
+            last_match[(match["tour"], match[side])] = match["tourney_date"]
+
+    rows = []
+    for key in last_match:
+        elo = player_ratings(elo_ratings, key)
+        surface = player_ratings(surface_ratings, key)
+        row = {
+            "tour": key[0],
+            "player_id": key[1],
+            "name": players.get(key, {}).get("name", ""),
+            "last_match": last_match[key],
+            "elo": round(elo["overall"]["rating"], 1),
+            "matches": elo["overall"]["played"],
+            "surface_elo_overall": round(surface["overall"]["rating"], 1),
+        }
+        for name in SURFACES.values():
+            surface_state = surface["surfaces"][name]
+            row[f"{name.lower()}_blended"] = round(
+                blended_rating(surface["overall"]["rating"], surface_state["rating"], SURFACE_WEIGHT), 1
+            )
+            row[f"{name.lower()}_rating"] = round(surface_state["rating"], 1)
+            row[f"{name.lower()}_matches"] = surface_state["played"]
+        rows.append(row)
+    rows.sort(key=lambda row: (row["tour"], -row["elo"]))
+    return rows
+
+
+def save_ratings(path, rows):
+    path.parent.mkdir(exist_ok=True)
+    with open(path, "w", encoding="utf-8", newline="") as file:
+        writer = csv.DictWriter(file, fieldnames=list(rows[0]))
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def print_top(rows, since, count=10):
+    for tour in TOURS:
+        active = [row for row in rows if row["tour"] == tour and row["last_match"] >= since]
+        print(f"\n{tour}: top {count} by Elo, last match on or after {since}")
+        print(f"   {'':<4}{'Player':<26}{'Elo':>7}{'Hard':>8}{'Clay':>8}{'Grass':>8}")
+        for place, row in enumerate(active[:count], 1):
+            print(
+                f"   {place:<4}{row['name']:<26}{row['elo']:>7.0f}"
+                f"{row['hard_blended']:>8.0f}{row['clay_blended']:>8.0f}{row['grass_blended']:>8.0f}"
+            )
+
+
+if __name__ == "__main__":
+    matches = load_matches()
+    rows = final_ratings(matches, load_players())
+    path = RESULTS_DIR / "final_ratings.csv"
+    save_ratings(path, rows)
+    latest = max(row["last_match"] for row in rows)
+    print(f"Ratings after the week of {latest} for {len(rows):,} players, written to {path}")
+    print("Hard, Clay, and Grass are surface Elo's blended ratings, the numbers its predictions use.")
+    print_top(rows, since=latest - 10000)
