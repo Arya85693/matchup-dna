@@ -1,10 +1,10 @@
 # Matchup DNA
 
-**Status: Phases 0–2 complete · Phase 3 experiments done and protocol frozen; final evaluation not yet run — local Python program**
+**Status: Phases 0–3 complete — local Python program**
 
 Matchup DNA is a long-term machine-learning and quantitative research project on professional tennis. It will start as a small local Python program and grow into a public site that serves match probabilities, player profiles, historical model evaluations, and, later, live match analysis.
 
-The repository holds the project brief, the Phase 0 feasibility report, the Phase 1 program, and the Phase 2 rating engine. Phase 1 loads the Sackmann tour-level singles files, validates them, and compares two players using only matches from earlier tournament weeks. Phase 2 replays those matches in date order to build Elo and surface-adjusted Elo ratings, and scores their win probabilities on matches held out from tuning. The results are in [Phase 2 - Elo Report.md](Phase%202%20-%20Elo%20Report.md), in time order from the 1968 warm-up to 2023, with ATP and WTA shown separately at each stage. From January 2024 on is reserved for Phase 3's final evaluation and is not scored. Phase 3 builds a pre-match feature dataset split into training (2010–2020), validation (2021–2023), and reserved (2024–2026) rows. It then tests calibration, logistic regression, and gradient boosting against Elo on validation. The final model choice is frozen in `experiments/frozen_protocol.json`, ready for one test on the reserved rows. The results are in [Phase 3 - Model Report.md](Phase%203%20-%20Model%20Report.md).
+The repository holds the project brief, the Phase 0 feasibility report, the Phase 1 program, and the Phase 2 rating engine. Phase 1 loads the Sackmann tour-level singles files, validates them, and compares two players using only matches from earlier tournament weeks. Phase 2 replays those matches in date order to build Elo and surface-adjusted Elo ratings, and scores their win probabilities on matches held out from tuning. The results are in [Phase 2 - Elo Report.md](Phase%202%20-%20Elo%20Report.md), in time order from the 1968 warm-up to 2023, with ATP and WTA shown separately at each stage. Phase 3 builds a pre-match feature dataset split into training (2010–2020), validation (2021–2023), and reserved (2024–May 2026) rows, chooses a model on validation, and scores that frozen model once on the reserved rows. The results are in [Phase 3 - Model Report.md](Phase%203%20-%20Model%20Report.md).
 
 ## Purpose
 

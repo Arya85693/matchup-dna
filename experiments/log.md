@@ -53,3 +53,9 @@ commit `6fd2495bc5062b037934bdda02e1db1919893b64+uncommitted`
 commit `6fd2495bc5062b037934bdda02e1db1919893b64+uncommitted`
 
 - Same-K diagnostic on 2010-2023; see results/phase3/experiments/same-k.txt
+
+## 2026-11-05T02:50:40 · final
+
+commit `c373447e614525e7c640d8826af42f9f834ac4ea+uncommitted`
+
+- Final evaluation run. See results/phase3/final/final.txt

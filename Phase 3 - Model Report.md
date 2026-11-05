@@ -1,8 +1,8 @@
 # Matchup DNA — Phase 3 Model Report
 
-**Status:** Stages 0–5 complete, protocol frozen 5 November 2026. **Stage 6, the final evaluation on 2024–May 2026, has not been run.**  
+**Status:** Complete, 5 November 2026. The reserved evaluation ran once, from commit `c373447` plus uncommitted files that are not part of the model.  
 **Question:** Does pre-match information beyond Elo give better win probabilities than Elo, on ATP and WTA matches separately?  
-**Answer so far, on validation only:** Yes. A logistic regression that adds ranking, inactivity, and recent form beats calibrated surface Elo by 0.0084 log loss per match (clustered standard error 0.0013), on both tours and in every validation year. A gradient-boosted model is a further 0.0015 better (standard error 0.0007), which narrowly passes the keep rule. The logistic model is still frozen as the primary model, and LightGBM is scored as secondary. The Experiment D section explains why. Validation numbers are optimistic because about two dozen comparisons were made on these three years. The reserved test is the unbiased estimate.
+**Answer:** Yes. On 13,732 matches from 1 January 2024 to 25 May 2026, a logistic regression that adds ranking, inactivity, and recent form beats calibrated surface Elo by 0.0078 log loss per match (clustered standard error 0.0015). The gain is 0.0102 on ATP matches (standard error 0.0023) and 0.0053 on WTA matches (0.0018), and it is positive in every reserved year on both tours. On the 2021–2023 validation years the same comparison was 0.0084 (0.0013). LightGBM is another 0.0016 better on the reserved matches (0.0008), the same small margin it had on validation. The logistic model stays the primary model.
 
 ## Data and splits
 
@@ -216,11 +216,41 @@ The frozen protocol is `experiments/frozen_protocol.json`, frozen on 5 November 
 | Robustness | The paired comparisons repeated without overlap-flagged matches |
 | Final command | `python -m matchup_dna.experiment final --protocol experiments/frozen_protocol.json --confirm` |
 
-Before running the final command, the code and the protocol should be committed, so the run records a clean commit.
+The final command was run once on 5 November 2026, after the model code and this protocol were committed as `c373447`. The manifest says `c373447+uncommitted` because `rate.py` has blank-line edits and the project PDF is untracked. Neither file is used by the model. The command now refuses to run again. Output is in `results/phase3/final/`.
 
 ## Final evaluation, 2024–May 2026
 
-**Not yet run.**
+Both models and both temperature scalings were refitted on all 73,908 matches from 2010–2023. No setting was chosen again. The reserved rows were rebuilt from the raw match files and checked against `reserved_features.csv` before scoring. There are 7,190 ATP matches and 6,542 WTA matches.
+
+| Model | ATP log loss | WTA log loss | Combined | Brier | Accuracy |
+|---|---|---|---|---|---|
+| Elo | 0.6268 | 0.6240 | 0.6255 | 0.2181 | 64.49% |
+| Surface Elo | 0.6271 | 0.6237 | 0.6254 | 0.2181 | 64.36% |
+| Elo, temperature | 0.6224 | 0.6203 | 0.6214 | 0.2167 | 64.49% |
+| Surface Elo, temperature | 0.6218 | 0.6194 | 0.6207 | 0.2165 | 64.36% |
+| **Logistic, selected** | **0.6116** | **0.6142** | **0.6128** | **0.2128** | **65.58%** |
+| LightGBM, secondary | 0.6101 | 0.6125 | 0.6112 | 0.2122 | 65.57% |
+
+**Against calibrated surface Elo**, the selected model's change in log loss is:
+
+| Tour | Change | Clustered standard error |
+|---|---|---|
+| ATP | −0.0102 | 0.0023 |
+| WTA | −0.0053 | 0.0018 |
+| Both | −0.0078 | 0.0015 |
+
+Against raw Elo the combined change is −0.0127 (standard error 0.0019). Against raw surface Elo it is −0.0126 (0.0018).
+
+**Where it holds:**
+- Every reserved year, on both tours. The smallest year is WTA 2026, 0.6027 to 0.5999. The largest is ATP 2025, 0.6240 to 0.6098.
+- Every surface with a recorded name. The hard-court ATP gain is the large one, 0.6213 to 0.6077. ATP grass is the small one, 0.6073 to 0.6049, on 605 matches. On that same grass slice, calibrated ordinary Elo scores 0.6030, so the selected model does not beat every baseline there.
+- After removing 797 overlap-flagged matches, the combined change against calibrated surface Elo is −0.0084 (standard error 0.0015).
+
+**Calibration.** ATP favorites the model scored at 0.747 won 74.1% of the time, and favorites scored at 0.841 won 84.9%. WTA favorites scored at 0.747 won 74.0%. In the closest WTA bucket, favorites scored at 0.549 won 53.0%.
+
+**LightGBM.** Against the selected logistic model it changes log loss by −0.0015 on ATP matches (standard error 0.0012), −0.0017 on WTA matches (0.0010), and −0.0016 combined (0.0008). That is the same size as its validation gain. It is better than calibrated surface Elo by 0.0094 (0.0016). In ATP 2025 the logistic model scores 0.6098 and LightGBM scores 0.6116. The logistic model stays primary.
+
+**One result that did not repeat.** On these matches, raw surface Elo does not beat raw Elo: 0.6271 against 0.6268 on ATP, and 0.6237 against 0.6240 on WTA. Temperature scaling still helps, taking surface Elo from 0.6254 to 0.6207 combined. The feature model, not the surface blend, is what holds up out of sample.
 
 ## Limits
 
