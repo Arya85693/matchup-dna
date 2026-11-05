@@ -1,10 +1,10 @@
 # Matchup DNA
 
-**Status: Planned · Phase 0 — Feasibility and data verification**
+**Status: Phase 0 complete · Phase 1 next — local Python program**
 
 Matchup DNA is a long-term machine-learning and quantitative research project on professional tennis. It will start as a small local Python program and grow into a public site that serves match probabilities, player profiles, historical model evaluations, and, later, live match analysis.
 
-The repository currently holds the project brief and this README. There is no program to install or run yet.
+The repository holds the project brief, the Phase 0 feasibility report, and this README. There is no program to install or run yet.
 
 ## Purpose
 
@@ -18,7 +18,7 @@ Three capabilities are meant to stay connected as the project grows:
 - **Quantitative research.** Compare those probabilities with market-implied probabilities, test them in chronological backtests, and report uncertainty.
 - **Software engineering.** Ingest data, store it, serve predictions, and publish them on a site that updates without manual work.
 
-The planning document in this repository is [Matchup DNA - Resume Project.pdf](Matchup%20DNA%20-%20Resume%20Project.pdf) (version 1.0, October 29, 2026).
+The planning document in this repository is [Matchup DNA - Resume Project.pdf](Matchup%20DNA%20-%20Resume%20Project.pdf) (version 1.0, October 29, 2026). The Phase 0 audit is [Phase 0 - Feasibility Report.md](Phase%200%20-%20Feasibility%20Report.md) (3 November 2026).
 
 ## What a finished version should let someone do
 
@@ -48,7 +48,7 @@ Near-term progress through the end of 2026 is Phases 0–3: verified data, a cle
 
 ## Candidate data sources
 
-These sources were identified in October 2026. None have been audited or loaded. Coverage, licensing, and terms need to be rechecked in Phase 0 before any of them are used.
+These sources were identified in October 2026 and audited on 3 November 2026. The feasibility report records fields, coverage, licenses, cost, and the player-identity result. Phase 1 uses the Sackmann tour-level singles files.
 
 | Role | Source | Notes |
 |---|---|---|
