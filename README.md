@@ -1,10 +1,10 @@
 # Matchup DNA
 
-**Status: Phase 0 complete · Phase 1 next — local Python program**
+**Status: Phase 0 complete · Phase 1 program built — local Python program**
 
 Matchup DNA is a long-term machine-learning and quantitative research project on professional tennis. It will start as a small local Python program and grow into a public site that serves match probabilities, player profiles, historical model evaluations, and, later, live match analysis.
 
-The repository holds the project brief, the Phase 0 feasibility report, and this README. There is no program to install or run yet.
+The repository holds the project brief, the Phase 0 feasibility report, and the Phase 1 program: it loads the Sackmann tour-level singles files, validates them, and compares two players using only matches from earlier tournament weeks.
 
 ## Purpose
 
@@ -70,4 +70,62 @@ Sackmann-derived datasets need an attribution and licensing review before they a
 
 ## Running the project
 
-Nothing to run yet. When Phase 1 exists, this section will say how to install dependencies, which data file to use, and what command starts the program.
+Phase 1 needs Python 3.10 or newer and no installed packages.
+
+### Data
+
+The match data is compiled by [Jeff Sackmann](https://github.com/JeffSackmann) ([tennis_atp](https://github.com/JeffSackmann/tennis_atp), [tennis_wta](https://github.com/JeffSackmann/tennis_wta)) and used under [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/). It is not stored in this repository.
+
+1. Download the [archive mirror](https://github.com/Aneeshers/tennis-sackmann-archive) as a ZIP (green **Code** button, then **Download ZIP**) and extract it.
+2. Copy its `atp` and `wta` folders into `data/`, so that `data/atp/atp_matches_2024.csv` and `data/wta/wta_players.csv` exist.
+
+The program reads only `atp_matches_YYYY.csv`, `wta_matches_YYYY.csv`, `atp_players.csv`, and `wta_players.csv`. Futures, qualifying, ITF, doubles, amateur, and rankings files are left unread.
+
+### Commands
+
+Run these from the project folder.
+
+```powershell
+python compare.py ATP 206173 ATP 104925 20240115
+```
+
+Compares Jannik Sinner and Novak Djokovic using every match from tournament weeks before 15 January 2024. The arguments are two tour-and-id pairs and a date as `YYYYMMDD`. Add `--list Clay` (or `Hard`, `Grass`, `Carpet`, `All`) to print the completed matches behind each surface record.
+
+```powershell
+python -m matchup_dna.validate
+```
+
+Prints the data-quality report: duplicate match keys, player ids missing from the player files, rows where winner and loser are the same id, surfaces, outcomes, and best-of counts.
+
+```powershell
+python -m unittest discover -s tests
+```
+
+Runs the tests. The test that counts every match is skipped when `data/` is missing.
+
+### Code
+
+| File | What it does |
+|---|---|
+| `matchup_dna/load.py` | Reads the CSVs into match records and a player lookup, normalizes surfaces, and classifies each score |
+| `matchup_dna/validate.py` | Builds and prints the data-quality report |
+| `matchup_dna/stats.py` | Builds a player's record from matches before a date |
+| `compare.py` | Command-line comparison of two players |
+| `tests/test_stats.py` | Hand-countable cases for the date rule, outcomes, and serve rates |
+
+### Definitions
+
+- **Player key:** tour plus Sackmann `player_id`. ATP and WTA ids overlap and refer to different people.
+- **Match key:** tour, `tourney_id`, `match_num`, and `round`. A few older WTA events reuse a `match_num` in two rounds, so `round` is needed for the key to be unique.
+- **Time:** `tourney_date` is the Monday of the tournament week. A record as of a date uses only matches whose `tourney_date` is strictly earlier, so matches from that same week are excluded.
+- **Outcome:** read from the score text. `RET` is a retirement. `W/O` or `Walkover` is a walkover. `DEF`, `Def.`, or `Default` is a default. `ABD`, `ab`, `Played and abandoned`, or `Played and unfinished` is abandoned. An empty score, `UNK`, `NA`, or `&nbsp;` is unknown. Anything else is completed.
+- **Win-loss:** the main record and the surface splits count completed matches only. Retirements, walkovers, defaults, abandoned matches, unknown scores, and best-of-1 matches are counted separately, as wins and losses for that player.
+- **Serve rates:** summed over completed and retired matches where the player's serve points are present and above zero. First serve in is first serves made divided by serve points; ace rate is aces divided by serve points. A rate with no serve points is shown as `n/a`.
+- **Last rank:** the player's rank on their most recent earlier match that has one, with that match's tournament date.
+- Rows where the winner id equals the loser id (4 rows, mostly placeholder "Unknown" players) are reported by validation and left out of player records.
+
+### Validation results
+
+Run on the June 2026 snapshot: 361,571 matches (199,389 ATP, 162,182 WTA), 137,483 players, no duplicate match keys, no missing player ids, and 4 rows with the same winner and loser id. Outcomes: 351,517 completed, 6,960 retired, 2,572 walkovers, 192 defaults, 46 abandoned, and 284 with an unknown score.
+
+The walkover and abandoned counts are higher than the Phase 0 report's 2,566 and 23. That report counted only the `W/O` and `ABD` spellings. Six Davis Cup walkovers are written `Walkover`, and 23 further rows are written `Played and abandoned`, `Played and unfinished`, or `ab`.
