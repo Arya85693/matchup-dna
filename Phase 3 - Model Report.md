@@ -4,6 +4,8 @@
 **Question:** Does pre-match information beyond Elo give better win probabilities than Elo, on ATP and WTA matches separately?  
 **Answer:** Yes. On 13,732 matches from 1 January 2024 to 25 May 2026, a logistic regression that adds ranking, inactivity, and recent form beats calibrated surface Elo by 0.0078 log loss per match (clustered standard error 0.0015). The gain is 0.0102 on ATP matches (standard error 0.0023) and 0.0053 on WTA matches (0.0018), and it is positive in every reserved year on both tours. On the 2021–2023 validation years the same comparison was 0.0084 (0.0013). LightGBM is another 0.0016 better on the reserved matches (0.0008), the same small margin it had on validation. The logistic model stays the primary model.
 
+The last section, "What Phase 3 did," says this in ordinary language.
+
 ## Data and splits
 
 The model input is one row per completed best-of-3 or best-of-5 tour-level match, built by `python -m matchup_dna.features`.
@@ -12,7 +14,7 @@ The model input is one row per completed best-of-3 or best-of-5 tour-level match
 |---|---|---:|---:|---|
 | Training | 2010–2020 | 29,712 | 28,157 | Fitting models, calibration, and everything chosen inside the training years |
 | Validation | 2021–2023 | 8,366 | 7,673 | Choosing feature groups and models with the keep rule |
-| Reserved | 1 January 2024–25 May 2026 | 7,190 | 6,542 | One final test, not yet run |
+| Reserved | 1 January 2024–25 May 2026 | 7,190 | 6,542 | Scored once, after every choice above was frozen |
 
 Each row compares player A with player B. A is chosen by a hash of the match id and the two player ids, so it never depends on who won. A won 49.93% of training rows and 50.54% of validation rows. Ratings and player histories are replayed one tournament date at a time, so every feature uses only earlier dates. The same rule is applied in Phase 2 and is described in the [Phase 2 report](Phase%202%20-%20Elo%20Report.md).
 
@@ -276,3 +278,27 @@ python -m unittest discover -s tests
 ```
 
 Each command prints the numbers in its section. Each also writes `results/phase3/experiments/<name>.txt` and a manifest, and appends to `experiments/log.md`. `freeze` writes the protocol and refuses to overwrite an existing one.
+
+## What Phase 3 did
+
+Phase 2 built two ratings. Elo is a number that goes up when a player wins and down when they lose. Surface Elo keeps a separate number for clay, grass, and hard courts, then averages it with the overall number. From those numbers, Phase 2 turns a match into a win probability. Phase 3 asks a narrower question: if those probabilities are already known before the match, does anything else we also know before the match make them better?
+
+The machine learning was a logistic regression, fit separately for the men's tour and the women's tour. It is one formula. It takes a handful of differences between the two players and turns them into a win probability for either one. The differences that stayed in the formula are:
+
+- the two Elo probabilities from Phase 2
+- official ranking
+- how many days since each player last played a tour match
+- recent form, meaning whether their last 10 results were better or worse than Elo expected
+
+A player with no ranking is treated as ranked very low, and that fact is marked on its own, because missing a ranking turned out to matter. Anything learned, including that fill-in value, was learned on 2010–2020 and then checked on 2021–2023. The 2024–May 2026 matches were scored once, at the end, and were not used to pick the formula.
+
+Two other things were tried and set aside as the main result. Adjusting the Elo probabilities so they were less sure of themselves helped, but that is a correction to Phase 2, not new information about the players. A second, more flexible model (gradient-boosted trees) was about 0.0016 better per match on the held-out years. That is a small edge, so the formula above is the model this phase keeps.
+
+**What it showed, next to Phase 2:**
+
+- Phase 2's probabilities are too sure of themselves. Pulling them toward 50-50 is a real improvement on both tours. On the held-out matches that correction is worth 0.0047 per match, and it is the part of the gain that comes from fixing Elo rather than from adding anything new.
+- Letting the formula decide how much to trust ordinary Elo versus surface Elo adds nothing beyond that correction.
+- Ranking and time away from the tour do add information Elo does not have. Recent form adds a little. How many matches a player has played does not help, and on the men's tour it made the probabilities worse.
+- On the 13,732 matches from 2024 through May 2026, the formula's probabilities are better than recalibrated surface Elo by 0.0078 per match. It picks the winner in 65.6% of matches, against 64.4% for that Elo. The improvement shows up on both tours and in 2024, 2025, and 2026.
+- Phase 2's surface rating does not beat ordinary Elo on those same matches. The result that carries forward is the ranking and the layoff, not a better surface blend.
+- When the formula says a player has about a 75% chance, that player wins about 74% of the time. The probabilities mean what they say.
