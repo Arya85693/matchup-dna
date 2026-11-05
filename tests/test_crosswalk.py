@@ -2,7 +2,8 @@ import datetime
 import unittest
 
 from matchup_dna.crosswalk import (
-    build_crosswalk, link_by_ids, link_matches, provider_name_key, sackmann_name_keys,
+    build_crosswalk, build_links, full_name_key, initial_keys, link_by_ids, link_matches, link_pairs,
+    provider_name_key, sackmann_name_keys, sackmann_pair_keys,
 )
 
 NAMES = {
@@ -114,6 +115,48 @@ class CrosswalkTests(unittest.TestCase):
         self.assertEqual(len(found), 1)
         self.assertEqual(found[0]["match"]["tourney_date"], 20250303)
         self.assertEqual(found[0]["home"], "winner")
+
+
+class GeneralLinkTests(unittest.TestCase):
+    def window(self, item, target):
+        return abs(item["date"] - target["tourney_date"]) <= 7
+
+    def items(self, *pairs):
+        return [{"names": pair, "date": 20250108} for pair in pairs]
+
+    def keys(self, item):
+        return tuple(full_name_key(name) for name in item["names"])
+
+    def test_full_names_link_and_report_the_order(self):
+        results = link_pairs(self.items(("Jannik Sinner", "Alexander Zverev"), ("Alexander Zverev", "Jannik Sinner")),
+                             [sackmann(10, 20)], self.keys, sackmann_pair_keys(NAMES), self.window)
+        self.assertEqual([r["status"] for r in results], ["ambiguous", "ambiguous"])
+        one = link_pairs(self.items(("Alexander Zverev", "Jannik Sinner")), [sackmann(10, 20)], self.keys,
+                         sackmann_pair_keys(NAMES), self.window)[0]
+        self.assertEqual((one["status"], one["same_order"], one["tag"]), ("linked", False, "direct"))
+
+    def test_full_name_never_links_to_a_namesake(self):
+        result = link_pairs(self.items(("Jannik Sinner", "Alexander Zverev")), [sackmann(11, 21)], self.keys,
+                            sackmann_pair_keys(NAMES), self.window)[0]
+        self.assertEqual(result["status"], "no candidate")
+
+    def test_reversed_full_names_are_tagged(self):
+        result = link_pairs(self.items(("Yunchaokete Bu", "Jannik Sinner")), [sackmann(30, 10)], self.keys,
+                            sackmann_pair_keys(NAMES), self.window)[0]
+        self.assertEqual((result["status"], result["tag"]), ("linked", "reversed"))
+
+    def test_initial_keys_cover_multi_word_surnames_and_reversed_order(self):
+        self.assertIn(("carrenobusta", "p"), initial_keys("Pablo Carreno Busta"))
+        self.assertIn(("bu", "y"), initial_keys("Bu Yunchaokete"))
+        self.assertIn(("struff", "j"), initial_keys("Jan-Lennard Struff"))
+        self.assertNotIn(("sinner", "m"), initial_keys("Jannik Sinner"))
+
+    def test_build_links_is_one_to_one(self):
+        crosswalk = build_links([("ATP", "A", 1), ("ATP", "A", 1), ("ATP", "B", 2), ("ATP", "C", 2),
+                                 ("ATP", "D", 3), ("ATP", "D", 4), ("WTA", "A", 1)])
+        self.assertEqual(crosswalk["links"], {("ATP", "A"): 1, ("WTA", "A"): 1})
+        self.assertEqual(crosswalk["support"][("ATP", "A")][1], 2)
+        self.assertEqual({c["provider_id"] for c in crosswalk["conflicts"]}, {"B", "C", "D"})
 
 
 if __name__ == "__main__":

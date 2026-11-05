@@ -2,6 +2,8 @@
 data/
 # TennisData.app season CSVs: private raw files, never committed (also covered by data/ above)
 /data/external/tennisdata_app/*.csv
+# TennisIsMyLife CSVs: private raw files, never committed (also covered by data/ above)
+/data/external/tennisismylife/*.csv
 # Generated from the Sackmann CSVs by python -m matchup_dna.evaluate
 results/
 

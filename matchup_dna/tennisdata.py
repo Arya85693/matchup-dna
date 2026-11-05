@@ -183,6 +183,19 @@ def editions(rows):
     return by_match
 
 
+HELD_OUT_START = 20260601
+
+
+def held_out_candidates(rows, snapshot):
+    """Main-draw rows of editions that start on or after HELD_OUT_START and whose every row is dated before
+    `snapshot` (the day the files were saved). Uses metadata only. Returns (candidates, editions by match)."""
+    main = [row for row in rows if is_main_draw(row)]
+    by_match = editions(main)
+    candidates = [row for row in main if by_match[row_key(row)]["tourney_date"] >= HELD_OUT_START
+                  and by_match[row_key(row)]["last_day"] < snapshot]
+    return candidates, by_match
+
+
 def _close(tour, name, members, by_match):
     first, last = members[0]["day"], members[-1]["day"]
     edition = {"tour": tour, "name": name, "first_day": first, "last_day": last,

@@ -155,18 +155,24 @@ def pair_ids(result):
 
 
 def build_crosswalk(results):
-    """The validated one-to-one crosswalk from linked results.
+    """The validated one-to-one TennisData.app crosswalk from linked results. See build_links."""
+    pairs = []
+    for result in results:
+        if result["status"] == "linked":
+            pairs.extend((result["row"]["tour"], provider_id, sackmann_id) for provider_id, sackmann_id in pair_ids(result))
+    return build_links(pairs)
 
-    Returns {"links": {(tour, provider_id): sackmann_id}, "support": {(tour, provider_id): Counter},
-    "conflicts": [description dicts]}.
+
+def build_links(pairs):
+    """A one-to-one crosswalk from (tour, foreign id, Sackmann id) observations, one per player per linked match.
+
+    A foreign id is accepted only if every observation pairs it with the same Sackmann id and no other foreign id
+    is paired with that Sackmann id. Returns {"links": {(tour, foreign_id): sackmann_id},
+    "support": {(tour, foreign_id): Counter}, "conflicts": [description dicts]}.
     """
     support = defaultdict(Counter)
-    for result in results:
-        if result["status"] != "linked":
-            continue
-        tour = result["row"]["tour"]
-        for provider_id, sackmann_id in pair_ids(result):
-            support[(tour, provider_id)][sackmann_id] += 1
+    for tour, provider_id, sackmann_id in pairs:
+        support[(tour, provider_id)][sackmann_id] += 1
     providers_of = defaultdict(set)
     for (tour, provider_id), counts in support.items():
         for sackmann_id in counts:
@@ -203,6 +209,93 @@ def link_by_ids(rows, matches, links, window=WINDOW, taken=()):
                             "home": "winner" if match["winner_id"] == home else "loser"})
     claims = Counter(id(result["match"]) for result in results)
     return [result for result in results if claims[id(result["match"])] == 1]
+
+
+# ---------------------------------------------------------------- general pair linking (TennisIsMyLife)
+
+def full_name_key(name):
+    """A full name as one normalized string: "Pablo Carreño Busta" -> "pablocarrenobusta"."""
+    return normalize(name)
+
+
+def sackmann_full_keys(first, last):
+    """Full-name keys for a Sackmann player in both orders, tagged "direct" and "reversed"."""
+    return {"direct": normalize(first + last), "reversed": normalize(last + first)}
+
+
+def initial_keys(full_name):
+    """Every TennisData.app-style ("surname", "i") key a full name could produce: each split of the name into
+    given names and surname, with the surname last or first. "Bu Yunchaokete" gives ("yunchaokete", "b") and
+    ("bu", "y"); "Pablo Carreno Busta" gives ("carrenobusta", "p") among others."""
+    tokens = full_name.split()
+    keys = set()
+    for k in range(1, len(tokens)):
+        keys.add((normalize("".join(tokens[k:])), normalize(tokens[0])[:1]))
+        keys.add((normalize("".join(tokens[:k])), normalize(tokens[k])[:1]))
+    return {key for key in keys if key[0] and key[1]}
+
+
+def link_pairs(items, targets, item_keys, target_keys, in_window):
+    """Links each item to at most one target describing the same match.
+
+    item_keys(item) gives the item's two players' keys as an ordered pair (or None). target_keys(target) gives
+    alternatives as (ordered pair of keys, tag). An item links when its two keys equal one alternative's two
+    keys, in_window(item, target) holds, exactly one target fits, and no other item links to that target.
+
+    Returns one result per item: {"item", "status", "target", "tag", "same_order"}, where same_order says whether
+    the item's first player is the target's first player. Status is "linked", "ambiguous", "no candidate",
+    "no usable names", or "same name key".
+    """
+    index = defaultdict(list)
+    for position, target in enumerate(targets):
+        for ordered, tag in target_keys(target):
+            if ordered[0] != ordered[1]:
+                index[frozenset(ordered)].append((position, ordered, tag))
+    results = []
+    for item in items:
+        keys = item_keys(item)
+        result = {"item": item, "status": None, "target": None, "tag": None, "same_order": None}
+        results.append(result)
+        if keys is None or None in keys or keys[0] == keys[1]:
+            result["status"] = "no usable names"
+            continue
+        found = defaultdict(list)
+        for position, ordered, tag in index.get(frozenset(keys), ()):
+            if in_window(item, targets[position]):
+                found[position].append((ordered, tag))
+        if not found:
+            result["status"] = "no candidate"
+        elif len(found) > 1:
+            result["status"] = "ambiguous"
+        else:
+            position, options = next(iter(found.items()))
+            orders = {ordered[0] == keys[0] for ordered, _ in options}
+            if len(orders) != 1:
+                result["status"] = "same name key"
+                continue
+            tags = {tag for _, tag in options}
+            result.update(status="linked", target=targets[position], same_order=orders.pop(),
+                          tag="direct" if "direct" in tags else sorted(tags)[0])
+    claims = Counter(id(result["target"]) for result in results if result["status"] == "linked")
+    for result in results:
+        if result["status"] == "linked" and claims[id(result["target"])] > 1:
+            result.update(status="ambiguous", target=None, same_order=None)
+    return results
+
+
+def sackmann_pair_keys(names, key_function=sackmann_full_keys):
+    """target_keys for Sackmann matches: every combination of the winner's and loser's keys, in winner-loser
+    order, tagged "direct" only when both keys are direct."""
+    def keys(match):
+        winner = names[(match["tour"], match["winner_id"])]
+        loser = names[(match["tour"], match["loser_id"])]
+        options = []
+        for winner_tag, winner_key in key_function(winner["first"], winner["last"]).items():
+            for loser_tag, loser_key in key_function(loser["first"], loser["last"]).items():
+                tag = "direct" if winner_tag == loser_tag == "direct" else "reversed"
+                options.append(((winner_key, loser_key), tag))
+        return options
+    return keys
 
 
 def save_crosswalk(path, crosswalk, names, provider_names):
