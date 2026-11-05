@@ -1,16 +1,20 @@
 import unittest
 
 from matchup_dna.elo import START_RATING, expected_score
-from matchup_dna.features import LABEL, build_rows, player_a_is_winner, split_problems, split_rows
+from matchup_dna.features import LABEL, build_rows, load_split, player_a_is_winner, split_problems, split_rows
 from matchup_dna.periods import TUNING_START
 from test_stats import make_match
 
 
-def dataset_match(date, winner, loser, number=1, **kwargs):
+def dataset_match(date, winner, loser, number=1, level="A", **kwargs):
     match = make_match(date, winner, loser, **kwargs)
     match["key"] = (match["tour"], f"{date}-T", str(number), "R32")
-    match["tourney_level"] = "A"
+    match["tourney_level"] = level
     return match
+
+
+def side(row, player, field):
+    return row[f"a_{field}"] if row["a_id"] == player else row[f"b_{field}"]
 
 
 def flipped(match):
@@ -94,6 +98,44 @@ class PreMatchTests(unittest.TestCase):
         expected = (5, 40) if row["a_id"] == 1 else (40, 5)
         self.assertEqual((row["a_rank"], row["b_rank"]), expected)
         self.assertEqual(row["rank_diff"], expected[0] - expected[1])
+
+
+class HistoryTests(unittest.TestCase):
+    def test_days_and_form_come_from_earlier_weeks(self):
+        matches = [
+            dataset_match(20100104, 1, 2, 1),
+            dataset_match(20100111, 1, 3, 1),
+            dataset_match(20100111, 2, 4, 2),
+        ]
+        rows = build_rows(matches)
+        first = row_for(rows, (1, 2))
+        self.assertIsNone(first["a_days_since"])
+        self.assertEqual((first["a_form_matches"], first["a_form"]), (0, 0.0))
+        later = row_for(rows, (1, 3))
+        self.assertEqual(side(later, 1, "days_since"), 7)
+        self.assertEqual(side(later, 1, "form_matches"), 1)
+        self.assertAlmostEqual(side(later, 1, "form"), 0.5)
+        self.assertIsNone(side(later, 3, "days_since"))
+        same_week = row_for(rows, (2, 4))
+        self.assertAlmostEqual(side(same_week, 2, "form"), -0.5)
+
+    def test_retirements_count_as_played_but_not_as_form(self):
+        matches = [dataset_match(20100104, 5, 6, score="6-3 2-0 RET"), dataset_match(20100118, 5, 6)]
+        row = build_rows(matches)[0]
+        self.assertEqual(side(row, 5, "days_since"), 14)
+        self.assertEqual(side(row, 5, "form_matches"), 0)
+
+    def test_overlap_flag(self):
+        slam = [dataset_match(20100104, 1, 2, level="G"), dataset_match(20100111, 1, 3)]
+        self.assertEqual(build_rows(slam)[1]["overlap_flag"], 1)
+        regular = [dataset_match(20100104, 1, 2), dataset_match(20100111, 1, 3)]
+        self.assertEqual(build_rows(regular)[1]["overlap_flag"], 0)
+
+
+class LoaderTests(unittest.TestCase):
+    def test_loader_refuses_reserved(self):
+        with self.assertRaises(ValueError):
+            load_split("reserved")
 
 
 class SplitTests(unittest.TestCase):

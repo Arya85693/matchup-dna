@@ -1,0 +1,43 @@
+{
+  "frozen": "2026-11-05",
+  "git_commit": "6fd2495bc5062b037934bdda02e1db1919893b64+uncommitted",
+  "model": "logistic",
+  "secondary": "lightgbm",
+  "groups": [
+    "rank",
+    "inactivity",
+    "form"
+  ],
+  "logistic_l2": {
+    "ATP": 1000.0,
+    "WTA": 100.0
+  },
+  "lightgbm_settings": {
+    "ATP": {
+      "leaves": 31,
+      "trees": 68
+    },
+    "WTA": {
+      "leaves": 15,
+      "trees": 138
+    }
+  },
+  "fit_years": "2010-2023",
+  "calibrated_benchmarks": "temperature scaling per tour, fitted on 2010-2023",
+  "comparisons": [
+    "Elo",
+    "Surface Elo",
+    "Elo, temperature",
+    "Surface Elo, temperature"
+  ],
+  "secondary_comparisons": [
+    "Surface Elo, temperature",
+    "Selected model"
+  ],
+  "primary_metric": "log loss, per tour and combined, paired against each comparison, se clustered by tourney_date",
+  "robustness": "repeat the paired comparisons without overlap-flagged matches",
+  "inputs": {
+    "results\\phase3\\train.csv": "28bc190fe7f56c5e737bbe8c25b39db938de36ead9686d4363711be233febdda",
+    "results\\phase3\\validation.csv": "37d1b1e4512abb1eb6b6c09685224ed348fc111c911f54de83ed3272c3ade9e9"
+  }
+}

@@ -1,10 +1,10 @@
 # Matchup DNA
 
-**Status: Phases 0–2 complete · Phase 3 dataset and evaluation split prepared — local Python program**
+**Status: Phases 0–2 complete · Phase 3 experiments done and protocol frozen; final evaluation not yet run — local Python program**
 
 Matchup DNA is a long-term machine-learning and quantitative research project on professional tennis. It will start as a small local Python program and grow into a public site that serves match probabilities, player profiles, historical model evaluations, and, later, live match analysis.
 
-The repository holds the project brief, the Phase 0 feasibility report, the Phase 1 program, and the Phase 2 rating engine. Phase 1 loads the Sackmann tour-level singles files, validates them, and compares two players using only matches from earlier tournament weeks. Phase 2 replays those matches in date order to build Elo and surface-adjusted Elo ratings, and scores their win probabilities on matches held out from tuning. The results are in [Phase 2 - Elo Report.md](Phase%202%20-%20Elo%20Report.md), in time order from the 1968 warm-up to 2023, with ATP and WTA shown separately at each stage. From January 2024 on is reserved for Phase 3's final evaluation and is not scored. Phase 3 starts from a pre-match feature dataset split into training (2010–2020), validation (2021–2023), and reserved (2024–2026) rows.
+The repository holds the project brief, the Phase 0 feasibility report, the Phase 1 program, and the Phase 2 rating engine. Phase 1 loads the Sackmann tour-level singles files, validates them, and compares two players using only matches from earlier tournament weeks. Phase 2 replays those matches in date order to build Elo and surface-adjusted Elo ratings, and scores their win probabilities on matches held out from tuning. The results are in [Phase 2 - Elo Report.md](Phase%202%20-%20Elo%20Report.md), in time order from the 1968 warm-up to 2023, with ATP and WTA shown separately at each stage. From January 2024 on is reserved for Phase 3's final evaluation and is not scored. Phase 3 builds a pre-match feature dataset split into training (2010–2020), validation (2021–2023), and reserved (2024–2026) rows. It then tests calibration, logistic regression, and gradient boosting against Elo on validation. The final model choice is frozen in `experiments/frozen_protocol.json`, ready for one test on the reserved rows. The results are in [Phase 3 - Model Report.md](Phase%203%20-%20Model%20Report.md).
 
 ## Purpose
 
@@ -70,7 +70,7 @@ Sackmann-derived datasets need an attribution and licensing review before they a
 
 ## Running the project
 
-Phases 1 and 2 and the Phase 3 dataset need Python 3.10 or newer and no installed packages.
+Phases 1 and 2 and the Phase 3 dataset need Python 3.10 or newer and no installed packages. The Phase 3 experiments need the pinned packages in `requirements.txt`: numpy and LightGBM, plus scikit-learn, which only the tests use. Install them with `pip install -r requirements.txt`.
 
 ### Data
 
@@ -122,6 +122,27 @@ python -m matchup_dna.features
 Builds the Phase 3 dataset in `results/phase3/`: `train.csv`, `validation.csv`, and `reserved_features.csv`. It checks the date boundaries and the label rule before writing, and stops if either fails. Takes about half a minute.
 
 ```powershell
+python -m matchup_dna.experiment calibration
+python -m matchup_dna.experiment elo-lr
+python -m matchup_dna.experiment features
+python -m matchup_dna.experiment gbm
+python -m matchup_dna.experiment same-k
+```
+
+These are the Phase 3 experiments, run in this order:
+- temperature scaling;
+- logistic regression on Elo;
+- feature selection;
+- LightGBM;
+- the same-K diagnostic.
+
+They read only the training and validation files. Each writes its output and a manifest to `results/phase3/experiments/` and appends to `experiments/log.md`.
+
+`python -m matchup_dna.experiment freeze` writes `experiments/frozen_protocol.json` and refuses to overwrite an existing one.
+
+`python -m matchup_dna.experiment final --protocol experiments/frozen_protocol.json --confirm` runs the one reserved-period evaluation into `results/phase3/final/`. It refuses to run a second time.
+
+```powershell
 python -m unittest discover -s tests
 ```
 
@@ -137,16 +158,25 @@ Runs the tests. The test that counts every match is skipped when `data/` is miss
 | `matchup_dna/elo.py` | Elo probability and update, the week-by-week replay, the chosen K and surface weight, and the final-ratings export |
 | `matchup_dna/periods.py` | The warm-up, tuning, training, validation, and reserved date boundaries |
 | `matchup_dna/evaluate.py` | Log loss, Brier score, accuracy, calibration, standard errors, exclusions, and the tuning and 2010–2023 experiment |
-| `matchup_dna/features.py` | Pre-match feature rows, the three Phase 3 splits, and the split checks |
+| `matchup_dna/features.py` | Pre-match feature rows, player history (days since last match, form, overlap flag), the three Phase 3 splits, the split checks, and the loader that refuses reserved rows |
+| `matchup_dna/model.py` | Model features, missing-value handling, and the no-intercept logistic regression fitted by Newton's method with L2 |
+| `matchup_dna/calibrate.py` | Temperature and Platt scaling |
+| `matchup_dna/experiment.py` | Experiments A–D, the keep rule, LightGBM, the same-K diagnostic, the protocol freeze, and the final evaluation |
+| `requirements.txt` | Pinned numpy, LightGBM, and scikit-learn versions |
+| `experiments/` | Run log and the frozen protocol |
+| `results/archive_do_not_use/` | First Phase 2 run's predictions, which include 2024–2026 outcomes, kept out of all Phase 3 code |
 | `compare.py` | Command-line comparison of two players |
 | `rate.py` | Command-line ratings and win probability for two players |
 | `tests/test_stats.py` | Hand-countable cases for the date rule, outcomes, and serve rates |
 | `tests/test_elo.py` | Hand-computed Elo updates, the weekly freeze, skipped outcomes, tours, and surfaces |
 | `tests/test_evaluate.py` | Hand-computed metric values, standard errors, exclusion reasons, and the ranking baseline |
 | `tests/test_periods.py` | Period boundaries, with no gaps or overlaps |
-| `tests/test_features.py` | No same-week or future information in features, outcome-blind player order, split boundaries, and the reserved label rule |
+| `tests/test_features.py` | No same-week or future information in features, outcome-blind player order, player history, split boundaries, the reserved label rule, and the loader |
+| `tests/test_model.py` | Logistic fit against scikit-learn, antisymmetry, and preprocessing fitted on fitting rows only |
+| `tests/test_calibrate.py` | Temperature and Platt scaling |
+| `tests/test_experiment.py` | Keep rule, scoring, and the final command's guard |
 
-`predict.py`, `matchup_dna/model.py`, `matchup_dna/calibrate.py`, `matchup_dna/experiment.py`, their tests, and `Phase 3 - Model Report.md` are empty Phase 3 placeholders.
+`predict.py` is an empty placeholder.
 
 ### Definitions
 
@@ -160,7 +190,7 @@ Runs the tests. The test that counts every match is skipped when `data/` is miss
 - Rows where the winner id equals the loser id (4 rows, mostly placeholder "Unknown" players) are reported by validation and left out of player records.
 - **Elo:** every player starts at 1500 overall and on each surface. Only completed best-of-3 and best-of-5 matches move ratings. A tournament week is predicted with start-of-week ratings, and its results are applied together afterwards. Surface Elo predicts from the average of the overall and surface ratings. The full definitions are in the Phase 2 report.
 - **Periods:** by `tourney_date`. Warm-up before 1990, tuning 1990–2009, Phase 3 training 2010–2020, Phase 3 validation 2021–2023, and reserved from 1 January 2024. Ratings update through every period with the fixed Phase 2 settings. The reserved period's outcomes are not used to train, calibrate, tune, or choose a Phase 3 model, and are scored once at the end.
-- **Phase 3 rows:** one per rated match from 2010 on. Player A is chosen by a hash of the match key and both player ids, so the choice does not depend on who won, and `a_won` is the label. Each row has `match_id` (tour, `tourney_id`, `match_num`, round), the week, period, tour, level, surface, round, and best-of. It also has both players' ids and names, start-of-week Elo, surface Elo overall, surface and blended ratings, matches played, the A-minus-B differences, both models' probabilities for A, and both ranks as of the tournament date. Reserved rows have no `a_won` column.
+- **Phase 3 rows:** one per rated match from 2010 on. Player A is chosen by a hash of the match key and both player ids, so the choice does not depend on who won, and `a_won` is the label. Each row has `match_id` (tour, `tourney_id`, `match_num`, round), the week, period, tour, level, surface, round, and best-of. It also has both players' ids and names, start-of-week Elo, surface Elo overall, surface and blended ratings, matches played, the A-minus-B differences, both models' probabilities for A, and both ranks as of the tournament date. It also has each player's days since their last played match, their form (mean result minus Elo expectation over the last 10 rated matches), and an overlap flag for a previous event that may still have been running. Reserved rows have no `a_won` column.
 
 ### Validation results
 
