@@ -1,5 +1,7 @@
 # Sackmann CSVs (CC BY-NC-SA 4.0), downloaded separately
 data/
+# Generated from the Sackmann CSVs by python -m matchup_dna.evaluate
+results/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
