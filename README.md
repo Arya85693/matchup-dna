@@ -1,10 +1,10 @@
 # Matchup DNA
 
-**Status: Phases 0 and 1 complete · Phase 2 Elo baseline built — local Python program**
+**Status: Phases 0–2 complete · Phase 3 dataset and evaluation split prepared — local Python program**
 
 Matchup DNA is a long-term machine-learning and quantitative research project on professional tennis. It will start as a small local Python program and grow into a public site that serves match probabilities, player profiles, historical model evaluations, and, later, live match analysis.
 
-The repository holds the project brief, the Phase 0 feasibility report, the Phase 1 program, and the Phase 2 rating engine. Phase 1 loads the Sackmann tour-level singles files, validates them, and compares two players using only matches from earlier tournament weeks. Phase 2 replays those matches in date order to build Elo and surface-adjusted Elo ratings, and scores their win probabilities on 2010–2026 matches that were held out from tuning. The results are in [Phase 2 - Elo Report.md](Phase%202%20-%20Elo%20Report.md).
+The repository holds the project brief, the Phase 0 feasibility report, the Phase 1 program, and the Phase 2 rating engine. Phase 1 loads the Sackmann tour-level singles files, validates them, and compares two players using only matches from earlier tournament weeks. Phase 2 replays those matches in date order to build Elo and surface-adjusted Elo ratings, and scores their win probabilities on matches held out from tuning. The results are in [Phase 2 - Elo Report.md](Phase%202%20-%20Elo%20Report.md), in time order from the 1968 warm-up to 2023, with ATP and WTA shown separately at each stage. From January 2024 on is reserved for Phase 3's final evaluation and is not scored. Phase 3 starts from a pre-match feature dataset split into training (2010–2020), validation (2021–2023), and reserved (2024–2026) rows.
 
 ## Purpose
 
@@ -70,7 +70,7 @@ Sackmann-derived datasets need an attribution and licensing review before they a
 
 ## Running the project
 
-Phases 1 and 2 need Python 3.10 or newer and no installed packages.
+Phases 1 and 2 and the Phase 3 dataset need Python 3.10 or newer and no installed packages.
 
 ### Data
 
@@ -113,7 +113,13 @@ Writes every rated player's final Elo and surface Elo ratings to `results/final_
 python -m matchup_dna.evaluate
 ```
 
-Runs the Phase 2 experiment: tunes K and the surface weight on 1990–2009, scores the chosen models once on 2010–2026, and writes the test predictions to `results/`. Takes about two minutes.
+Runs the Phase 2 experiment: tunes K and the surface weight on 1990–2009, then scores the chosen models on each period up to 2023 for ATP, WTA, and both tours. It writes the 2010–2023 predictions to `results/phase2_development_predictions.csv`. It does not replay or score weeks from 1 January 2024 on. Takes about a minute and a half.
+
+```powershell
+python -m matchup_dna.features
+```
+
+Builds the Phase 3 dataset in `results/phase3/`: `train.csv`, `validation.csv`, and `reserved_features.csv`. It checks the date boundaries and the label rule before writing, and stops if either fails. Takes about half a minute.
 
 ```powershell
 python -m unittest discover -s tests
@@ -129,12 +135,18 @@ Runs the tests. The test that counts every match is skipped when `data/` is miss
 | `matchup_dna/validate.py` | Builds and prints the data-quality report |
 | `matchup_dna/stats.py` | Builds a player's record from matches before a date |
 | `matchup_dna/elo.py` | Elo probability and update, the week-by-week replay, the chosen K and surface weight, and the final-ratings export |
-| `matchup_dna/evaluate.py` | Log loss, Brier score, accuracy, calibration, and the tuning and test experiment |
+| `matchup_dna/periods.py` | The warm-up, tuning, training, validation, and reserved date boundaries |
+| `matchup_dna/evaluate.py` | Log loss, Brier score, accuracy, calibration, standard errors, exclusions, and the tuning and 2010–2023 experiment |
+| `matchup_dna/features.py` | Pre-match feature rows, the three Phase 3 splits, and the split checks |
 | `compare.py` | Command-line comparison of two players |
 | `rate.py` | Command-line ratings and win probability for two players |
 | `tests/test_stats.py` | Hand-countable cases for the date rule, outcomes, and serve rates |
 | `tests/test_elo.py` | Hand-computed Elo updates, the weekly freeze, skipped outcomes, tours, and surfaces |
-| `tests/test_evaluate.py` | Hand-computed metric values and the ranking baseline |
+| `tests/test_evaluate.py` | Hand-computed metric values, standard errors, exclusion reasons, and the ranking baseline |
+| `tests/test_periods.py` | Period boundaries, with no gaps or overlaps |
+| `tests/test_features.py` | No same-week or future information in features, outcome-blind player order, split boundaries, and the reserved label rule |
+
+`predict.py`, `matchup_dna/model.py`, `matchup_dna/calibrate.py`, `matchup_dna/experiment.py`, their tests, and `Phase 3 - Model Report.md` are empty Phase 3 placeholders.
 
 ### Definitions
 
@@ -147,6 +159,8 @@ Runs the tests. The test that counts every match is skipped when `data/` is miss
 - **Last rank:** the player's rank on their most recent earlier match that has one, with that match's tournament date.
 - Rows where the winner id equals the loser id (4 rows, mostly placeholder "Unknown" players) are reported by validation and left out of player records.
 - **Elo:** every player starts at 1500 overall and on each surface. Only completed best-of-3 and best-of-5 matches move ratings. A tournament week is predicted with start-of-week ratings, and its results are applied together afterwards. Surface Elo predicts from the average of the overall and surface ratings. The full definitions are in the Phase 2 report.
+- **Periods:** by `tourney_date`. Warm-up before 1990, tuning 1990–2009, Phase 3 training 2010–2020, Phase 3 validation 2021–2023, and reserved from 1 January 2024. Ratings update through every period with the fixed Phase 2 settings. The reserved period's outcomes are not used to train, calibrate, tune, or choose a Phase 3 model, and are scored once at the end.
+- **Phase 3 rows:** one per rated match from 2010 on. Player A is chosen by a hash of the match key and both player ids, so the choice does not depend on who won, and `a_won` is the label. Each row has `match_id` (tour, `tourney_id`, `match_num`, round), the week, period, tour, level, surface, round, and best-of. It also has both players' ids and names, start-of-week Elo, surface Elo overall, surface and blended ratings, matches played, the A-minus-B differences, both models' probabilities for A, and both ranks as of the tournament date. Reserved rows have no `a_won` column.
 
 ### Validation results
 
