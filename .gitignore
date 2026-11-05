@@ -1,5 +1,7 @@
 # Sackmann CSVs (CC BY-NC-SA 4.0), downloaded separately
 data/
+# TennisData.app season CSVs: private raw files, never committed (also covered by data/ above)
+/data/external/tennisdata_app/*.csv
 # Generated from the Sackmann CSVs by python -m matchup_dna.evaluate
 results/
 
