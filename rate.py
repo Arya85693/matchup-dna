@@ -12,7 +12,6 @@ from matchup_dna.elo import (
 )
 from matchup_dna.load import SURFACES, TOURS, load_matches, load_players
 
-
 def parse_args():
     parser = argparse.ArgumentParser(
         description="Elo ratings and win probability for two players, using only tournament weeks before a date."
@@ -24,10 +23,8 @@ def parse_args():
     parser.add_argument("before", type=int, help="date as YYYYMMDD, usually a tournament Monday")
     return parser.parse_args()
 
-
 def rating_text(state):
     return f"{state['rating']:.0f} ({state['played']} matches)"
-
 
 def main():
     args = parse_args()
@@ -62,7 +59,6 @@ def main():
             for ratings in surface
         )
         print(f"   {'Surface Elo, ' + name:<20}{expected_score(first, second):.1%}")
-
 
 if __name__ == "__main__":
     main()
