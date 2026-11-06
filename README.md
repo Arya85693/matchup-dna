@@ -1,10 +1,10 @@
 # Matchup DNA
 
-**Status: Phases 0–3 complete — local Python program**
+**Status: Phases 0–3 complete; Phase 4 development complete, held-out test pending — local Python program**
 
 Matchup DNA is a long-term machine-learning and quantitative research project on professional tennis. It will start as a small local Python program and grow into a public site that serves match probabilities, player profiles, historical model evaluations, and, later, live match analysis.
 
-The repository holds the project brief, the Phase 0 feasibility report, the Phase 1 program, and the Phase 2 rating engine. Phase 1 loads the Sackmann tour-level singles files, validates them, and compares two players using only matches from earlier tournament weeks. Phase 2 replays those matches in date order to build Elo and surface-adjusted Elo ratings, and scores their win probabilities on matches held out from tuning. The results are in [Phase 2 - Elo Report.md](Phase%202%20-%20Elo%20Report.md), in time order from the 1968 warm-up to 2023, with ATP and WTA shown separately at each stage. Phase 3 builds a pre-match feature dataset split into training (2010–2020), validation (2021–2023), and reserved (2024–May 2026) rows, chooses a model on validation, and scores that frozen model once on the reserved rows. The results are in [Phase 3 - Model Report.md](Phase%203%20-%20Model%20Report.md).
+The repository holds the project brief, the Phase 0 feasibility report, the Phase 1 program, and the Phase 2 rating engine. Phase 1 loads the Sackmann tour-level singles files, validates them, and compares two players using only matches from earlier tournament weeks. Phase 2 replays those matches in date order to build Elo and surface-adjusted Elo ratings, and scores their win probabilities on matches held out from tuning. The results are in [Phase 2 - Elo Report.md](Phase%202%20-%20Elo%20Report.md), in time order from the 1968 warm-up to 2023, with ATP and WTA shown separately at each stage. Phase 3 builds a pre-match feature dataset split into training (2010–2020), validation (2021–2023), and reserved (2024–May 2026) rows, chooses a model on validation, and scores that frozen model once on the reserved rows. The results are in [Phase 3 - Model Report.md](Phase%203%20-%20Model%20Report.md). Phase 4 adds point-in-time serve and return profiles, matchup interactions, and a round-aware track for workload and route difficulty. It tests them with the same keep rule, and prepares a one-time test on June–October 2026 matches from two newer sources. The sources are audited in [Phase 4 - Data Audit.md](Phase%204%20-%20Data%20Audit.md), and the results are in [Phase 4 - Matchup Intelligence Report.md](Phase%204%20-%20Matchup%20Intelligence%20Report.md).
 
 ## Purpose
 
@@ -142,6 +142,30 @@ They read only the training and validation files. Each writes its output and a m
 
 `python -m matchup_dna.experiment final --protocol experiments/frozen_protocol.json --confirm` runs the one reserved-period evaluation into `results/phase3/final/`. It refuses to run a second time.
 
+#### Phase 4
+
+Phase 4 also reads TennisData.app season files from `data/external/tennisdata_app/` and TennisIsMyLife files from `data/external/tennisismylife/`. Both are private, gitignored, and read only through sealed readers that hide every result from 1 June 2026 on.
+
+```powershell
+python -m matchup_dna.audit_tennisdata          # TennisData.app audit
+python -m matchup_dna.audit_tennisismylife      # TennisIsMyLife audit and overlap
+python -m matchup_dna.audit_workload            # workload and route-difficulty feasibility
+python -m matchup_dna.phase4_experiment profiles      # tune serve-return profiles (no outcomes)
+python -m matchup_dna.phase4_experiment dataset       # Phase 4 rows; checks Phase 3's frozen hashes
+python -m matchup_dna.phase4_experiment tournament    # tournament-start forward selection
+python -m matchup_dna.phase4_experiment gbm           # LightGBM comparison
+python -m matchup_dna.phase4_experiment round-aware   # workload and route-difficulty track
+python -m matchup_dna.phase4_experiment rehearse      # held-out pipeline rehearsed on open 2026 data
+python -m matchup_dna.phase4_experiment verify        # reproducibility and leakage checks before the freeze
+python -m matchup_dna.phase4_experiment freeze --dry-run
+python explain.py ATP 206173 ATP 104925 20260525 --surface Clay --best-of 5
+```
+
+`freeze` writes `experiments/phase4_frozen_protocol.json`, never overwrites it, and refuses while code has uncommitted changes. `retrospective` and `holdout --confirm` each run once, and only after three conditions hold:
+- the protocol is committed;
+- every input it hashed is unchanged;
+- the code is identical to the commit it recorded.
+
 ```powershell
 python -m unittest discover -s tests
 ```
@@ -165,6 +189,13 @@ Runs the tests. The test that counts every match is skipped when `data/` is miss
 | `requirements.txt` | Pinned numpy, LightGBM, and scikit-learn versions |
 | `experiments/` | Run log and the frozen protocol |
 | `results/archive_do_not_use/` | First Phase 2 run's predictions, which include 2024–2026 outcomes, kept out of all Phase 3 code |
+| `matchup_dna/tennisdata.py`, `matchup_dna/tennisismylife.py` | Sealed readers for the two newer sources |
+| `matchup_dna/crosswalk.py`, `matchup_dna/merge.py`, `matchup_dna/heldout.py` | Player and match linking, source precedence, and the held-out period |
+| `matchup_dna/serve_stats.py`, `matchup_dna/profiles.py` | Statistic validity rules and point-in-time serve-return profiles |
+| `matchup_dna/workload.py`, `matchup_dna/round_aware.py` | Match workload, round chronology, route difficulty, round-aware Elo |
+| `matchup_dna/phase4_features.py`, `matchup_dna/phase4_model.py`, `matchup_dna/selection.py`, `matchup_dna/phase4_experiment.py` | Phase 4 dataset, features, model, selection, and commands |
+| `matchup_dna/audit_*.py` | The three Phase 4 audits |
+| `matchup_dna/matchup.py`, `matchup_dna/interpret.py`, `explain.py` | The matchup report |
 | `compare.py` | Command-line comparison of two players |
 | `rate.py` | Command-line ratings and win probability for two players |
 | `tests/test_stats.py` | Hand-countable cases for the date rule, outcomes, and serve rates |
