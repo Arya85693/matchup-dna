@@ -1,0 +1,391 @@
+{
+  "phase": 4,
+  "frozen": "2026-11-05",
+  "git_commit": "5cea719315eb6c11eb4d422ab9a0145dfae5f9b9+uncommitted",
+  "code_commit": "5cea719315eb6c11eb4d422ab9a0145dfae5f9b9",
+  "code_paths": [
+    "matchup_dna",
+    "explain.py",
+    "compare.py",
+    "requirements.txt",
+    "tests"
+  ],
+  "deviation_policy": "The frozen procedure is run as written. An unexpected or unfavorable retrospective or held-out result is reported, never acted on: no feature, setting, or sample changes after either is seen. Only a genuine implementation defect may interrupt the procedure; its correction is documented, committed as a new version, and reported next to the original run.",
+  "feature_columns": {
+    "elo": [
+      "elo_logit",
+      "surface_elo_logit"
+    ],
+    "form": [
+      "form_diff"
+    ],
+    "inactivity": [
+      "log_days_since_diff"
+    ],
+    "ra_controls": [
+      "ra_elo_shift_logit",
+      "ra_surface_elo_shift_logit",
+      "ra_dominance_diff"
+    ],
+    "rank": [
+      "log_rank_diff",
+      "rank_missing_diff"
+    ],
+    "serve_return": [
+      "serve_diff",
+      "return_diff",
+      "no_stats_diff"
+    ]
+  },
+  "feature_definitions": "matchup_dna/phase4_model.py (columns), matchup_dna/profiles.py (profile estimates), matchup_dna/round_aware.py (round-aware values), at git_commit",
+  "profile_means": {
+    "ATP": {
+      "serve": [
+        0.634828385644083,
+        81.14724878224789
+      ],
+      "first_in": [
+        0.6114604027752828,
+        81.14724878224789
+      ],
+      "first_won": [
+        0.7153541520624329,
+        49.61832942449937
+      ],
+      "second_won": [
+        0.5081017458893324,
+        31.53005701089702
+      ],
+      "ace": [
+        0.07821067711992373,
+        81.14724878224789
+      ],
+      "df": [
+        0.036897353307876045,
+        81.14724878224789
+      ],
+      "bp_saved": [
+        0.6066724500915122,
+        7.172924057597086
+      ],
+      "return": [
+        0.36517161435591705,
+        81.14724878224789
+      ],
+      "bp_converted": [
+        0.3933275499084879,
+        7.172924057597086
+      ]
+    },
+    "WTA": {
+      "serve": [
+        0.5631996750988053,
+        70.92696087482817
+      ],
+      "first_in": [
+        0.6233839188371824,
+        70.92696087482817
+      ],
+      "first_won": [
+        0.6291637858631042,
+        44.215633976200245
+      ],
+      "second_won": [
+        0.45401430589232866,
+        26.712782109150595
+      ],
+      "ace": [
+        0.03676624160301126,
+        70.92810537978579
+      ],
+      "df": [
+        0.051093867908007476,
+        70.942523306912
+      ],
+      "bp_saved": [
+        0.5419036578447575,
+        8.477542656406825
+      ],
+      "return": [
+        0.4368003249011947,
+        70.92696087482817
+      ],
+      "bp_converted": [
+        0.4580963421552426,
+        8.477542656406825
+      ]
+    }
+  },
+  "primary_claim": "P4-refit against P3-refit on identical held-out matches, tournament-start track",
+  "tournament_start": {
+    "baseline": {
+      "name": "P3-refit",
+      "groups": [
+        "rank",
+        "inactivity",
+        "form"
+      ],
+      "l2": {
+        "ATP": 1000.0,
+        "WTA": 100.0
+      }
+    },
+    "model": {
+      "name": "P4-refit",
+      "groups": [
+        "rank",
+        "inactivity",
+        "form",
+        "serve_return"
+      ],
+      "l2": {
+        "ATP": 10.0,
+        "WTA": 0.0
+      },
+      "representations": {
+        "ATP": "adjusted",
+        "WTA": "adjusted"
+      }
+    },
+    "continuity": "P3-original: the Phase 3 final model as fitted on 2010-2023",
+    "secondary": null
+  },
+  "round_aware": {
+    "sample": "eligible matches after the edition's first round (Data Audit A6-A7)",
+    "reference": "P4-refit predictions",
+    "R0": {
+      "groups": [
+        "rank",
+        "inactivity",
+        "form",
+        "serve_return",
+        "ra_controls"
+      ],
+      "l2": {
+        "ATP": 100.0,
+        "WTA": 0.0
+      }
+    },
+    "kept": {
+      "groups": [
+        "rank",
+        "inactivity",
+        "form",
+        "serve_return",
+        "ra_controls"
+      ],
+      "l2": {
+        "ATP": 100.0,
+        "WTA": 0.0
+      }
+    }
+  },
+  "profiles": {
+    "ATP": {
+      "half_life": 52,
+      "prior_matches": 4,
+      "representation": "adjusted",
+      "loss": 0.6518762978407403,
+      "best_raw_loss": 0.6519955581594257
+    },
+    "WTA": {
+      "half_life": 52,
+      "prior_matches": 4,
+      "representation": "adjusted",
+      "loss": 0.6826591235919297,
+      "best_raw_loss": 0.6827676105222156
+    }
+  },
+  "training": "development models fitted on 2010-2020 per tour; L2 chosen on the inner split (fit 2010-2017, score 2018-2020); selection by the Phase 3 keep rule on 2021-2023 (experiments/phase4_log.md)",
+  "refit": "every model refitted per tour on all rated matches from 2010 to the week of 25 May 2026, L2 held at the values above; P3-original fitted on 2010-2023; profile settings and means held fixed",
+  "retrospective": {
+    "command": "python -m matchup_dna.phase4_experiment retrospective",
+    "rows": "2024 to the week of 25 May 2026 (results/phase4/retrospective.csv), seen once in Phase 3",
+    "models": "fitted on 2010-2023 with the L2 values above",
+    "runs": "once; reported as a robustness check, not a fresh test; nothing is changed after it"
+  },
+  "held_out": {
+    "command": "python -m matchup_dna.phase4_experiment holdout --confirm",
+    "seal": {
+      "TennisData.app": "match day on or after 2026-06-01",
+      "TML": "tourney_date on or after 20260601"
+    },
+    "editions_starting": [
+      20260601,
+      "before 20261105"
+    ],
+    "complete_before_snapshot": "2026-11-05; ongoing-file editions excluded",
+    "population": "main-tour main draws; no qualifying, wheelchair, Challenger or WTA 125",
+    "excluded_tennisdata_tournaments": [
+      "Billie Jean King Cup - Group I WTA",
+      "Billie Jean King Cup - Group I WTA - Placement matches",
+      "Billie Jean King Cup - Group I WTA - Promotion",
+      "Billie Jean King Cup - Group I WTA - Relegation - Play Offs",
+      "Billie Jean King Cup - World Group WTA - Relegation - Play Offs",
+      "Hopman Cup ATP",
+      "Hopman Cup WTA"
+    ],
+    "sources": "TML rows; TennisData.app rows only where no TML row matches (names in the -3 to +16 day window, then validated ids), not the same pair and round within 3 days of a TML row, and not a pair and round Sackmann already holds within 14 days",
+    "players": "validated crosswalks (results/phase4/crosswalk.csv, tml_crosswalk.csv), else a unique full-name (TML) or surname-and-initial (TennisData.app) match to a Sackmann player with tour-level matches since 2015, else a provider-only id",
+    "edition_date": "TennisData.app first main-draw day when the edition is in TennisData.app, else TML's earliest date",
+    "best_of": "from the tournament (ATP Grand Slam main draw = 5), never from the sets played",
+    "rated": "completed best-of-3 and best-of-5 matches",
+    "ranks": "provider ranks (TML, else TennisData.app)",
+    "statistics": "TML counts; TennisData.app-only matches carry no statistics",
+    "output": "results/phase4/final/ (refuses to run if it exists)"
+  },
+  "metrics": "log loss (primary), Brier, accuracy, paired log-loss gaps with standard errors clustered by tournament date and by month, reliability and calibration line; ATP, WTA, and combined; by month, surface, and round",
+  "minimum_detectable_gain": {
+    "tournament-start": {
+      "validation_se": 0.0007082756541479584,
+      "held_out_se": 0.0017939938637384003,
+      "minimum_detectable_gain": 0.0050231828184675205
+    },
+    "round-aware": {
+      "validation_se": 0.0011055730067528445,
+      "held_out_se": 0.0027131193387170604,
+      "minimum_detectable_gain": 0.007596734148407769
+    }
+  },
+  "reporting_rule": "a gain is called an improvement only if its 95% interval excludes zero",
+  "inputs": {
+    "results\\phase4\\train.csv": "f5d2ef3431eb4789c2667fa4e2daaf844c6342eec9561bcf518c0ac6241fa483",
+    "results\\phase4\\validation.csv": "7e0c9c532cdf5df0d7702935ba9e8a2f2d8a050898a40260a3332b4d9cd42ab8",
+    "results\\phase4\\retrospective.csv": "28db8f54e60c93564770d38210e6df949235786d3eba73c78806ab2a165119b7",
+    "results\\phase4\\profile_settings.json": "4e37f9ddd4c8feefd292f46320f642f6468cd129d673ca181350c1d48e99c546",
+    "results\\phase4\\selection.json": "509f483547115333067f10b410c65fd62617c83d385115e1e11f4844dc4f24a8",
+    "results\\phase4\\round_aware.json": "c5336d5c57922a80d193a9e7667b19f6b37ad0070640fc1550a13d91cd1d01aa",
+    "results\\phase4\\gbm.json": "195bf7482f6facf9873429e31eaddbad4455bdf6a40855ed9e5f3dd37d7bd398",
+    "results\\phase4\\crosswalk.csv": "dd1f7fea5a45d38d92e5b92886dfbbd8de40874eeb7225f22193cfbc69d8cbf8",
+    "results\\phase4\\tml_crosswalk.csv": "47726285ff80c0f2eed66be62d8752b60a80f07609af176a068a0374a0d3dfb5",
+    "experiments\\frozen_protocol.json": "c9b7298461f23eee83bd2897a73e598dde37f5fb877e8248e8062b9d0d28395e",
+    "data\\atp\\atp_matches_1968.csv": "5c2b13de739adc7f8d5c17df583fc90f81584da97897d6da189ca73820cca3aa",
+    "data\\atp\\atp_matches_1969.csv": "3f67c7c5c1e35479c1030cf03839613133948bb16f11d21e3ec6eaa7d9f00345",
+    "data\\atp\\atp_matches_1970.csv": "4de43ab8539a6de62622ddfc13f74ad547cd059be81873b18c329791b91bb1ea",
+    "data\\atp\\atp_matches_1971.csv": "a51ce273fb3c4d50f71d41fd4274fe76208989e5cbe0f4828c47e5ac2c2d8571",
+    "data\\atp\\atp_matches_1972.csv": "90c052854e14d3c5bd13a29a18e684be643cab5e2545e58e5527c8661878a39b",
+    "data\\atp\\atp_matches_1973.csv": "b621123fadb7c3c2f7a44e83e0c6f9bcf30d77664dd8155933cf38f6bfb56ac1",
+    "data\\atp\\atp_matches_1974.csv": "a38920e4bc2c68705c2708213c46d655f4f2b2aae7c512bdd056882d7d36cf41",
+    "data\\atp\\atp_matches_1975.csv": "a97cb95b0b37c985cba88c4a128a4d4fa2ceb0857786b4e9bebf326931d3d3ec",
+    "data\\atp\\atp_matches_1976.csv": "f608384b2f7021f41b7d8908dfbb1cfcac96ef0ee95b7e053210dc2bd04e5d2a",
+    "data\\atp\\atp_matches_1977.csv": "b54f4e514b0eb365fdafe5a4827d9fe146e5ef8b0e13cf14574e48ad0c21bfed",
+    "data\\atp\\atp_matches_1978.csv": "6b42b2859965c4a13172d17d7763c797311d75d9f98eb6c2b94ae18d2e8864e7",
+    "data\\atp\\atp_matches_1979.csv": "43a17fe1a399135a0f3227f88fedc8b61e0f9157400d559c218dd2fb918b168b",
+    "data\\atp\\atp_matches_1980.csv": "1affa2bd0d0606622968258269580ddefcf8c8831c5e168c37e8e92426bac297",
+    "data\\atp\\atp_matches_1981.csv": "30daad41e573c1c48d59fa4164e25768f9d1f9b1e07f598e5c064e7d685fd9b7",
+    "data\\atp\\atp_matches_1982.csv": "5542264542e6e0f088ad8e40f7d2e9a92c2a4ee56e8afba46c368d46628f0ebf",
+    "data\\atp\\atp_matches_1983.csv": "2e717cf01f6e24d1628a878f67a1d0bf5351dd0e2872517a7e73c69d5dc80c19",
+    "data\\atp\\atp_matches_1984.csv": "f96b0d5cbefb55f96a87abd835e5af0fe5dce4fdd8491639d205b89eed3a2b05",
+    "data\\atp\\atp_matches_1985.csv": "6932e7ff50c2dd6a3898fa3f3ca7af0f76e4e45dc0522a6868319e235cb7e989",
+    "data\\atp\\atp_matches_1986.csv": "0344ad27eb92de134ec59ede2a9ab436aabcaddc11daa49887e23f0e7b11ce44",
+    "data\\atp\\atp_matches_1987.csv": "4f8c2947b0ae305d9afbedad7ae44b82ce426cd5d5b8b2835778073fd721febb",
+    "data\\atp\\atp_matches_1988.csv": "7da1eb2691c5a992648529f89d6564a685baf7150d37a0143d5599a9f3f48fd7",
+    "data\\atp\\atp_matches_1989.csv": "f059a3423e2bb986215311a2ec9cac3f4bab9a76bd1167be711de37470d977e9",
+    "data\\atp\\atp_matches_1990.csv": "4c65abf16c98f1a96634bdc464961f058555677539203cd23b50031155fa037c",
+    "data\\atp\\atp_matches_1991.csv": "8366632e1d874fcfb700017d8ff8bf59fe05e25e44ca86dfcfb314a198d303a0",
+    "data\\atp\\atp_matches_1992.csv": "b2ede0ff352a34e59b9cdc0e2a7c9af764a6fe6ac7326a09c4c923f5736b7922",
+    "data\\atp\\atp_matches_1993.csv": "4620a9807ae69e2e04bad72a1c26c2994f8d20cbbe7a2933d4e533cf2d9fc43b",
+    "data\\atp\\atp_matches_1994.csv": "e8c577594c4495945d337d95b44ca5a8441c952eb693f7e6c9bcb61bb762580e",
+    "data\\atp\\atp_matches_1995.csv": "d480e93dc75e4631d4811edc1f98c168f9e80f8eab8ab2eb6040a22bda7b3b21",
+    "data\\atp\\atp_matches_1996.csv": "0e8fd6303e8a2f400a4a6f3ebc5aa04200e4d31bffd18593c815688d01e6052b",
+    "data\\atp\\atp_matches_1997.csv": "74f69b97695a85e97a1e905244ca2e0f872c9ecc56862f5e595c612a3c656796",
+    "data\\atp\\atp_matches_1998.csv": "396ad4be1a5843badd0c6a5ffee976cabbf43be865ce859a295b82ae403f9164",
+    "data\\atp\\atp_matches_1999.csv": "bf864d0c188947369fa8f2e280ab571fc43b9db2e9e657d29e03683b4dbd26a4",
+    "data\\atp\\atp_matches_2000.csv": "a2176b0d9e70f238536d0a2d0957bc54dc1bfbfb47c368d8f3cbe28457b5ebe4",
+    "data\\atp\\atp_matches_2001.csv": "b07bcb7e7239fb451eae6b4e99ef9a0c892083a21185405c8627d5edc9a113be",
+    "data\\atp\\atp_matches_2002.csv": "d161c2ef78158d167372ebc38b7eea2038c5b9e42bbb4b2804d8c19540c33adf",
+    "data\\atp\\atp_matches_2003.csv": "387a1dec62d014fdf5c7dc83329b87c3a4041fc4ebf8a25b19352c82d1f67c31",
+    "data\\atp\\atp_matches_2004.csv": "79251fec7d9751ea2eebb005a962f69fea466f827172d53f47b381aac53634af",
+    "data\\atp\\atp_matches_2005.csv": "7ab77584b319b65830d4b5c988cf8349d14a7a4e867633e9717801f8d9b97b27",
+    "data\\atp\\atp_matches_2006.csv": "c7f28866e127c665072ed6e4a8fc5812cd82f804660fbdd37e8b00063d1b8f53",
+    "data\\atp\\atp_matches_2007.csv": "d392402109561d6d3e19fd41dc8cc3a3f72ccb52d3988edbe7c18cc47b603db0",
+    "data\\atp\\atp_matches_2008.csv": "6725bd6e56d32538282e5a77bd30a2502014917138df180dce9259c535a93310",
+    "data\\atp\\atp_matches_2009.csv": "bab7523386fddcaeb684b2b354016075d035516e65c2f54d3e1d23c3a8fe22f9",
+    "data\\atp\\atp_matches_2010.csv": "135a4a1e2ab69c33318b6e5ad59efc67cc5358629b15bf28fb2f905d48f7aeb0",
+    "data\\atp\\atp_matches_2011.csv": "8e91e4b680f0b4e9605a3c71b4c676b55e2a102de8544a7d3b2fbaca5977575a",
+    "data\\atp\\atp_matches_2012.csv": "03f03612691af370c9c47939dde4202d9858e05ea044367388115e627d4d13f3",
+    "data\\atp\\atp_matches_2013.csv": "9e1e3b124ac22c1b840118f78475a910cb2ea68684289581f70b54a022f2832c",
+    "data\\atp\\atp_matches_2014.csv": "7c102ee3b0da1fee59edc6a5f280eb0784ac0bad69988583f65791dcb7084177",
+    "data\\atp\\atp_matches_2015.csv": "20c1f723df86b367f3ec205bbda3d8a7163fa6d4e46dcfda15095e24965bc5ed",
+    "data\\atp\\atp_matches_2016.csv": "86dda3871cb79d3226a047774c8fc97b86267cfe96709dea832a347dfbf81684",
+    "data\\atp\\atp_matches_2017.csv": "4bb295788c37487b120cd39171d413cef0ebc6f4c2d9fa40b7261f5143f3719f",
+    "data\\atp\\atp_matches_2018.csv": "0363dc6012190f337fcf34b4ca443634f192c4670cc6c14c94342a54b9adf7eb",
+    "data\\atp\\atp_matches_2019.csv": "7f1a21451ff622bb0c6a09690898db46d51e59dcdf08086d369753822e1d5478",
+    "data\\atp\\atp_matches_2020.csv": "985a917b72d5efb7dd5ef9df8ecc58c637ed6b88561ccad364653af71ac12da0",
+    "data\\atp\\atp_matches_2021.csv": "b9b1d31a4b0b9273b8f338cbb1347c5a847ad2361334ec760a286f5990fba347",
+    "data\\atp\\atp_matches_2022.csv": "7190042565ab8400e74f44fda60700acb36ddf3c82d393f331a07589e05b5f52",
+    "data\\atp\\atp_matches_2023.csv": "9b9671aa7c8156e74c2e4466675b7ed4e762bb8a58b7237a30daefd84ffceff5",
+    "data\\atp\\atp_matches_2024.csv": "73aec32247a0db68d8aa8fd8003eefea132905177f1cb145502d9215b53311be",
+    "data\\atp\\atp_matches_2025.csv": "78c356ef9328b89ae58a17564d61c02cdad2a3a007f6b8af5cfc17992b11bb2d",
+    "data\\atp\\atp_matches_2026.csv": "ceb157ae698f79f4148f7bb6253bbcf6a8c8eb9ff94670dd83aa0428802cfd59",
+    "data\\wta\\wta_matches_1968.csv": "d31bdf94a7a03d8fdb7414eb1c39b7fea520bc0e26b1130da447fec7c2d70485",
+    "data\\wta\\wta_matches_1969.csv": "01937447ee6ed88e51bef46e7bc71d49a47f97d908b4fa63a9bfd272118d3b44",
+    "data\\wta\\wta_matches_1970.csv": "3ce5de44d88250955434e933accb38531929c37fbe145685b71c1ccb6f29791f",
+    "data\\wta\\wta_matches_1971.csv": "a8c36b26be5dea7f0d00c4f7a494e73829c27b1af98ed75bda063bb80af38e4e",
+    "data\\wta\\wta_matches_1972.csv": "05674fe8d30516347f61edc0fb4a0033ed16e29f923a5b9e06e03949ae731861",
+    "data\\wta\\wta_matches_1973.csv": "03fa27ecc65506569b0b72903084b7059ada63ec6fde8cd57558b19563e6d232",
+    "data\\wta\\wta_matches_1974.csv": "bb8482d429a36751ea86545432e0d5a8d7b35fc3bfc80472aebcd096dedf0b5a",
+    "data\\wta\\wta_matches_1975.csv": "9a9574bd695698c8bd1af30ac293ceee0ef96eea48704adcba025ce40338d1c6",
+    "data\\wta\\wta_matches_1976.csv": "147238e26da2c65645b86a13b77dbdb413a220fba687f6f28177fafb0fc97757",
+    "data\\wta\\wta_matches_1977.csv": "4844219320426233e56d7f632b373909a1d27ff2b99d6891edb160135de9e576",
+    "data\\wta\\wta_matches_1978.csv": "433da1438d5030e80d0996aaf0f1487c408bb39ffe93f4ca442833f01b9c462c",
+    "data\\wta\\wta_matches_1979.csv": "d5131152f67d4a1ffc0f049ad0528f26fb7592c9ca8020ad75d0d0d635b1fd5d",
+    "data\\wta\\wta_matches_1980.csv": "16d300e82a2644b3aacd6d970783dffbec8ba8eac4ca1ca42444a0888f19fae9",
+    "data\\wta\\wta_matches_1981.csv": "4197040469abcf03f353045328d56027a4852c6fb4d697b97b7f65dbc0b7173c",
+    "data\\wta\\wta_matches_1982.csv": "05b638d7404970efe7eff28d0448375dbeaa9a81f3350c4a918be6d947ae217d",
+    "data\\wta\\wta_matches_1983.csv": "ebca6650f36655939e3f065450e89cc4e74e8f2893097aee7b7a670155014c28",
+    "data\\wta\\wta_matches_1984.csv": "66a1e791d2879bdca56cd1c25a2243dbb4a3b65159e42379614df36ebc8c33f6",
+    "data\\wta\\wta_matches_1985.csv": "a6481ed1f4502e379ddc6f126ed5be7e1c0684d0c9741d7e1edcede6bdb645fd",
+    "data\\wta\\wta_matches_1986.csv": "f0e05a97e7178c38fa2658aa8fffff3438da96197411e49625a3051931394d56",
+    "data\\wta\\wta_matches_1987.csv": "051f303d8f12f296e0ca99ed31e6d0fe749e9f7bcc5b84eff50e9800b60034e1",
+    "data\\wta\\wta_matches_1988.csv": "a6c84da89bc835bf2bd374d59f164089de419c44b66978d0b46cf84d59ce46e5",
+    "data\\wta\\wta_matches_1989.csv": "039c47ebb2080d81596fa01f89ba4ff2fc26cb66d455c220ed63f76f46965e11",
+    "data\\wta\\wta_matches_1990.csv": "f04fddcbb05a767411cf2ab17d13c88c986b2908a1958f039704c769650b1da6",
+    "data\\wta\\wta_matches_1991.csv": "17737b62a219be183112244879c4dcd26536c29ccba9f95ee3fb37fa158744fc",
+    "data\\wta\\wta_matches_1992.csv": "1ef08242244a8d3ec237f0e78968955ee88d9e233958c7e0e55c0d471ffbbf7f",
+    "data\\wta\\wta_matches_1993.csv": "ad81067140c11daec9e84a22039b8e0d944eea6e66d7cf87f4cb2b5cf7bac805",
+    "data\\wta\\wta_matches_1994.csv": "d35a986f82709de6cd530ef324210f76e612c85c95a3402e755ff2814b05efba",
+    "data\\wta\\wta_matches_1995.csv": "d774f578e071555dd47df72fdad3582435ce48a927ad2cd6ffac0c55424edea5",
+    "data\\wta\\wta_matches_1996.csv": "953308668c369b19889e2827f947993684d55e57041126e244164e3808a29372",
+    "data\\wta\\wta_matches_1997.csv": "db9b2b984a1d47decd8cde861322b8c87d2436be162188be2a46d9d6f97e9a30",
+    "data\\wta\\wta_matches_1998.csv": "45839b89da922adbe359b1cc3f15d369af5520e7c22440c1bdd2d635719383bb",
+    "data\\wta\\wta_matches_1999.csv": "a0478c22bc5a0ae9231865f1b3e7486c8e4da25cc308d2633dd8bbb4f94d57a6",
+    "data\\wta\\wta_matches_2000.csv": "0534f3f73efa1f1009065489b0f7d60ba312aa979ccf278dbaacbe9381f968a4",
+    "data\\wta\\wta_matches_2001.csv": "9b97c12e0f5f76c7ef40103a63ceec4b4e9e0c17a243872185532abfe7126139",
+    "data\\wta\\wta_matches_2002.csv": "db8c40e2a781cbc58391eda7c224c405867c213ef003629ec277b9305ed87bcb",
+    "data\\wta\\wta_matches_2003.csv": "49edc79a3042240e301256f84643fe766798e5810c9ae7d2150fa8cdf241010c",
+    "data\\wta\\wta_matches_2004.csv": "aaa594fe054a78bc411c93a10a1db9c491bb0a0d793bf0749b671e768f3c99dc",
+    "data\\wta\\wta_matches_2005.csv": "8547420ac6b4b6e2adf4d4a38988bf1b1e7f3afb349d4b0f52832e22675ede1a",
+    "data\\wta\\wta_matches_2006.csv": "12a23f743850ab7d2963702ead3d894e51a9ec47772fac5aaf4b59b8cc74aab6",
+    "data\\wta\\wta_matches_2007.csv": "bb4ad9ad0e674f0acb8ec3ed51bf51ee6400c86f952047b17767245971db0937",
+    "data\\wta\\wta_matches_2008.csv": "23942f4d0bc621a9d7b069a5dbe02a80098d981d6ee13402fa97fd0a9b38a020",
+    "data\\wta\\wta_matches_2009.csv": "ca1c01aa12f674aaaf93a6eb5169aeb295a857362a174f10d4f8bdf0328a36d5",
+    "data\\wta\\wta_matches_2010.csv": "05b980e28398ae13e6e0edae544a060b59571cf977623ad0db727d6de3527627",
+    "data\\wta\\wta_matches_2011.csv": "ea0afb5d5e5a1fd230860f722de4f79578f7bd39949358a8b66480f2cae6e101",
+    "data\\wta\\wta_matches_2012.csv": "a8e7f92534df31293a5574db3406e6a0d1c2d956ba63610c44c7bb6f3f09f52d",
+    "data\\wta\\wta_matches_2013.csv": "0d31dde39e721a683b158c30ffbe612293b06bd2386dfeec47ae28e9bad8d93c",
+    "data\\wta\\wta_matches_2014.csv": "4cb59debfa4cbf079c550ee7dfc0ee098237af33376701cd340e112b917f8176",
+    "data\\wta\\wta_matches_2015.csv": "9332d0d470c378c8d439553ed7d81379eb3596d04babf39bee7021edae316130",
+    "data\\wta\\wta_matches_2016.csv": "17145270279d6bf5d1abec4038d51d6af3aa71a7b40421b9f175205fafa075f7",
+    "data\\wta\\wta_matches_2017.csv": "eae2de68b2e87fcac7e2ff1f6168c78d1baba91fb0ffecda455aa329a81437c8",
+    "data\\wta\\wta_matches_2018.csv": "6ccfc04baabe536e4260083c2e299c8c36668a8e8276dfc309219df23bf9ea38",
+    "data\\wta\\wta_matches_2019.csv": "da251744c6ece2cab4b94df659ee38a81bb4aa50cf532d48f1a6eb0cc66726d4",
+    "data\\wta\\wta_matches_2020.csv": "bcbb285ee8a743ce117952bbb99cfe816bfc685412aa3adc7a9913e7799cd70c",
+    "data\\wta\\wta_matches_2021.csv": "3f4b865fe9f68aedb3d51597740cf658cf805f676bae652f2bc93cbab4f6e99f",
+    "data\\wta\\wta_matches_2022.csv": "f638cf65efefb01a1a10368c1d5217d5f90981fb76193ca3a9c3773c2abc2ba7",
+    "data\\wta\\wta_matches_2023.csv": "b73bf74928155b858cdb7045f6334246336cef604286cb361e695df26911ad18",
+    "data\\wta\\wta_matches_2024.csv": "d9bba2a0b3793f63c737ef62a809b82b56b3ad0ee94e1f95e78cecfac7615ed2",
+    "data\\wta\\wta_matches_2025.csv": "e4eb002bc6d828b0bd21e04ed286e68722ddc8ccbbb27ea980bf62e938377f96",
+    "data\\wta\\wta_matches_2026.csv": "8fea203e3f4e731308b9ed2845059818d400aa6176c801279b24e846569e9d97",
+    "data\\external\\tennisdata_app\\2025-atp-season.csv": "de4c7466a2425d85e62e454ae9a0ccc084eb9b02a234ba5b729e675c30a7c1f6",
+    "data\\external\\tennisdata_app\\2025-wta-season.csv": "bfccceaa8d8e17f1656d6009f02f58199b0be061898495ecd36ab35f670f194d",
+    "data\\external\\tennisdata_app\\2026-atp-season.csv": "72f1dd78f3fb292220e2a875a0828572392e8b1167319ad603a281eec51753b8",
+    "data\\external\\tennisdata_app\\2026-wta-season.csv": "86a940b5cf8711645b2db7d7b9770215be403709730c533d850129eb99df947b",
+    "data\\external\\tennisismylife\\2025_atp.csv": "5630ff8ee5ff380b765b3f30f9cb85b646e219fab14a28b87edb8b67e2153226",
+    "data\\external\\tennisismylife\\2026_atp.csv": "4219d664cb7f4989b2529791ed60cbc6276b0b621708016799064163bda9efe8",
+    "data\\external\\tennisismylife\\ongoing_tourneys.csv": "087038c3c2f70318db18a0d6fb804ca44d465e38de3165239a3cdd1f353244ca",
+    "data\\external\\tennisismylife\\2025_wta.csv": "0a0fea0ec5b9480c8e3dc904a09f5d02f5ff152fecb95110fd5052d5925fc1ed",
+    "data\\external\\tennisismylife\\2026_wta.csv": "bf1aa3fe2b6a700ff907cd45e08f7047df201a1d090efaf46ead8ca9b192cb53",
+    "data\\external\\tennisismylife\\wta_ongoing_tourneys.csv": "a5a2b366bdb0601877cc5be7daeaa4e72c45eca5b2deae0122c3b0f247522dbe"
+  }
+}
