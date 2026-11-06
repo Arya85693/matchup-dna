@@ -492,9 +492,11 @@ def experiment_round_aware():
 
 # ---------------------------------------------------------------- building a period from the providers
 
-def provider_period(start, end, unseal_with=None):
+def provider_period(start, end, unseal_with=None, version=2):
     """Sackmann before `start` plus provider matches for editions in [start, end), every Phase 4 column built by
-    the development code. Returns (rows, provider keys, report, Sackmann matches)."""
+    the development code. Returns (rows, provider keys, report, Sackmann matches). version selects the provider
+    assembly (heldout.assemble): 1 is the original, affected one the frozen commands ran; 2 is the correction of
+    erratum 1."""
     from matchup_dna import heldout
     from matchup_dna import tennisdata as td
     from matchup_dna import tennisismylife as tml
@@ -513,7 +515,7 @@ def provider_period(start, end, unseal_with=None):
     window = [r for r in tml_rows if not r["sealed"] or unseal_with is not None]
     td_window = [r for r in td_rows if not r["sealed"] or unseal_with is not None]
     added, keys, report = heldout.assemble(window, td_window, sackmann, names, tml_links, td_links, excluded,
-                                           start, end, heldout.snapshot_day())
+                                           start, end, heldout.snapshot_day(), version=version)
     history = [m for m in sackmann if m["tourney_date"] < start]
     # Rule 1 of the precedence: a match Sackmann already holds is never added again. An edition that starts just
     # after `start` can repeat a Sackmann edition dated just before it, so the same pair in the same round within
@@ -582,7 +584,7 @@ def experiment_rehearse():
     out = Output()
     selection, reps = load_selection(), representations()
     round_choice = json.loads(ROUND_AWARE_PATH.read_text(encoding="utf-8"))
-    rows, keys, report, sackmann = provider_period(*REHEARSAL)
+    rows, keys, report, sackmann = provider_period(*REHEARSAL, version=1)  # as run before the freeze
     out(f"Rehearsal of the held-out pipeline on editions starting {REHEARSAL[0]}-{REHEARSAL[1]} (open rows).")
     for key, value in report.items():
         out(f"   {key}: {value}")
@@ -932,7 +934,8 @@ def holdout(confirm):
         out(f"Running under amendment {amendment['amendment']} (code {commit}): {amendment['reason']}")
         out(f"Fix: {amendment['fix']}")
         out()
-    rows, keys, report, _ = provider_period(*HELD_OUT, unseal_with=PROTOCOL_PATH)
+    # The frozen procedure as it ran; erratum 1's corrected rebuild is phase4_correction.
+    rows, keys, report, _ = provider_period(*HELD_OUT, unseal_with=PROTOCOL_PATH, version=1)
     fit_rows = [r for r in rows if 20100101 <= r["tourney_date"] < HELD_OUT[0]]
     held = [r for r in rows if r["tourney_date"] >= HELD_OUT[0]]
     out(f"Held-out evaluation, editions starting {HELD_OUT[0]} to {HELD_OUT[1]}, scored once. {len(held):,} rated "

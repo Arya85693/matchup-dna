@@ -732,3 +732,58 @@ python -m unittest tests.test_workload tests.test_round_aware
 ```
 
 The audit takes about 80 seconds and writes `results/phase4/audit/workload_audit.txt`, with every number in this addendum, plus a manifest.
+
+## A16. Erratum 1: what the audit missed in the held-out data, and the checks that now prevent it
+
+*Added 5 November 2026, after the held-out evaluation. This is a post-unblinding data-integrity correction. The audit above is unchanged; this addendum records where it was wrong. The full correction and its results are in the Matchup Intelligence Report ("Erratum 1") and in `experiments/phase4_erratum_1.json`.*
+
+### What was wrong
+
+The held-out evaluation counted **65 rated matches twice**. There were 68 duplicate rows in all: 3 more were walkovers or canceled matches that rate nothing. Some players also had the wrong identity or two identities. Each duplicate came from TML and TennisData.app spelling a player's name differently:
+
+| TennisData.app | TML | Duplicated matches | How the original build resolved them |
+|---|---|---:|---|
+| "Vallejo D." (424916) | "Adolfo Daniel Vallejo" (ATP code V0DP) | 23 | TennisData.app copy → Sackmann 118808, **a different player**: Daniel Vallejo, MEX, born 1984. TML copy → 209226, Adolfo Daniel Vallejo, PAR, born 2004 |
+| "Merida Aguilar D." (122001) | "Daniel Merida" (M0N7) | 21 | TennisData.app copy → 210017 (correct). TML copy → a new, history-less id, also used in his 22 TML-only matches |
+| "Ruse G." (275310) | "Elena Gabriela Ruse" (211817) | 19 | TennisData.app copy → a new id. TML copy → 211817 (correct) |
+| "Bassols M.", "Damas M.", "Feldbausch K.", "Choi W. F.", "Tam Sin Hang", "Wu Tung-Lin", "Dahlin M." | full names | 1–2 each | two different ids, at least one of them new |
+
+**Why "Vallejo D." went to the wrong player.** The TennisData.app crosswalk was validated through matches, but its key is surname plus first initial. "Vallejo D." matches only Sackmann 118808 ("Daniel Vallejo"), whose key is "vallejo d". Sackmann itself files Paraguay's 2023–2026 Davis Cup matches under 118808, and those matches validated the link.
+
+Match evidence that does not use names points the other way. In the player's own matches, the Sackmann player opposite a linked opponent, in the same round and dates, is 209226 in 9 matches and 118808 in none, once team-tie rubbers are excluded. It is the only crosswalk entry so contradicted (`phase4_correction diagnose`).
+
+### The three audit failures
+
+1. **Unlinked TennisData.app rows were treated as genuine TML absences.** Part 3 counted 224 held-out rows with "no TML row" and read them as Davis Cup ties and thin coverage. Nothing checked whether a row really had no counterpart, or had one under a different spelling. Linking needed matching surname-and-initial keys for both players, or both players in both crosswalks. "Merida Aguilar D.", "Ruse G.", "Vallejo D." and "Tam Sin Hang" fail both.
+2. **Duplicates were checked on source-specific keys, not on real matches.** Rule 6, "the build stops if a match key appears twice", compared keys that differ by construction across sources. The last cross-source guard compared resolved player ids, and those had been resolved differently on the two sides. A test that every match updates Elo once could never see a match stored twice under two keys.
+3. **Split TML identities were assumed to be resolved through Sackmann.** Rule 4 said the WTA players with two TML ids "are resolved through Sackmann, so each counts once". Four of five are, because both TML ids carry the full name of one Sackmann player. **Xinran Sun is not:** she has no Sackmann record, so each of her TML ids became a separate new player. The same assumption also missed TML ids with spelling variants: "Aleksandr Shevchenko" against Sackmann's "Alexander", "Abdullah Shelbayh" against "Abedallah", and "Daniel Merida" against "Daniel Merida Aguilar". Those players restarted with no history.
+
+### The checks that now prevent them
+
+The assembly gained a version 2 (`heldout.assemble`). Version 1 is kept so the original evaluation can be reproduced.
+
+| Failure | Check now in place |
+|---|---|
+| 1 | A third linking pass needs the same tour, the same round (TennisData.app's blank team-event round fits any), the day window and the same tournament edition, with both players name-compatible: a shared surname token, and every initial starting a given name. It never uses results. A row that fits more than one TML match is left out and listed, never merged. |
+| 2 | The build stops if any TennisData.app addition is still name-compatible with, or holds the same canonical pair as, a TML match in the same round, window and edition. An independent reconciliation (`phase4_correction reconcile`) uses only canonical ids, dates, rounds and plain surname tokens. It flags a player in two tournaments within 3 days, a player twice in one round, one id carrying unrelated names, one full name split across ids, and overlap with Sackmann's last weeks. It also checks that every TennisData.app row is accounted for exactly once. On the original build it flags all 68 duplicates and the Xinran Sun split. On the corrected build it flags only 3 genuine additions TML lacks: the London R32 Tatjana Maria d. Maria Sakkari, and a Singapore semifinal walkover that is unrated. |
+| 3 | Player identity comes from the matches themselves. TennisData.app and TML ids joined by linked matches are one person only if every TML record carries the same full name, every TennisData.app name fits it, and their crosswalk entries agree. Otherwise nothing is merged and the case is listed. A TML player resolves by the TML crosswalk, then a unique exact full name, then the validated crosswalk entry of the linked TennisData.app id. A TennisData.app player resolves to the same id as its TML person. Where the TennisData.app crosswalk disagrees, as for Vallejo, the TML identity is used and the conflict is listed. The unverified surname-and-initial guess is gone: an unresolved player gets a provider-only id and is listed. |
+
+Every case left for review is in `results/phase4/correction/review_players.csv`:
+- 5 TML double ids resolved together;
+- 3 resolved through the TennisData.app crosswalk (Merida, Shevchenko, Shelbayh);
+- 3 TennisData.app-only Davis Cup players with no verifiable identity;
+- 1 group not merged because the names disagree: "Amariei I. D." and "Ilinca Amariei".
+
+No possible duplicate was left unresolved. `tests/test_heldout.py` covers every case named here. One of its tests runs on the real files, using only the sealed (outcome-free) rows, and confirms all 68 duplicates now link to their TML rows.
+
+### Elsewhere
+
+- **The January–May 2026 rehearsal** (outcome-free, before the freeze) used the same assembly. It had 41 such duplicates. It was a qualitative fidelity check and is not rerun.
+- **Phase 1–4 training, validation and retrospective data** (Sackmann, single source) has no repeat of the same pair and round in two tournaments within three days from 2010 on. All 237 such repeats are in pre-2010 history, which only warms up the ratings; examples start in 1968. Sackmann does file some Davis Cup matches under a second id for one person: Adolfo Daniel Vallejo under 118808, and Menelaos Efstathiou under both 144949 and 213713. Those datasets are frozen and left unchanged; the effect is confined to a few Davis Cup rubbers.
+- **The TML statistics backfill** before June 2026 links both players' full names and requires the same winner (one link with different winners was not used), so it cannot duplicate a match.
+
+```powershell
+python -m matchup_dna.phase4_correction diagnose    # results/phase4/correction/diagnostics.txt, duplicates.csv, ...
+python -m matchup_dna.phase4_correction reconcile   # results/phase4/correction/reconciliation.txt
+python -m unittest tests.test_heldout
+```

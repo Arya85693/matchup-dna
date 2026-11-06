@@ -1,6 +1,14 @@
 # Matchup DNA — Phase 4 Matchup Intelligence Report
 
 **Status:** Complete, 5 November 2026. The protocol was frozen and committed (`7237aea`). The retrospective check ran once. The one-time held-out evaluation (June to October 2026) ran once, under amendment 1 (`00f4f50`), which corrected an implementation defect that had stopped the first attempt before it produced any output.  
+> **⚠ Erratum 1, 5 November 2026: the original held-out data contained duplicate matches and player-identity errors.** Combining TML and TennisData.app counted 65 June–October matches twice, gave one player (Adolfo Daniel Vallejo) the history of a different man, and split several others, such as Daniel Merida and Xinran Sun, across new history-less ids.
+>
+> The original held-out results below are kept exactly as published and remain the result of the pre-registered procedure: 2,518 rows, gain 0.0040, 95% interval −0.0081 to +0.0001, p = 0.055.
+>
+> A corrected rebuild on 2,453 distinct matches, with the same frozen models, gives a gain of **0.0049 (0.0017), interval −0.0084 to −0.0015, p = 0.005**. It was done **after every held-out outcome had been seen**, so it is a retrospective correction, not a second blind test.
+>
+> See [Erratum 1](#erratum-1-duplicate-matches-and-player-identities-in-the-held-out-data-post-unblinding-correction) and Data Audit addendum A16.
+
 **Question:** Do serve-return abilities and genuine matchup interactions improve pre-match win probabilities beyond the Phase 3 model? And do physical workload and the difficulty of a player's route through a tournament add anything once a tournament is under way?  
 **Answer, on the 2021–2023 validation years:**
 
@@ -306,6 +314,8 @@ The original protocol is not modified. No model, feature, parameter, dataset, in
 
 ## Held-out evaluation, June–October 2026 (run once)
 
+> *Original, affected run, kept as published.* 65 of its 2,518 rows repeat another row, and some players carry the wrong or a split identity. The corrected, post-unblinding rebuild is in [Erratum 1](#erratum-1-duplicate-matches-and-player-identities-in-the-held-out-data-post-unblinding-correction).
+
 `holdout --confirm` ran once on 5 November 2026 under amendment 1. The amendment record (`00f4f50`) was committed and matched the protocol's hash, the corrected code was identical to `4f6076e`, and all 138 input hashes matched. Nothing was changed after seeing the results.
 
 **What was scored:**
@@ -393,7 +403,216 @@ Workload (D) and route difficulty (E) were rejected on validation and so were no
 
 These are associations learned from past matches, not proof of causes.
 
+## Erratum 1: duplicate matches and player identities in the held-out data (post-unblinding correction)
+
+*Added 5 November 2026. Record: `experiments/phase4_erratum_1.json`. Full diagnosis: Data Audit addendum A16. The original held-out section above is kept unchanged as the result of the pre-registered procedure.*
+
+### What was wrong
+
+The held-out period was assembled from TennisIsMyLife (TML), with TennisData.app supplying only the matches TML lacks. A TennisData.app row was treated as additional when it failed to link to a TML row. Linking required both players' surname-and-initial keys to match, or both players to be in both validated crosswalks. When the two providers spell a player differently, neither test succeeds. The last guard compared resolved player ids, and those players had been resolved to different ids on the two sides, so it let the copies through.
+
+- **Duplicates.** 68 TennisData.app rows repeated a TML match: same tournament, round, players and winner. 65 of them were rated, so **65 matches were scored twice**, and each updated Elo, form, inactivity and the round-aware values twice. The original 2,518 rows were 2,453 distinct matches.
+- **Wrong identity: Vallejo.** TennisData.app's "Vallejo D." (provider id 424916) was linked to Sackmann 118808, Daniel Vallejo, MEX, born 1984. It should have been 209226, Adolfo Daniel Vallejo, PAR, born 2004, who is TML's ATP code V0DP. The cause is that Sackmann files Paraguay's 2023–2026 Davis Cup matches under 118808, and those matches validated the link. Name-free evidence agrees: in his own matches the opponent-side Sackmann player is 209226 in 9 matches and 118808 in none. His 23 duplicated matches used the wrong man's rating history.
+- **Split identities.** Daniel Merida's 22 TML matches, Aleksandr Shevchenko's 11 and Abdullah Shelbayh's 3 started from new, history-less ids. Their TML spellings differ from Sackmann's: "Daniel Merida Aguilar", "Alexander", "Abedallah". Elena Gabriela Ruse's 19 TennisData.app copies did the same. Xinran Sun, who carries two TML ids and has no Sackmann record, became two players.
+
+### Why the audit missed it
+
+Data Audit A16 gives the detail. In short:
+1. **Unlinked rows were read as genuine absences.** The audit counted 224 TennisData.app rows with "no TML row" without checking for a counterpart under another spelling.
+2. **The duplicate check used source-specific keys.** It checked keys and resolved ids, never real-world matches, and two sources' keys can never collide.
+3. **Split TML identities were assumed resolved.** The audit said the players with two TML ids were "resolved through Sackmann". Xinran Sun is not in Sackmann, and spelling variants were never checked.
+
+### What changed
+
+`heldout.assemble` has a version 2. Version 1 is kept, so the original run can still be reproduced exactly.
+
+| Change | Rule |
+|---|---|
+| Third linking pass | same tour, round, day window and edition, and both players name-compatible. It never uses a result. Ambiguous rows are left out and listed, never merged |
+| One identity per person | built from linked matches. Groups of ids are merged only when every TML full name agrees and every TennisData.app name fits |
+| Resolution order | TML crosswalk, then exact full name, then the linked TennisData.app crosswalk entry. On conflict the TML identity is used and the case listed |
+| Name guess removed | the unverified surname-and-initial guess for TennisData.app players is gone |
+| Build-stopping checks | the build stops on any remaining cross-source duplicate or split identity |
+
+The source precedence is unchanged: TML is the record, and TennisData.app supplies only matches TML lacks.
+
+`provider_period` gained a `version` argument, and the frozen `holdout` and `rehearse` commands are pinned to version 1. Nothing that defines a model, feature, parameter, training date or evaluation rule changed. `phase4_correction evaluate` refuses to run if any such file differs from the amendment-1 commit, or if any of the 138 frozen inputs changed.
+
+| What the corrected assembly did | Version 1 | Version 2 |
+|---|---:|---:|
+| TennisData.app rows linked to a TML row | 2,431 | 2,514 (83 by the new pass) |
+| … naming the same winner | all | all |
+| TennisData.app rows added as matches TML lacks | 73 | 5 (4 rated) |
+| Matches in the held-out stream (rated and unrated) | 2,609 | 2,541 |
+| **Rated held-out matches scored** | **2,518** | **2,453** |
+| Possible duplicates left out for review | – | 0 |
+| Player cases listed for review | – | 12 |
+
+The 12 player cases:
+- 5 TML double ids resolved together;
+- 3 players resolved through the TennisData.app crosswalk (Merida, Shevchenko, Shelbayh);
+- 3 TennisData.app-only Davis Cup players with no verifiable identity, who get provider-only ids;
+- 1 group not merged because its names disagree: "Amariei I. D." against "Ilinca Amariei". Its matches are linked anyway, so no row is lost.
+
+### How we know it is fixed
+
+- **An independent reconciliation** (`phase4_correction reconcile`) uses only canonical ids, dates, rounds and plain surname tokens, none of the new linking rules.
+  - On the original stream it flags exactly 68 "player in two tournaments in the same week" cases, which are the duplicates, plus the Xinran Sun split.
+  - On the corrected stream it flags 3 cases, all genuine TennisData.app additions TML lacks: the London R32 Tatjana Maria d. Maria Sakkari, and a Singapore semifinal walkover that is unrated.
+  - No player appears twice in a round, no id carries unrelated names, no full name is split, and every TennisData.app row is accounted for exactly once (2,655).
+- **Tests.** `tests/test_heldout.py` has 23 tests:
+  - every spelling pattern found, and the Vallejo case;
+  - repeat meetings that must stay separate, in consecutive weeks and as a round robin plus a final;
+  - ambiguous rows, split and conflicting ids;
+  - Elo moving once per match, a corrected stream equal to one built by hand (tournament-start and round-aware values), and later matches never changing earlier rows;
+  - the reconciliation checks;
+  - a real-data test confirming, from the sealed rows alone, that all 68 known duplicates now link to their TML rows.
+
+  All 205 tests in the suite pass.
+- **A reproduction check inside the rebuild.** The same refitted models, applied to version-1 rows, reproduce all 2,518 saved original predictions, with a largest difference of 5×10⁻⁷, which is the file's rounding. The fitting rows (87,640 matches, 2010 to May 2026) are identical in both versions, so the models are exactly the frozen procedure's.
+
+### Original against corrected results
+
+Phase 3 and Phase 4 are scored on identical matches in each version. Standard errors are clustered by tournament date, the protocol's primary choice, with 28 dates.
+
+| | Original (published, 2,518 rows) | Corrected (2,453 matches) |
+|---|---|---|
+| P3-refit log loss / Brier / accuracy | 0.6148 / 0.2139 / 65.11% | 0.6114 / 0.2123 / 65.61% |
+| P4-refit log loss / Brier / accuracy | 0.6108 / 0.2121 / 65.47% | 0.6065 / 0.2102 / 65.86% |
+| P3-original log loss / Brier / accuracy | 0.6149 / 0.2139 / 65.03% | 0.6115 / 0.2123 / 65.57% |
+| **P4 − P3 log loss, both tours** | **−0.0040 (se 0.0021), −0.0081 to +0.0001, p = 0.055** | **−0.0049 (se 0.0017), −0.0084 to −0.0015, p = 0.005** |
+| ATP (1,325 → 1,280 matches, 22 dates) | −0.0058 (0.0035), −0.0127 to +0.0011, p = 0.099 | −0.0066 (0.0031), −0.0127 to −0.0006, p = 0.033 |
+| WTA (1,193 → 1,173 matches, 20 dates) | −0.0020 (0.0019), −0.0058 to +0.0017, p = 0.28 | −0.0031 (0.0019), −0.0068 to +0.0006, p = 0.105 |
+| Month-clustered sensitivity, both tours (5 months) | −0.0040 (se 0.0005) | −0.0049 (se 0.0009) |
+| Calibration line, P4-refit (a, b; ideal 0, 1) | +0.048, 0.962 | +0.037, 0.995 |
+| Calibration line, P3-refit | +0.042, 0.986 | +0.032, 1.011 |
+
+- **The month clustering has only five clusters,** so its standard errors are unstable and tend to be too small. The tournament-date errors are the ones the protocol's reporting rule uses. The original run printed the same month figures.
+- **Reliability tables** for both tours are in `results/phase4/corrected/evaluation.txt`. Both models stay close to the diagonal.
+- **Phase 3 also scores better on the corrected data,** by 0.0034. That is partly because the removed copies were hard-to-predict matches (P3-refit log loss 0.70 on them), and partly because players such as Merida now carry their real history. The comparison of interest is the paired gap, which moves from −0.0040 to −0.0049.
+
+**Which predictions changed, and why.** Of the 2,453 corrected matches:
+- **884 have identical predictions.**
+- **1,569 changed, mostly by very little.** The median change in the probability given to the actual winner is 0.0007, the 90th percentile 0.017, and the largest 0.18. Only 247 moved by more than 0.01. The causes:
+
+| Cause | Matches |
+|---|---:|
+| A player's identity was corrected (Merida, Shevchenko, Shelbayh, Xinran Sun) | 40 |
+| A player's own earlier history changed (a duplicate removed or identities merged) | 664 |
+| Knock-on: an earlier opponent's rating or profile changed | 865 |
+
+Elo and form changed in about 1,310 matches, serve-return estimates in about 170, and inactivity in 14. The per-match record is in `results/phase4/corrected/prediction_changes.csv`.
+
+### Round-aware track
+
+The comparison is R0 against its reference (P4-refit), on later-round matches.
+
+| | Original | Corrected |
+|---|---|---|
+| Eligible later-round matches | 1,286 (ATP 657, WTA 629) | 1,275 (ATP 650, WTA 625) |
+| Reference / R0 log loss | 0.6085 / 0.6013 | 0.6052 / 0.5993 |
+| **R0 − reference** | **−0.0072 (se 0.0023), −0.0118 to −0.0026, p = 0.002** | **−0.0059 (se 0.0024), −0.0107 to −0.0011, p = 0.016** |
+| ATP | −0.0064 (0.0028), p = 0.023 | −0.0056 (0.0028), −0.0112 to −0.0001, p = 0.047 |
+| WTA | −0.0079 (0.0037), p = 0.032 | −0.0062 (0.0037), −0.0134 to +0.0010, p = 0.093 |
+| R0 accuracy / Brier | 65.47% / 0.2081 | 65.80% / 0.2071 |
+| Reference accuracy / Brier | 65.63% / 0.2110 | 65.96% / 0.2095 |
+
+**The round-aware conclusion still holds, but it is weaker.** The combined interval still excludes zero. The gain shrinks by about a fifth, and the WTA interval now includes zero. The change comes from the 11 removed duplicate later-round rows and from the corrected player histories. As before, R0 is better in probability (log loss and Brier) but not in winner picks, where its accuracy is slightly below the reference's.
+
+### Post-hoc analyses on the corrected predictions
+
+These analyses are descriptive and were not pre-registered.
+
+**Higher-ranked player** (2,430 ranking-eligible matches, against 2,493 originally; 23 have a missing rank and none are tied):
+
+| | Correct | Accuracy | Original |
+|---|---:|---:|---:|
+| Higher-ranked player | 1,585 | 65.23% | 1,620 / 2,493, 64.98% |
+| Phase 3 | 1,592 | 65.51% | 1,621, 65.02% |
+| Phase 4 | 1,597 | 65.72% | 1,629, 65.34% |
+
+**Long run, 2021 to October 2026.** Only the June–October rows change. On 2,430 eligible matches:
+
+| Method | Accuracy | Log loss | Brier |
+|---|---:|---:|---:|
+| Elo | 63.42% | 0.6301 | 0.2203 |
+| Surface Elo | 64.73% | 0.6288 | 0.2191 |
+| Phase 3 | 65.51% | 0.6128 | 0.2129 |
+| Phase 4 | 65.72% | 0.6081 | 0.2109 |
+| Higher-ranked player | 65.23% | – | – |
+
+Pooled over 2021 to October 2026, on 31,791 eligible matches:
+
+| Method | Accuracy | Log loss |
+|---|---:|---:|
+| Elo | 64.55% | 0.6241 |
+| Surface Elo | 64.91% | 0.6231 |
+| Phase 3 | 65.69% | 0.6123 |
+| Phase 4 | 65.92% | 0.6101 |
+| Higher-ranked player | 64.22% | – |
+
+The earlier periods are unchanged, and the pooled figures still mix model versions and periods used for selection.
+
+**Disagreements, on the corrected predictions** (`posthoc_disagreement --corrected`; it reproduces the corrected scores and ranking counts exactly, and its own duplicate check finds none):
+
+| | Original (2,518) | Corrected (2,453) |
+|---|---|---|
+| Same predicted winner | 2,400 (95.31%) | 2,336 (95.23%) |
+| Different predicted winner | 117 (4.65%) | 116 (4.73%) |
+| … Phase 3 right / Phase 4 right | 54 / 63 (net +9 for Phase 4; sign test p = 0.46) | 55 / 61 (net +6; p = 0.64) |
+| Exact 0.5 from both | 1 | 1 |
+| Phase 4 lower log loss on | 1,422 matches (56.5%) | 1,388 (56.6%) |
+
+**Where the corrected net gain comes from.** The net gain is −12.13 summed over all matches:
+
+| Source | Net |
+|---|---:|
+| Different winner picked | −0.70 (6%) |
+| Same winner, both right: Phase 4 more confident 969 times, less 584 | −20.37 |
+| Same winner, both wrong: Phase 4 more confident 424 times, less 358 | **+8.94** (against Phase 4) |
+
+The original conclusion stands: Phase 4's advantage comes from sharper probabilities on the picks both models already get right, partly given back on shared wrong picks. It does not come from correcting winners.
+
+- **Extremes.** The 40 most extreme matches now nearly cancel (+1.36 between them). The worst, Sin Hang Tam d. Boris Arias at +0.63, appears once instead of twice.
+- **Where disagreements happen.** They remain close matches:
+  - an Elo gap under 50 points: 14.0%, against 0% for gaps of 300 or more;
+  - an Elo favourite under 55%: 15.6%;
+  - Elo and ranking naming different favourites: 13.9%;
+  - serve-return estimates most against the Elo favourite: 12.6%.
+- **Where the gain looks largest.** Best-of-5 matches (−0.0192, se 0.0052), Grand Slams (−0.0113, se 0.0016) and close Elo matches (−0.0100, se 0.0044). These are exploratory slices, about 30 of them, chosen after seeing results. They are not findings.
+
+The full output is `results/phase4/experiments/posthoc_disagreement_corrected.txt`. In that file the sensitivity table's first row is labelled "as published", but it shows the corrected predictions.
+
+### What the correction means
+
+- **The data are now right.** The errors were in data handling and did not depend on any outcome. The fix uses no result: linking looks only at names, rounds, dates and editions. It was written, and every rule in it settled, before any corrected score was computed. `heldout.py` is identical in all three runs of the corrected evaluation. So the corrected numbers describe what the frozen models actually do on these matches better than the original numbers do.
+- **It is not a second blind test.** The defect was found after every held-out outcome had been seen, by an analysis of the largest per-match losses. A correction triggered by looking at results can be selective, even when each fix is outcome-independent. The search started from Phase 4's worst per-match losses, so errors that hurt Phase 4 were the likeliest to be found, and fixing them leans in its favour. **The pre-registered result therefore stays p = 0.055, "not called an improvement".** The corrected p = 0.005 is supporting, retrospective evidence. It does not show that the pre-registered experiment established significance.
+- **Statistical against practical importance.** The corrected gain is 0.005 log loss per match, about 0.8% of the baseline loss. It is consistent with validation (0.0027) and the retrospective check (0.0014), and larger than both. It is small in absolute terms.
+- **Winner picks against probabilities.** Accuracy rises by 0.25 points (65.61% to 65.86%, 6 picks in 2,453), and the two models pick different winners in under 5% of matches. The gain is almost entirely in how well the probabilities are calibrated to outcomes, not in which player is picked.
+- **Attribution.** The selected Phase 4 model adds opponent-adjusted serve and return estimates. It also uses weaker L2 regularization than P3-refit: ATP 10 against 1000, WTA 0 against 100. The held-out data cannot separate the two. The pre-registered cross-L2 checks on validation suggested the gain was not a regularization artifact, but they were not repeated here, so the improvement should not be credited to serve-return features alone. Nothing here shows that serving or returning causes results.
+- **No market claim.** Nothing was compared with bookmaker prices, and nothing here bears on betting profitability.
+
+### Limitations
+
+- **Sackmann identity splits remain in frozen data.** Sackmann files some Davis Cup matches under a second id for one person: Adolfo Daniel Vallejo under 118808, and Menelaos Efstathiou under 144949 and 213713. Phases 1–4 training data are frozen and unchanged; this touches a handful of Davis Cup rubbers.
+- **Some players have no verifiable identity.** Three TennisData.app-only Davis Cup players, and TML players with no Sackmann record, start with no history. That was the original rule too.
+- **Genuine TennisData.app additions keep their own tournament key** (2 rows, 1 rated). Round-aware values of their edition do not see them.
+- **The pre-freeze rehearsal also contained duplicates:** 41 under version 1. It was an outcome-free fidelity check and was not rerun.
+- **The corrected evaluation ran three times.** That was because `evaluate` records every changed file's hash and two non-fix files changed after each earlier run. The fix and the results were identical in all three runs. The earlier runs are kept in `results/phase4/corrected_first_run/` and `corrected_second_run/`.
+
+```powershell
+python -m matchup_dna.phase4_correction diagnose
+python -m matchup_dna.phase4_correction reconcile
+python -m matchup_dna.phase4_correction evaluate     # once; refuses if results/phase4/corrected/ exists
+python -m matchup_dna.phase4_correction erratum
+python -m matchup_dna.phase4_correction check
+python -m matchup_dna.posthoc_disagreement --corrected --rebuild
+python -m matchup_dna.posthoc_longrun --corrected
+```
+
 ## Post-hoc descriptive benchmark: "the higher-ranked player wins" (not pre-registered)
+
+> *Uses the original, affected held-out rows. The corrected figures are in Erratum 1.*
 
 **This was added after the held-out evaluation and is not part of it.** It is descriptive only:
 - no model was refitted, rescored, or changed;
@@ -424,6 +643,8 @@ On the same 2,518 held-out matches, 25 have a missing rank and none a tied rank,
 - **What accuracy can't see.** It treats a 51% favorite who wins the same as a 90% favorite who wins. The ranking gives no probability at all, so it can't be scored on log loss or Brier score, the measures Phase 4 was built to improve.
 
 ## Post-hoc descriptive analysis: January 2021 to October 2026 (not pre-registered)
+
+> *Uses the original, affected June–October rows. The corrected June–October and pooled figures are in Erratum 1; the earlier periods do not change.*
 
 **This analysis was added after the held-out evaluation, and nothing in it was used to choose or change a model.** It describes long-run performance and consistency only.
 
@@ -506,6 +727,267 @@ An exact 50–50 Elo prediction counts as half a correct pick. Per-tour figures 
 - **The ranking heuristic** trails both models on accuracy in every period except June–October 2026, where it ties Phase 3 (64.98% against 65.02%) and is 0.36 points behind Phase 4.
 - **The two halves of 2026 differ sharply, and they also use different data sources.** January–May 2026 (Sackmann) has the lowest log loss of any year for every method. June–October (provider data) is the worst year for both Elo models: log loss 0.634 and 0.633, and Elo's 63.0% accuracy is its lowest of any year. The logistic models degraded less. Their worst year is 2025 (Phase 3 0.6167, Phase 4 0.6157), not the held-out months. Year-to-year swings of about 0.01 in log loss are larger than the Phase 3 to Phase 4 gap.
 - **Pooling 2021–2026 mixes model versions.** Each period uses the version its own evaluation specified: fitted to 2020, to 2023, or to May 2026. Two of the three periods were used for selection or already examined. These pooled figures describe long-run behavior; they are not an independent test.
+
+## Post-hoc disagreement analysis: where Phase 4 and Phase 3 differ on the held-out matches (not pre-registered)
+
+> *Uses the original, affected 2,518 rows. It is the analysis that found the defect. The rerun on the corrected predictions is in Erratum 1.*
+
+**This analysis is post-hoc and descriptive.** It was added after the held-out evaluation. It is not a new independent test and was not used to choose features or change a model.
+
+The held-out run saved the probabilities of P3-refit and P4-refit, the comparison the frozen protocol specifies. This section uses exactly those saved probabilities. Nothing was refitted, recalibrated or rescored.
+
+The run did not save match details: players, surface, level, round, Elo, ranks, serve and return estimates, and statistics history. Those come from replaying the frozen held-out data pipeline, which fits nothing. Every saved match came back with the same players and outcome.
+
+`python -m matchup_dna.posthoc_disagreement` writes `results/phase4/experiments/posthoc_disagreement.txt` and a per-match table.
+
+Everything below is an **association**. None of it shows that serving, returning or any other characteristic causes a result.
+
+**Reproduction.**
+- The saved predictions reproduce the published held-out scores: P3-refit 0.6148 and 65.11%, P4-refit 0.6108 and 65.47%, over 2,518 matches.
+- They also reproduce the ranking-eligible counts: 1,621 and 1,629 correct of 2,493.
+- One match has exactly 0.5 from both models: a Davis Cup match between two players with no history, *William J. v Saleem R.*. Under the Phase 3 rule it counts as half a correct pick for each model.
+
+### Data-integrity finding: 65 held-out matches are counted twice
+
+This was found while examining the largest per-match losses in Part 2 below.
+
+**What happened.**
+- 69 held-out rows came from TennisData.app.
+- **65 of them repeat a match already present from TennisIsMyLife (TML):** same tour, tournament week, round and players, with the two providers spelling the names differently. The two copies name the same winner in all 65.
+- So the published held-out evaluation scored 2,518 rows covering about 2,453 distinct matches.
+
+**Why the build kept both copies.** A TennisData.app row is dropped only in two cases ([heldout.py:188-201](matchup_dna/heldout.py#L188-L201)):
+- it was linked to a TML row by name;
+- its resolved player ids and round match a TML match.
+
+These rows involve players whose names the providers write differently, so the name link failed. The ids were then resolved differently on the two sides:
+- TennisData.app's "Vallejo D." was matched by surname and initial to a *different* Sackmann player, Daniel Vallejo (118808), instead of Adolfo Daniel Vallejo (209226).
+- "Ruse G." became a new provider-only id instead of Elena Gabriela Ruse (211817).
+- TML's "Daniel Merida" became a new provider-only id, while the TennisData.app copy linked to 210017.
+
+**What it affects.** Each duplicate also updated Elo, form and serve-return profiles twice. The split or wrong identities mean some players' held-out matches were predicted from the wrong history or from none. The other post-hoc analyses above (ranking benchmark, long-run) use the same 2,518 rows.
+
+**Descriptive sensitivity, using the saved predictions only:**
+
+| Rows | Matches | P3-refit | P4-refit | Phase 4 − Phase 3 log loss (se, 95% interval) |
+|---|---:|---|---|---|
+| All saved rows (as published) | 2,518 | 0.6148, 65.11% | 0.6108, 65.47% | −0.0040 (0.0021; −0.0081 to +0.0001) |
+| Without the 65 duplicate TennisData.app copies | 2,453 | 0.6125, 65.49% | 0.6074, 65.86% | −0.0051 (0.0020; −0.0089 to −0.0013) |
+| The 65 duplicate copies only | 65 | 0.7023, 50.77% | 0.7396, 50.77% | +0.0373 (0.0219) |
+
+**This is not a corrected result, and the pre-registered conclusion is unchanged.** Three reasons:
+1. The exclusion was chosen after seeing outcomes.
+2. Dropping the copies does not undo the double updates or the wrong identities, which also shaped the predictions for other matches.
+3. A correction would need a documented, versioned fix and a rebuilt evaluation, and the held-out outcomes are no longer blind.
+
+The finding is reported so a decision on it can be made separately. Parts 1–3 use all 2,518 saved rows, as the published evaluation did.
+
+### Part 1: winner picks
+
+| Subset | Matches | Share | P3 correct | P4 correct | P3 accuracy | P4 accuracy |
+|---|---:|---:|---:|---:|---:|---:|
+| Same predicted winner | 2,400 | 95.31% | 1,585 | 1,585 | 66.04% | 66.04% |
+| Different predicted winner | 117 | 4.65% | 54 | 63 | 46.15% | 53.85% |
+| Exact 0.5 from both | 1 | 0.04% | 0.5 | 0.5 | 50% | 50% |
+
+- **The models pick different winners in 117 matches (4.65%).** Phase 4 is right in 63 of them and Phase 3 in 54: a net +9 correct picks for Phase 4. A descriptive two-sided sign test on these 117 matches gives p = 0.46, so the split is consistent with chance.
+- **The disagreements are near coin flips.** The median distance from 0.5 is 0.020 for Phase 3 and 0.018 for Phase 4, and the median gap between the two probabilities is 0.043.
+- **By tour:** ATP has 71 disagreements in 1,325 matches (35 Phase 3 right, 36 Phase 4 right). WTA has 46 in 1,193 (19 against 27).
+
+### Part 2: where the log-loss difference comes from
+
+Per match, the difference is Phase 4 log loss minus Phase 3 log loss. Negative means Phase 4 did better. Standard errors are clustered by tourney_date.
+
+| Subset | Matches | Mean difference (se) | Sum | Share of the net total |
+|---|---:|---|---:|---:|
+| All | 2,518 | −0.00403 (0.00210) | −10.14 | 100% |
+| Same predicted winner | 2,400 | −0.00378 (0.00197) | −9.08 | 90% |
+| Different predicted winner | 117 | −0.00904 (0.01190) | −1.06 | 10% |
+
+- Phase 4 has lower log loss on 1,422 matches (56.5%), higher on 1,095, and equal on 1.
+- **The per-match differences are wide compared with their mean.**
+  - Mean −0.0040, median −0.0080, standard deviation 0.0774.
+  - 5th and 95th percentiles: −0.114 and +0.119.
+  - Extremes: −0.331 and +0.630.
+- **Distribution:**
+
+| Range | Matches | Sum |
+|---|---:|---:|
+| Below −0.2 | 23 | −5.76 |
+| −0.2 to −0.1 | 157 | −20.88 |
+| −0.1 to −0.05 | 360 | −25.24 |
+| −0.05 to −0.02 | 472 | −15.89 |
+| −0.02 to −0.005 | 307 | −3.87 |
+| −0.005 to +0.005 | 215 | +0.05 |
+| +0.005 to +0.02 | 248 | +3.03 |
+| +0.02 to +0.05 | 298 | +10.59 |
+| +0.05 to +0.1 | 268 | +18.79 |
+| +0.1 to +0.2 | 136 | +18.27 |
+| Above +0.2 | 34 | +10.77 |
+
+**Decomposition by what Phase 4 did differently:**
+
+| Category | Matches | Sum | Mean |
+|---|---:|---:|---:|
+| Different winner, Phase 4 right (corrected a wrong pick) | 63 | −6.32 | −0.100 |
+| Different winner, Phase 3 right (Phase 4 made a wrong pick) | 54 | +5.26 | +0.097 |
+| Same winner, both right, Phase 4 more confident | 991 | −40.83 | −0.041 |
+| Same winner, both right, Phase 4 less confident | 594 | +19.49 | +0.033 |
+| Same winner, both wrong, Phase 4 less confident | 368 | −24.73 | −0.067 |
+| Same winner, both wrong, Phase 4 more confident | 447 | +36.99 | +0.083 |
+
+**The answer to "where does the advantage come from?":** mainly from changing confidence on picks both models already got right, not from correcting winners.
+
+- **Correcting wrong picks is roughly a wash.** Changed picks net −1.06, about 10% of the total.
+- **Confidence on correct picks is the main source.** When both models are right, Phase 4 is more confident in 991 cases and less in 594, a net −21.34.
+- **Phase 4 does not avoid overconfidence on wrong picks.** When both are wrong, it is more confident in 447 cases and less in 368, a net **+12.26**. That works against Phase 4.
+
+Overall, Phase 4's probabilities are more spread out than Phase 3's on shared picks: it is the more confident model in 1,438 of 2,400. That extra spread is right more often than wrong.
+
+These data cannot separate the extra serve-return feature from the frozen regularization difference. The penalties are ATP 10 against 1000 and WTA 0 against 100, and a weaker penalty also allows more extreme probabilities. That question was examined only on validation, by the pre-registered cross-L2 checks, and was not re-tested here.
+
+**The 20 matches where Phase 4 improved log loss the most.** Each pick column gives the predicted winner, then the probability that model gave the actual winner. † marks one of the 65 duplicated matches.
+
+| # | Date | Tour, surface, level, round | Winner d. loser | Phase 3 pick, P(winner) | Phase 4 pick, P(winner) | Difference |
+|---:|---|---|---|---|---|---:|
+| 1 | 2026-06-29 | ATP Grass G QF | Fery d. Cobolli | Cobolli, 0.256 | Cobolli, 0.356 | −0.331 |
+| 2 | 2026-06-22 | ATP Grass A R32 | Hussey d. Arnaldi | Arnaldi, 0.254 | Arnaldi, 0.349 | −0.316 |
+| 3 | 2026-06-29 | ATP Grass G R64 | Berrettini d. Fils | Fils, 0.396 | **Berrettini, 0.542** | −0.315 |
+| 4 | 2026-09-16 | ATP Clay D RR | Llanes d. Maijorov | Maijorov, 0.475 | **Llanes, 0.649** | −0.313 |
+| 5 | 2026-09-16 | ATP Clay D RR | Aguilar Cardozo d. Molder | Molder, 0.469 | **Aguilar Cardozo, 0.640** | −0.312 |
+| 6 † | 2026-08-02 | ATP Hard M R32 | Merida d. Michelsen | Michelsen, 0.264 | Michelsen, 0.350 | −0.283 |
+| 7 | 2026-06-29 | ATP Grass G R128 | Hurkacz d. Ruud | Ruud, 0.362 | Ruud, 0.479 | −0.281 |
+| 8 | 2026-09-30 | ATP Hard A R32 | Safiullin d. Cobolli | Cobolli, 0.294 | Cobolli, 0.381 | −0.261 |
+| 9 | 2026-09-16 | ATP Hard D RR | Magadan d. Phillips | Magadan, 0.523 | Magadan, 0.674 | −0.253 |
+| 10 † | 2026-08-02 | ATP Hard M R64 | Merida d. Humbert | Humbert, 0.244 | Humbert, 0.310 | −0.242 |
+| 11 | 2026-09-18 | ATP Hard D RR | Milic d. Vaitiekunas | Milic, 0.535 | Milic, 0.677 | −0.235 |
+| 12 | 2026-09-16 | ATP Hard D RR | Fatic d. Longwe-Smit | Fatic, 0.554 | Fatic, 0.700 | −0.233 |
+| 13 | 2026-06-08 | ATP Grass A R32 | Boogaard d. Wu | Wu, 0.246 | Wu, 0.309 | −0.231 |
+| 14 | 2026-09-16 | ATP Clay D RR | Hardt d. Mabrouk | Hardt, 0.588 | Hardt, 0.734 | −0.222 |
+| 15 | 2026-06-29 | ATP Grass G R64 | Dimitrov d. Mensik | Mensik, 0.380 | Mensik, 0.474 | −0.222 |
+| 16 | 2026-07-13 | ATP Clay A R32 | Travaglia d. Krumich | Travaglia, 0.533 | Travaglia, 0.664 | −0.221 |
+| 17 | 2026-08-23 | ATP Hard A R64 | Hewitt d. Gorzny | Hewitt, 0.635 | Hewitt, 0.792 | −0.221 |
+| 18 | 2026-09-16 | ATP Clay D RR | Hardt d. Kandil | Hardt, 0.594 | Hardt, 0.739 | −0.218 |
+| 19 | 2026-07-13 | ATP Clay A R32 | Kym d. Dietrich | Kym, 0.635 | Kym, 0.788 | −0.216 |
+| 20 | 2026-08-02 | WTA Hard PM R16 | Swiatek d. Kostyuk | Kostyuk, 0.474 | **Swiatek, 0.586** | −0.212 |
+
+**The 20 matches where Phase 4 worsened log loss the most:**
+
+| # | Date | Tour, surface, level, round | Winner d. loser | Phase 3 pick, P(winner) | Phase 4 pick, P(winner) | Difference |
+|---:|---|---|---|---|---|---:|
+| 1 † | 2026-09-16 | ATP (TennisData.app copy) A, round unknown | Tam d. Arias | Arias, 0.260 | Arias, 0.138 | +0.630 |
+| 2 † | 2026-09-16 | ATP Clay D RR (TML copy of #1) | Tam d. Arias | Arias, 0.260 | Arias, 0.138 | +0.630 |
+| 3 † | 2026-07-20 | ATP Clay A R32 | Feldbausch d. "Vallejo D." (wrong identity) | Vallejo, 0.261 | Vallejo, 0.145 | +0.588 |
+| 4 | 2026-07-20 | ATP Clay A R16 | Torres d. Tabilo | Tabilo, 0.190 | Tabilo, 0.113 | +0.516 |
+| 5 † | 2026-07-20 | ATP Clay A R32 | Jacquet d. Merida | Merida, 0.327 | Merida, 0.207 | +0.457 |
+| 6 | 2026-07-27 | ATP Hard A R32 | Hewitt d. Giron | Giron, 0.258 | Giron, 0.165 | +0.449 |
+| 7 | 2026-07-20 | ATP Clay A R32 | Torres d. Basilashvili | Basilashvili, 0.297 | Basilashvili, 0.198 | +0.407 |
+| 8 | 2026-06-21 | ATP Grass A R32 | Shelbayh d. Moutet | Moutet, 0.235 | Moutet, 0.158 | +0.397 |
+| 9 | 2026-06-29 | WTA Grass G R32 | Eala d. Swiatek | Swiatek, 0.285 | Swiatek, 0.197 | +0.369 |
+| 10 | 2026-09-16 | ATP Hard D RR | Kravchenko d. Efstathiou | **Kravchenko, 0.590** | Efstathiou, 0.419 | +0.343 |
+| 11 | 2026-07-28 | ATP Hard A R32 | Winter d. Kouame | Kouame, 0.368 | Kouame, 0.261 | +0.341 |
+| 12 † | 2026-09-30 | WTA Hard A R128 | Ruse d. Tagger | Tagger, 0.491 | Tagger, 0.356 | +0.320 |
+| 13 | 2026-06-15 | ATP Grass A R16 | Altmaier d. Hurkacz | Hurkacz, 0.395 | Hurkacz, 0.290 | +0.307 |
+| 14 | 2026-08-30 | ATP Hard G R128 | Navone d. Djokovic | Djokovic, 0.186 | Djokovic, 0.139 | +0.296 |
+| 15 † | 2026-06-08 | WTA Grass A R16 | Ruse d. Mertens | Mertens, 0.184 | Mertens, 0.138 | +0.293 |
+| 16 | 2026-06-15 | ATP Grass A F | Tiafoe d. Fritz | Fritz, 0.395 | Fritz, 0.298 | +0.280 |
+| 17 | 2026-08-23 | ATP Hard A R32 | Damm d. Medvedev | Medvedev, 0.191 | Medvedev, 0.145 | +0.273 |
+| 18 | 2026-06-15 | ATP Grass A QF | Altmaier d. Medvedev | Medvedev, 0.204 | Medvedev, 0.158 | +0.254 |
+| 19 | 2026-09-16 | ATP Clay D RR | Planinsek d. Kimhi | Planinsek, 0.643 | Planinsek, 0.501 | +0.249 |
+| 20 | 2026-06-29 | ATP Grass G R16 | Cobolli d. de Minaur | de Minaur, 0.445 | de Minaur, 0.347 | +0.248 |
+
+Bold marks a correct pick where the other model picked the loser. In the 40 rows above, Phase 4 changed the predicted winner only in rows 3, 4, 5 and 20 of the first table and row 10 of the second. Everywhere else it kept Phase 3's pick and moved the probability.
+
+- **The extremes nearly cancel.** The 40 rows sum to +2.51, and the other 2,478 matches to −12.65. So Phase 4's net advantage is not driven by a few large wins; it comes from many small gains.
+- **Upsets dominate the worst cases.** In 18 of the worst 20, both models picked the player who lost, and Phase 4 was more confident. Six of the worst 20 (†) are duplicated matches with wrong or split player identities.
+
+### Part 3: which matches produce disagreements
+
+"Mean diff" is Phase 4 minus Phase 3 log loss (negative favours Phase 4), with standard errors clustered by tourney_date.
+
+About 30 groups are compared below, so one or two will look notable by chance. Groups under 100 matches are marked *small*. Wide standard errors mean most per-group differences cannot be told apart.
+
+| Group | Matches | Disagree | P3 acc | P4 acc | Mean diff (se) |
+|---|---:|---:|---:|---:|---|
+| **Tour:** ATP | 1,325 | 5.4% | 64.5% | 64.6% | −0.0058 (0.0035) |
+| WTA | 1,193 | 3.9% | 65.8% | 66.5% | −0.0020 (0.0019) |
+| **Surface:** Hard | 1,685 | 4.2% | 66.2% | 66.3% | −0.0035 (0.0018) |
+| Clay | 234 | 4.7% | 64.1% | 66.2% | −0.0101 (0.0151) |
+| Grass | 591 | 6.1% | 62.8% | 63.1% | −0.0039 (0.0059) |
+| Unknown (TennisData.app Davis Cup rows), *small* | 8 | 0% | 43.8% | 43.8% | +0.0549 (0.0296) |
+| **Elo gap:** under 50 | 579 | 13.6% | 58.6% | 59.5% | −0.0060 (0.0041) |
+| 50–100 | 541 | 4.8% | 54.9% | 56.0% | −0.0052 (0.0042) |
+| 100–200 | 744 | 1.5% | 66.0% | 65.6% | −0.0022 (0.0025) |
+| 200–300 | 394 | 0.3% | 73.4% | 73.6% | −0.0029 (0.0036) |
+| 300+ | 260 | 0% | 85.8% | 85.8% | −0.0043 (0.0028) |
+| **Elo favourite's probability:** under 55% (close) | 409 | 14.9% | 59.3% | 62.0% | −0.0109 (0.0048) |
+| 55–60% | 401 | 8.2% | 55.1% | 54.9% | −0.0004 (0.0036) |
+| 60–70% | 704 | 2.8% | 59.8% | 59.2% | +0.0001 (0.0029) |
+| 70–80% | 542 | 0.6% | 69.4% | 69.9% | −0.0074 (0.0039) |
+| 80%+ (clear favourite) | 462 | 0% | 82.0% | 82.0% | −0.0035 (0.0017) |
+| **Rank ratio:** under 1.5 | 559 | 10.4% | 55.1% | 55.1% | −0.0002 (0.0036) |
+| 1.5–2 | 373 | 8.0% | 53.9% | 57.6% | −0.0045 (0.0033) |
+| 2–4 | 754 | 3.3% | 64.2% | 63.5% | −0.0030 (0.0035) |
+| 4+ | 807 | 0.4% | 77.8% | 77.7% | −0.0074 (0.0036) |
+| Rank missing, *small* | 25 | 4.0% | 74.0% | 78.0% | −0.0025 (0.0077) |
+| **Elo and ranking:** name the same favourite | 2,043 | 2.4% | 67.4% | 67.7% | −0.0037 (0.0020) |
+| name different favourites | 450 | 14.7% | 54.2% | 54.7% | −0.0058 (0.0054) |
+| **Serve-return edge of the Elo favourite:** Q1 (most against) | 504 | 12.3% | 57.6% | 58.4% | −0.0055 (0.0043) |
+| Q2 | 503 | 4.6% | 56.7% | 56.9% | −0.0064 (0.0049) |
+| Q3 | 504 | 2.8% | 59.1% | 60.7% | −0.0018 (0.0028) |
+| Q4 | 503 | 2.8% | 70.6% | 69.8% | −0.0028 (0.0036) |
+| Q5 (most for) | 504 | 0.8% | 81.5% | 81.5% | −0.0038 (0.0038) |
+| **Serve and return vs the Elo favourite:** both favour | 1,121 | 2.0% | 71.5% | 71.5% | −0.0048 (0.0020) |
+| split | 1,307 | 6.0% | 60.1% | 60.8% | −0.0027 (0.0025) |
+| both oppose, *small* | 90 | 17.8% | 57.8% | 57.8% | −0.0141 (0.0116) |
+| **Less-observed player's statistics history:** none | 117 | 3.4% | 72.2% | 73.9% | −0.0169 (0.0224) |
+| under 10 matches | 585 | 3.9% | 66.5% | 66.0% | +0.0015 (0.0031) |
+| 10–30 matches | 682 | 4.8% | 64.4% | 65.4% | −0.0047 (0.0026) |
+| over 30 matches | 1,134 | 5.0% | 64.1% | 64.4% | −0.0052 (0.0023) |
+| **Level:** Grand Slam (G) | 509 | 3.1% | 71.1% | 72.3% | −0.0119 (0.0025) |
+| WTA 1000 (PM) | 321 | 3.4% | 65.7% | 66.7% | −0.0091 (0.0040) |
+| Masters 1000 (M) | 274 | 5.8% | 66.4% | 65.0% | −0.0028 (0.0046) |
+| A: ATP 250/500, plus every TennisData.app row of either tour | 717 | 5.4% | 60.0% | 60.5% | −0.0000 (0.0054) |
+| WTA 500 (P) | 228 | 5.3% | 61.4% | 63.2% | −0.0002 (0.0036) |
+| WTA 250 (I) | 355 | 4.5% | 63.4% | 62.8% | +0.0013 (0.0033) |
+| Davis Cup (D) | 114 | 6.1% | 78.1% | 77.2% | −0.0069 (0.0122) |
+| **Best of:** 3 | 2,265 | 4.7% | 64.9% | 65.1% | −0.0024 (0.0019) |
+| 5 | 253 | 4.0% | 66.8% | 68.4% | −0.0186 (0.0062) |
+| **Round:** R128 | 449 | 3.1% | 67.9% | 67.9% | −0.0073 (0.0042) |
+| R64 | 354 | 3.1% | 70.9% | 72.9% | −0.0116 (0.0040) |
+| R32 | 787 | 5.3% | 62.8% | 62.3% | −0.0025 (0.0036) |
+| R16 | 426 | 4.7% | 64.6% | 65.0% | −0.0017 (0.0027) |
+| QF | 217 | 4.6% | 61.3% | 61.3% | −0.0022 (0.0045) |
+| SF | 104 | 6.7% | 58.7% | 61.5% | −0.0031 (0.0072) |
+| F, *small* | 52 | 11.5% | 42.3% | 46.2% | +0.0260 (0.0149) |
+| RR | 121 | 5.8% | 78.5% | 77.7% | −0.0082 (0.0114) |
+
+**Definitions.**
+- **Serve-return edge:** the difference in logit of the two players' opponent-adjusted serve estimates, plus the same for return, signed so a positive value favours the ordinary-Elo favourite. Quintile cut points: +0.014, +0.076, +0.137, +0.219.
+- **Statistics history:** measured in matches' worth of service points.
+- **By month,** the mean difference is negative in all five months, from −0.0024 to −0.0057.
+
+**What the patterns show (descriptive):**
+- **Disagreements are almost all close matches.**
+  - 13.6% of matches with an Elo gap under 50 disagree, and none with a gap of 300 or more.
+  - The rate is 14.9% when the Elo favourite has under 55%, and 0% at 80% or more.
+  - It is 14.7% when Elo and ranking name different favourites, against 2.4% when they agree.
+- **Disagreements are most common when the serve-return estimates point against the Elo favourite.**
+  - 12.3% in the bottom quintile, against 0.8% in the top.
+  - 17.8% when both serve and return oppose the Elo favourite, but that group has only 90 matches.
+
+  This is what one would expect from a model that adds those estimates to the Phase 3 inputs. It shows where the models differ, not that serving or returning drives results.
+- **Where the difference appears:**
+  - Phase 4's lower log loss is clearest in best-of-5 matches (−0.0186, se 0.0062), at Grand Slams (−0.0119, se 0.0025) and in the closest Elo matches (−0.0109, se 0.0048).
+  - It is near zero at level A (ATP 250/500 plus the TennisData.app rows), WTA 500 and WTA 250 events, and for players with under 10 matches of statistics.
+  - These are overlapping slices of one held-out set, chosen after seeing the results, with about 30 comparisons. They suggest where to look in future pre-registered work. They are not findings about where Phase 4 works.
+- **ATP has more disagreements than WTA (5.4% against 3.9%),** but WTA has the larger net gain in correct picks among them (+8 against +1).
+
+**Limits of this section:**
+- **Post-hoc and descriptive,** on one held-out period of 2,518 rows, including the duplicates described above.
+- **Match details come from a replay.** The players and outcomes match the saved run exactly; the details themselves were not saved by it.
+- **Wide intervals.** Group comparisons have broad intervals and were not corrected for multiple comparisons.
+- **The brief was cut off.** The pasted request ended part-way through Part 3, so any later parts were not done.
 
 ## Final verification before the freeze
 
@@ -740,3 +1222,9 @@ Then the choices were frozen and tested once on 2,518 matches from June to Octob
 The serving-and-returning version did better there too, by about 0.004 per match, with a higher hit rate (65.5% against 65.1%). But a test that small can't fully rule out luck: the 95% range ran from a gain of 0.008 to a loss of 0.0001. So the honest summary is "consistently better in every period, but not yet proven on fresh data." A larger fresh sample, such as next season's matches, would settle it.
 
 Inside a tournament, using the earlier results helped clearly on the fresh matches as well, by 0.007 per match. That's the most solid finding of this phase.
+
+**A correction after the test.** After that test, a closer look found a mistake in how the two newer sources were combined. 65 of the 2,518 test matches had been counted twice, because the two sources spell some names differently. A few players had also been given the wrong history or none at all.
+
+The mistake was fixed. The same frozen models were then scored on the 2,453 real matches. The serving-and-returning version is better by about 0.005 per match, and the 95% range, a gain of 0.0015 to 0.0084, no longer reaches zero. Using earlier results inside a tournament still helps, by about 0.006.
+
+Because this second look came after the results were known, it doesn't count as a fresh test. The official result of the planned test stays "not yet proven". The corrected numbers make it more likely that the gain is real, but a fresh season of matches is still the way to settle it.

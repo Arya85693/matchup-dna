@@ -1,0 +1,436 @@
+{
+  "erratum": 1,
+  "kind": "data-integrity correction after unblinding (not an amendment of the frozen procedure)",
+  "applies_to": "experiments\\phase4_frozen_protocol.json",
+  "protocol_sha256": "980e2ab80e5536adff1dbe04f25bfcaadd91bce4ba647edcc7ff5bd5420bcdbd",
+  "amendment_1_sha256": "c742d7eaabae9de9f0d4a3d19f50bbca62cc54e8a7d9e498ce85d714edaf2044",
+  "created": "2026-11-05",
+  "status": "The corrected June-October 2026 evaluation is retrospective and post-unblinding, not a new independent confirmation. The original run stays the result of the pre-registered procedure; it is not claimed to have established significance, whatever the corrected interval shows.",
+  "defect": "Found after unblinding, by the post-hoc disagreement analysis (2026-11-05). The held-out assembly (heldout.assemble, version 1) added a TennisData.app row unless it linked to a TML row by matching surname-and-initial keys for both players, or by both players being in both validated crosswalks; its last guard compared resolved player ids. Players whose providers write their names differently ('Merida Aguilar D.' / 'Daniel Merida', 'Ruse G.' / 'Elena Gabriela Ruse', 'Vallejo D.' / 'Adolfo Daniel Vallejo', 'Tam Sin Hang' / 'Sin Hang Tam', ...) failed every check and were resolved to different ids, so 65 matches were added twice and updated ratings, form, inactivity and profiles twice. The TennisData.app crosswalk also linked 'Vallejo D.' (424916) to Sackmann 118808 (Daniel Vallejo, MEX, born 1984) instead of 209226 (Adolfo Daniel Vallejo, PAR, born 2004), because Sackmann files Paraguay's 2023-2026 Davis Cup matches under 118808; and TML's 'Daniel Merida' (M0N7) had no link, so his TML matches started from a new, history-less identity.",
+  "fix": "heldout.assemble version 2 (version 1 kept for reproduction): a third match-linking pass on round, edition, dates and name-compatible players (never on results), with ambiguous cases left out and listed; TennisData.app <-> TML player links learned from linked matches, one-to-one, so each person has one canonical id; the unverified surname-and-initial guess removed; crosswalk conflicts listed and resolved to the TML identity; a build-stopping check for any remaining cross-source duplicate or split identity. provider_period gains a version argument; the frozen holdout and rehearse commands are pinned to version 1. No model, feature, parameter, training date, dataset, input file, or evaluation rule changed.",
+  "code_base_commit": "f67c54e7cd80f87acaf773bf369ac0d8366ed495",
+  "frozen_code_commit": "4f6076ef8ed3895c491e3f1d65641dc7371af964",
+  "changed_files_sha256": {
+    "matchup_dna/heldout.py": "152af708024ef21d618eb063edbb61da9e83e2526908c84e9cbeeff9afcbcf2a",
+    "matchup_dna/phase4_correction.py": "3755960c4ec194bed48026f67a3cb614167828301bbede1d962d8fd4e61df5ab",
+    "matchup_dna/phase4_experiment.py": "4fdc4d08ea8c4e1c6ad3ea918256d1e873b2428db923ff4a246f89b42b23f403",
+    "matchup_dna/posthoc_disagreement.py": "7f272f2eb4fb5695e46686569993bde66f786c8da7407db57671f0f63f199094",
+    "matchup_dna/posthoc_longrun.py": "487455f9e92c3806164b452c723fcd21b17f98c3427389ea8655577ec99884b6",
+    "matchup_dna/posthoc_rank_benchmark.py": "70ebb2a579f90cf077901ef9b35d5df784ee77415e52215f8ff2e49d996e6c66",
+    "tests/test_heldout.py": "8edfe4f367d1302c8af0478f52dab9e35a49aac850b164cb2ac3047d7f8b463f"
+  },
+  "code_commit": "to be recorded by the user's commit; `python -m matchup_dna.phase4_correction check` confirms the committed files equal these hashes",
+  "tests": [
+    "tests/test_heldout.py"
+  ],
+  "diagnostics": {
+    "held_out": {
+      "version_1_matches": 2609,
+      "version_2_matches": 2541,
+      "version_1_tennisdata": 73,
+      "version_2_tennisdata": 5,
+      "duplicates": 68,
+      "identity_changes": 4,
+      "review_matches": 0,
+      "review_players": {
+        "TML gives one person several ids (resolved together)": 5,
+        "conflict: linked ids do not describe one person (not merged)": 1,
+        "resolved through TennisData.app crosswalk": 3,
+        "unresolved TennisData.app player (provider-only id)": 3
+      }
+    },
+    "rehearsal": {
+      "version_1_tennisdata": 145,
+      "version_2_tennisdata": 104,
+      "duplicates": 41
+    },
+    "sackmann_cross_tournament_repeats": 237
+  },
+  "independent_reconciliation": {
+    "version_1": {
+      "schedule_clashes": 68,
+      "repeated_rounds": 0,
+      "ids_with_unrelated_names": 0,
+      "full_names_with_several_ids": 1,
+      "sackmann_overlaps": 0
+    },
+    "version_2": {
+      "schedule_clashes": 3,
+      "repeated_rounds": 0,
+      "ids_with_unrelated_names": 0,
+      "full_names_with_several_ids": 0,
+      "sackmann_overlaps": 0
+    }
+  },
+  "reconciliation_flags_in_version_2": {
+    "items": [
+      {
+        "tour": "WTA",
+        "player": 213583,
+        "first": [
+          "TD-London WTA-20260608",
+          20260608
+        ],
+        "second": [
+          "TML-2026-1111",
+          20260608
+        ]
+      },
+      {
+        "tour": "WTA",
+        "player": 221883,
+        "first": [
+          "TD-Singapore WTA (indoor)-20260921",
+          20260921
+        ],
+        "second": [
+          "TML-2026-1152",
+          20260921
+        ]
+      },
+      {
+        "tour": "WTA",
+        "player": 236955,
+        "first": [
+          "TD-Singapore WTA (indoor)-20260921",
+          20260921
+        ],
+        "second": [
+          "TML-2026-1152",
+          20260921
+        ]
+      }
+    ],
+    "explanation": "genuine TennisData.app additions inside a week TML also covers: TML lacks the London WTA R32 Tatjana Maria d. Maria Sakkari and the Singapore WTA SF walkover Talia Gibson over Tatiana Prozorova (unrated); not duplicates"
+  },
+  "limitations": [
+    "post-unblinding: the defect was found, and the fix written, after every held-out outcome had been seen",
+    "Sackmann files some Davis Cup matches under a second id for one person (Adolfo Daniel Vallejo under 118808; Menelaos Efstathiou under 144949 and 213713). Phases 1-4 training data are frozen and unchanged",
+    "the January-May 2026 rehearsal (outcome-free, before the freeze) also contained 41 such duplicates",
+    "a genuine TennisData.app addition keeps its own tournament key, so round-aware values of that edition do not see it (2 rows; one unrated)",
+    "the selected Phase 3 and Phase 4 models also differ in L2 (ATP 1000 vs 10, WTA 100 vs 0), so the gain is not attributable to serve-return features alone"
+  ],
+  "crosswalk_entries_contradicted_by_match_evidence": [
+    {
+      "source": "TennisData.app",
+      "tour": "ATP",
+      "provider_id": "424916",
+      "crosswalk_sackmann_id": 118808,
+      "crosswalk_name": "Daniel Vallejo",
+      "votes_for_crosswalk_id": 0,
+      "evidence_sackmann_id": 209226,
+      "evidence_name": "Adolfo Daniel Vallejo",
+      "evidence_votes": 9
+    }
+  ],
+  "original_result_preserved": {
+    "artifacts": [
+      "results/phase4/final/heldout_predictions.csv",
+      "results/phase4/experiments/holdout.txt"
+    ],
+    "published": {
+      "rows": 2518,
+      "gap": -0.004,
+      "low": -0.0081,
+      "high": 0.0001,
+      "p": 0.055
+    },
+    "reproduced": {
+      "rows": 2518,
+      "scores": {
+        "P3-refit": {
+          "log_loss": 0.6148,
+          "brier": 0.2139,
+          "accuracy": 0.6511
+        },
+        "P4-refit": {
+          "log_loss": 0.6108,
+          "brier": 0.2121,
+          "accuracy": 0.6547
+        },
+        "P3-original": {
+          "log_loss": 0.6149,
+          "brier": 0.2139,
+          "accuracy": 0.6503
+        }
+      },
+      "calibration": {
+        "P3-refit": {
+          "intercept": 0.042,
+          "slope": 0.986
+        },
+        "P4-refit": {
+          "intercept": 0.048,
+          "slope": 0.962
+        },
+        "P3-original": {
+          "intercept": 0.042,
+          "slope": 0.983
+        }
+      },
+      "gap_P4_minus_P3": {
+        "Both": {
+          "rows": 2518,
+          "dates": 28,
+          "gap": -0.004,
+          "se": 0.0021,
+          "low": -0.0081,
+          "high": 0.0001,
+          "p": 0.0546,
+          "month_se": 0.0005,
+          "month_low": -0.005,
+          "month_high": -0.0031,
+          "month_p": 0.0
+        },
+        "ATP": {
+          "rows": 1325,
+          "dates": 22,
+          "gap": -0.0058,
+          "se": 0.0035,
+          "low": -0.0127,
+          "high": 0.0011,
+          "p": 0.099,
+          "month_se": 0.002,
+          "month_low": -0.0097,
+          "month_high": -0.0019,
+          "month_p": 0.0032
+        },
+        "WTA": {
+          "rows": 1193,
+          "dates": 20,
+          "gap": -0.002,
+          "se": 0.0019,
+          "low": -0.0058,
+          "high": 0.0017,
+          "p": 0.2831,
+          "month_se": 0.0018,
+          "month_low": -0.0056,
+          "month_high": 0.0015,
+          "month_p": 0.2539
+        }
+      },
+      "round_aware_R0_minus_reference": {
+        "rows": 1286,
+        "dates": 23,
+        "gap": -0.0072,
+        "se": 0.0023,
+        "low": -0.0118,
+        "high": -0.0026,
+        "p": 0.0023,
+        "month_se": 0.001,
+        "month_low": -0.0091,
+        "month_high": -0.0052,
+        "month_p": 0.0,
+        "reference_log_loss": 0.6085,
+        "R0_log_loss": 0.6013,
+        "ATP": {
+          "rows": 657,
+          "dates": 18,
+          "gap": -0.0064,
+          "se": 0.0028,
+          "low": -0.0119,
+          "high": -0.0009,
+          "p": 0.0228,
+          "month_se": 0.0031,
+          "month_low": -0.0124,
+          "month_high": -0.0004,
+          "month_p": 0.0361,
+          "reference_log_loss": 0.6231,
+          "R0_log_loss": 0.6167
+        },
+        "WTA": {
+          "rows": 629,
+          "dates": 19,
+          "gap": -0.0079,
+          "se": 0.0037,
+          "low": -0.0151,
+          "high": -0.0007,
+          "p": 0.0317,
+          "month_se": 0.0034,
+          "month_low": -0.0145,
+          "month_high": -0.0014,
+          "month_p": 0.0181,
+          "reference_log_loss": 0.5932,
+          "R0_log_loss": 0.5853
+        }
+      },
+      "ranking_benchmark": {
+        "eligible": 2493,
+        "missing_or_tied": 25,
+        "higher_ranked_correct": 1620,
+        "P3_correct": 1621.0,
+        "P4_correct": 1629.0
+      },
+      "disagreements": {
+        "count": 117,
+        "share": 0.04646544876886418,
+        "P3_right": 54.0,
+        "P4_right": 63.0,
+        "exact_half": 1
+      }
+    }
+  },
+  "corrected_result": {
+    "rows": 2453,
+    "scores": {
+      "P3-refit": {
+        "log_loss": 0.6114,
+        "brier": 0.2123,
+        "accuracy": 0.6561
+      },
+      "P4-refit": {
+        "log_loss": 0.6065,
+        "brier": 0.2102,
+        "accuracy": 0.6586
+      },
+      "P3-original": {
+        "log_loss": 0.6115,
+        "brier": 0.2123,
+        "accuracy": 0.6557
+      }
+    },
+    "calibration": {
+      "P3-refit": {
+        "intercept": 0.032,
+        "slope": 1.011
+      },
+      "P4-refit": {
+        "intercept": 0.037,
+        "slope": 0.995
+      },
+      "P3-original": {
+        "intercept": 0.032,
+        "slope": 1.007
+      }
+    },
+    "gap_P4_minus_P3": {
+      "Both": {
+        "rows": 2453,
+        "dates": 28,
+        "gap": -0.0049,
+        "se": 0.0017,
+        "low": -0.0084,
+        "high": -0.0015,
+        "p": 0.0045,
+        "month_se": 0.0009,
+        "month_low": -0.0067,
+        "month_high": -0.0032,
+        "month_p": 0.0
+      },
+      "ATP": {
+        "rows": 1280,
+        "dates": 22,
+        "gap": -0.0066,
+        "se": 0.0031,
+        "low": -0.0127,
+        "high": -0.0006,
+        "p": 0.0325,
+        "month_se": 0.0025,
+        "month_low": -0.0115,
+        "month_high": -0.0017,
+        "month_p": 0.0078
+      },
+      "WTA": {
+        "rows": 1173,
+        "dates": 20,
+        "gap": -0.0031,
+        "se": 0.0019,
+        "low": -0.0068,
+        "high": 0.0006,
+        "p": 0.1045,
+        "month_se": 0.0019,
+        "month_low": -0.0068,
+        "month_high": 0.0006,
+        "month_p": 0.1043
+      }
+    },
+    "round_aware_R0_minus_reference": {
+      "rows": 1275,
+      "dates": 23,
+      "gap": -0.0059,
+      "se": 0.0024,
+      "low": -0.0107,
+      "high": -0.0011,
+      "p": 0.0159,
+      "month_se": 0.0014,
+      "month_low": -0.0087,
+      "month_high": -0.0031,
+      "month_p": 0.0,
+      "reference_log_loss": 0.6052,
+      "R0_log_loss": 0.5993,
+      "ATP": {
+        "rows": 650,
+        "dates": 18,
+        "gap": -0.0056,
+        "se": 0.0028,
+        "low": -0.0112,
+        "high": -0.0001,
+        "p": 0.0474,
+        "month_se": 0.0026,
+        "month_low": -0.0106,
+        "month_high": -0.0006,
+        "month_p": 0.0279,
+        "reference_log_loss": 0.6205,
+        "R0_log_loss": 0.6148
+      },
+      "WTA": {
+        "rows": 625,
+        "dates": 19,
+        "gap": -0.0062,
+        "se": 0.0037,
+        "low": -0.0134,
+        "high": 0.001,
+        "p": 0.0935,
+        "month_se": 0.0034,
+        "month_low": -0.0128,
+        "month_high": 0.0005,
+        "month_p": 0.0688,
+        "reference_log_loss": 0.5893,
+        "R0_log_loss": 0.5831
+      }
+    },
+    "ranking_benchmark": {
+      "eligible": 2430,
+      "missing_or_tied": 23,
+      "higher_ranked_correct": 1585,
+      "P3_correct": 1592.0,
+      "P4_correct": 1597.0
+    },
+    "disagreements": {
+      "count": 116,
+      "share": 0.047289033836119036,
+      "P3_right": 55.0,
+      "P4_right": 61.0,
+      "exact_half": 1
+    }
+  },
+  "removed_rows": 65,
+  "prediction_status": {
+    "unchanged": 884,
+    "changed": 1569
+  },
+  "change_reasons": {
+    "a player's own earlier history changed (a duplicate removed or an identity merged)": 664,
+    "a player's identity was corrected": 40,
+    "an earlier opponent's or opponent's opponent's rating or profile changed (knock-on through the rating network)": 865
+  },
+  "outputs": [
+    "results/phase4/correction/",
+    "results/phase4/corrected/"
+  ],
+  "inputs_unchanged": true,
+  "earlier_corrected_runs": [
+    {
+      "folder": "results/phase4/corrected_first_run",
+      "why": "evaluate records the hash of every changed file, so it was rerun after later edits to the post-hoc scripts and to this record; the fix itself did not change",
+      "fix_files_identical": true,
+      "corrected_results_identical": true
+    },
+    {
+      "folder": "results/phase4/corrected_second_run",
+      "why": "evaluate records the hash of every changed file, so it was rerun after later edits to the post-hoc scripts and to this record; the fix itself did not change",
+      "fix_files_identical": true,
+      "corrected_results_identical": true
+    }
+  ]
+}

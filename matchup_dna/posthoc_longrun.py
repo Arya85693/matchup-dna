@@ -2,6 +2,8 @@
 Phase 4 evaluation, and not used to choose or change anything.
 
     python -m matchup_dna.posthoc_longrun
+    python -m matchup_dna.posthoc_longrun --corrected   (erratum 1: the held-out period from the corrected,
+                                                         post-unblinding rebuild; separate output files)
 
 Methods compared on identical matches in each period: Phase 2 Elo and surface Elo (raw), the Phase 3 logistic
 model, the Phase 4 logistic model, and "the higher-ranked player wins". Every prediction is chronological: it was
@@ -25,6 +27,7 @@ Where each period's predictions come from:
 """
 import csv
 import json
+import sys
 from collections import defaultdict
 
 import numpy as np
@@ -33,8 +36,10 @@ from matchup_dna.elo import RESULTS_DIR
 from matchup_dna.experiment import Output, scores, tour_rows
 from matchup_dna.load import TOURS
 
-OUTPUT = RESULTS_DIR / "phase4" / "experiments" / "posthoc_longrun.txt"
-TABLE = RESULTS_DIR / "phase4" / "experiments" / "posthoc_longrun_predictions.csv"
+CORRECTED = "--corrected" in sys.argv
+SUFFIX = "_corrected" if CORRECTED else ""
+OUTPUT = RESULTS_DIR / "phase4" / "experiments" / f"posthoc_longrun{SUFFIX}.txt"
+TABLE = RESULTS_DIR / "phase4" / "experiments" / f"posthoc_longrun_predictions{SUFFIX}.csv"
 METHODS = ("Elo", "Surface Elo", "Phase 3", "Phase 4")
 PERIODS = ("2021-2023 validation", "2024-May 2026 retrospective", "Jun-Oct 2026 held-out")
 PHASE3_L2 = {"ATP": 1000.0, "WTA": 100.0}
@@ -104,9 +109,11 @@ def retrospective_period(protocol):
 
 def held_out_period():
     from matchup_dna.phase4_experiment import HELD_OUT, PROTOCOL_PATH, provider_period
-    with open(RESULTS_DIR / "phase4" / "final" / "heldout_predictions.csv", encoding="utf-8", newline="") as file:
+    folder = "corrected" if CORRECTED else "final"
+    with open(RESULTS_DIR / "phase4" / folder / "heldout_predictions.csv", encoding="utf-8", newline="") as file:
         saved = {row["match_id"]: row for row in csv.DictReader(file)}
-    rows, _, _, _ = provider_period(*HELD_OUT, unseal_with=PROTOCOL_PATH)
+    # version 1 is the saved, original run; version 2 the corrected rebuild of erratum 1
+    rows, _, _, _ = provider_period(*HELD_OUT, unseal_with=PROTOCOL_PATH, version=2 if CORRECTED else 1)
     rebuilt = {row["match_id"]: row for row in rows if row["tourney_date"] >= HELD_OUT[0]}
     missing = set(saved) - set(rebuilt)
     if missing:
@@ -158,6 +165,13 @@ def main():
     from matchup_dna.phase4_experiment import PROTOCOL_PATH
     out = Output()
     protocol = json.loads(PROTOCOL_PATH.read_text(encoding="utf-8"))
+    if CORRECTED:
+        summary = json.loads((RESULTS_DIR / "phase4" / "corrected" / "summary.json").read_text(encoding="utf-8"))
+        for method, name in (("Phase 3", "P3-refit"), ("Phase 4", "P4-refit")):
+            found = summary["corrected"]["scores"][name]
+            PUBLISHED[("Jun-Oct 2026 held-out", method)] = (round(found["log_loss"], 4), round(found["accuracy"], 4))
+        out("ERRATUM 1 VERSION: the June-October 2026 period uses the corrected, retrospective, post-unblinding rebuild")
+        out("(version-2 assembly); its reproduction check is against that rebuild, not the published original.")
     out("POST-HOC DESCRIPTIVE ANALYSIS, January 2021 - October 2026. Not part of the pre-registered Phase 4 evaluation;")
     out("nothing here was used to choose or change any model. 2021-2023 was used to select the Phase 4 model; January")
     out("2024 - May 2026 had already been examined (Phase 3 final run, Phase 4 retrospective); only June - October 2026")
@@ -172,7 +186,8 @@ def main():
             s = scores(np.array([r[method] for r in subset], dtype=float), y)
             published = PUBLISHED[(period, method)]
             ok = round(s["log_loss"], 4) == published[0] and round(s["accuracy"], 4) == published[1]
-            out(f"   {period:<28} {method}: log loss {s['log_loss']:.4f}, accuracy {s['accuracy']:.2%}; published "
+            label = "corrected rebuild" if CORRECTED and period == PERIODS[2] else "published"
+            out(f"   {period:<28} {method}: log loss {s['log_loss']:.4f}, accuracy {s['accuracy']:.2%}; {label} "
                 f"{published[0]:.4f}, {published[1]:.2%} -> {'reproduced' if ok else 'DIFFERS'}")
             if not ok:
                 raise SystemExit("A reproduced prediction set does not match its published scores; not reporting it.")

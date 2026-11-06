@@ -1,6 +1,6 @@
 # Matchup DNA
 
-**Status: Phases 0–4 complete — local Python program**
+**Status: Phases 0–4 complete — local Python program** (Phase 4 includes erratum 1, a post-unblinding correction of its held-out data)
 
 Matchup DNA is a long-term machine-learning and quantitative research project on professional tennis. It will start as a small local Python program and grow into a public site that serves match probabilities, player profiles, historical model evaluations, and, later, live match analysis.
 
@@ -161,6 +161,23 @@ python -m matchup_dna.phase4_experiment freeze --dry-run
 python explain.py ATP 206173 ATP 104925 20260525 --surface Clay --best-of 5
 ```
 
+**Two held-out results exist. Keep them apart:**
+
+- **The original, pre-registered held-out evaluation.** `holdout --confirm` ran once under amendment 1, on 2,518 rows, and stays the result of the frozen procedure: P4-refit minus P3-refit −0.0040, 95% interval −0.0081 to +0.0001, p = 0.055. Its outputs are in `results/phase4/final/`.
+- **The corrected rebuild, Phase 4 erratum 1.** After unblinding, 65 of those rows turned out to be duplicates, and some players had wrong or split identities. A retrospective rebuild on 2,453 distinct matches, with the same frozen models, gives −0.0049 (−0.0084 to −0.0015, p = 0.005). It is not a second blind test.
+
+The defect, the fix (`heldout.assemble` version 2), and every number are in `experiments/phase4_erratum_1.json`, the report's "Erratum 1" section, and Data Audit addendum A16.
+
+```powershell
+python -m matchup_dna.phase4_correction diagnose    # duplicates, identities, crosswalk audit (results/phase4/correction/)
+python -m matchup_dna.phase4_correction reconcile   # independent data-level checks of both versions
+python -m matchup_dna.phase4_correction evaluate    # corrected rebuild, once (results/phase4/corrected/)
+python -m matchup_dna.phase4_correction erratum     # writes the erratum record, never overwritten
+python -m matchup_dna.phase4_correction check       # code still matches the hashes the erratum recorded
+python -m matchup_dna.posthoc_disagreement --corrected --rebuild
+python -m matchup_dna.posthoc_longrun --corrected
+```
+
 `freeze` writes `experiments/phase4_frozen_protocol.json`, never overwrites it, and refuses while code has uncommitted changes. `retrospective` and `holdout --confirm` each run once, and only after three conditions hold:
 - the protocol is committed;
 - every input it hashed is unchanged;
@@ -195,6 +212,9 @@ Runs the tests. The test that counts every match is skipped when `data/` is miss
 | `matchup_dna/workload.py`, `matchup_dna/round_aware.py` | Match workload, round chronology, route difficulty, round-aware Elo |
 | `matchup_dna/phase4_features.py`, `matchup_dna/phase4_model.py`, `matchup_dna/selection.py`, `matchup_dna/phase4_experiment.py` | Phase 4 dataset, features, model, selection, and commands |
 | `matchup_dna/audit_*.py` | The three Phase 4 audits |
+| `matchup_dna/phase4_correction.py` | Phase 4 erratum 1: diagnostics, independent reconciliation, the corrected held-out rebuild, and the erratum record |
+| `matchup_dna/posthoc_rank_benchmark.py`, `matchup_dna/posthoc_longrun.py`, `matchup_dna/posthoc_disagreement.py` | Post-hoc descriptive analyses (not pre-registered). `--corrected` reruns them on the erratum's predictions |
+| `tests/test_heldout.py` | Erratum 1 regressions: duplicates under alternate spellings, Vallejo, repeat meetings, ambiguity, split ids, chronology and leakage, reconciliation, and a sealed-row check of all 68 known duplicates |
 | `matchup_dna/matchup.py`, `matchup_dna/interpret.py`, `explain.py` | The matchup report |
 | `compare.py` | Command-line comparison of two players |
 | `rate.py` | Command-line ratings and win probability for two players |
