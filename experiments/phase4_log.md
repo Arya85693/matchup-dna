@@ -108,3 +108,8 @@ commit `00f4f504968d71e50f3673c554a5e1f65ab2cce3+uncommitted`
 
 - `python -m matchup_dna.posthoc_rank_benchmark`: saved held-out predictions only, nothing refitted or rescored. 2,518 held-out matches; 25 with a missing rank, 0 tied; 2,493 eligible.
 - Accuracy on the 2,493: higher-ranked player 64.98% (1,620 correct); Phase 3 refit 65.02% (1,621); Phase 3 original 64.94% (1,619); Phase 4 65.34% (1,629). Phase 4 minus ranking +0.36 points; Phase 4 minus Phase 3 +0.32 points (ATP +0.00, WTA +0.68).
+
+## 2026-11-05 · post-hoc long-run analysis, January 2021 - October 2026 (NOT pre-registered; added by hand)
+
+- `python -m matchup_dna.posthoc_longrun`: chronological predictions only; Phase 3/4 validation and Phase 4 retrospective predictions reproduced by re-executing the reported fits and accepted only because all six sets matched their published log loss and accuracy exactly; held-out Elo replayed through the frozen pipeline (no fitting). No model changed.
+- Identical eligible matches (missing ranks excluded: 218 / 192 / 25; no ties). Log loss, Phase 3 -> Phase 4: validation 0.6109 -> 0.6083; retrospective 0.6138 -> 0.6125; held-out 0.6160 -> 0.6120; pooled 31,854 matches 0.6125 -> 0.6104. Accuracy pooled: Elo 64.52%, surface Elo 64.87%, Phase 3 65.65%, Phase 4 65.89%, higher-ranked player 64.20%.

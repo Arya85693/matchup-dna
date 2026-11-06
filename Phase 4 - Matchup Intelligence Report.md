@@ -423,6 +423,90 @@ On the same 2,518 held-out matches, 25 have a missing rank and none a tied rank,
 - **It matches what Phase 2 found.** On validation, Elo beat the ranking by under a point on ATP, and the value of these models was in their probabilities, not their picks.
 - **What accuracy can't see.** It treats a 51% favorite who wins the same as a 90% favorite who wins. The ranking gives no probability at all, so it can't be scored on log loss or Brier score, the measures Phase 4 was built to improve.
 
+## Post-hoc descriptive analysis: January 2021 to October 2026 (not pre-registered)
+
+**This analysis was added after the held-out evaluation, and nothing in it was used to choose or change a model.** It describes long-run performance and consistency only.
+
+**What each period was:**
+- **2021–2023:** used to *select* the Phase 4 model.
+- **January 2024–May 2026:** had already been examined, in the Phase 3 final run and the Phase 4 retrospective check.
+- **June–October 2026:** the only independent Phase 4 held-out evaluation.
+
+`python -m matchup_dna.posthoc_longrun` writes `results/phase4/experiments/posthoc_longrun.txt`, plus every per-match prediction.
+
+**Where the predictions come from. Every one was made by a model fitted only on earlier matches.**
+
+| Period | Elo, surface Elo | Phase 3 logistic | Phase 4 logistic | Ranks |
+|---|---|---|---|---|
+| 2021–2023 | Saved Phase 3 rows | Not saved per match; **reproduced** by re-executing the reported fit on 2010–2020 | Not saved; **reproduced** the same way (2010–2020) | Saved rows (Sackmann, as of the tournament week) |
+| Jan 2024–May 2026 | Saved by the Phase 3 final run | Saved by the Phase 3 final run (fitted 2010–2023) | Not saved; **reproduced** by re-executing the retrospective fit (2010–2023) | Saved rows (Sackmann) |
+| Jun–Oct 2026 | Not saved; **replayed** through the same held-out data pipeline. Elo has no fitting step, and its settings were fixed on 1990–2009 | Saved by `holdout --confirm` (P3-refit) | Saved by `holdout --confirm` | The provider ranks the models used |
+
+**Reproduction checks.** A reproduced set was used only if it matched its published combined log loss and accuracy exactly, and all six did:
+- **Validation:** Phase 3 0.6095 and 66.10%; Phase 4 0.6069 and 66.62%.
+- **Retrospective:** Phase 3 0.6128 and 65.58%; Phase 4 0.6114 and 65.47%.
+- **Held-out:** Phase 3 0.6148 and 65.11%; Phase 4 0.6108 and 65.47%.
+
+The held-out rebuild matched all 2,518 saved matches, with identical players and outcomes. It fitted and scored nothing.
+
+**Identical matches.** Every method is scored on the same matches. Matches with a missing rank are left out of every method, because the ranking heuristic cannot score them. There were no tied ranks. The excluded matches are 218 in validation, 192 in the retrospective, and 25 held-out (435 of 32,289 overall). Because of that exclusion, the numbers below differ slightly from the published full-sample figures.
+
+### By period (eligible matches; accuracy, log loss, Brier)
+
+| Period | Matches | Elo | Surface Elo | Phase 3 | Phase 4 | Higher-ranked player |
+|---|---:|---|---|---|---|---|
+| 2021–2023 validation | 15,821 | 64.69%, 0.6229, 0.2168 | 65.32%, 0.6211, 0.2159 | 65.96%, 0.6109, 0.2120 | **66.46%, 0.6083, 0.2108** | 64.39% |
+| Jan 2024–May 2026 retrospective | 13,540 | 64.60%, 0.6245, 0.2177 | 64.47%, 0.6244, 0.2176 | **65.41%**, 0.6138, 0.2134 | 65.32%, **0.6125, 0.2129** | 63.83% |
+| Jun–Oct 2026 held-out | 2,493 | 63.04%, 0.6339, 0.2220 | 64.16%, 0.6332, 0.2211 | 65.02%, 0.6160, 0.2144 | **65.34%, 0.6120, 0.2126** | 64.98% |
+| **2021–Oct 2026 pooled** | **31,854** | 64.52%, 0.6244, 0.2176 | 64.87%, 0.6234, 0.2171 | 65.65%, 0.6125, 0.2127 | **65.89%, 0.6104, 0.2118** | 64.20% |
+
+Correct predictions, pooled over 31,854 matches:
+
+| Method | Correct |
+|---|---:|
+| Elo | 20,552.5 |
+| Surface Elo | 20,662.5 |
+| Phase 3 | 20,913 |
+| Phase 4 | 20,989 |
+| Higher-ranked player | 20,450 |
+
+An exact 50–50 Elo prediction counts as half a correct pick. Per-tour figures are in the output file.
+
+### By year (accuracy / log loss; ranking: accuracy only)
+
+| Year | Tour | Matches | Elo | Surface Elo | Phase 3 | Phase 4 | Ranking |
+|---|---|---:|---|---|---|---|---|
+| 2021 | ATP | 2,622 | 63.8% / 0.6283 | 64.3% / 0.6272 | 65.1% / 0.6136 | 66.3% / 0.6109 | 63.7% |
+| 2021 | WTA | 2,472 | 65.9% / 0.6126 | 67.0% / 0.6095 | 67.0% / 0.6037 | 67.6% / 0.6014 | 65.7% |
+| 2021 | Both | 5,094 | 64.8% / 0.6207 | 65.6% / 0.6186 | 66.0% / 0.6088 | 66.9% / 0.6063 | 64.7% |
+| 2022 | ATP | 2,805 | 64.3% / 0.6173 | 66.0% / 0.6120 | 66.3% / 0.6062 | 66.7% / 0.6008 | 65.0% |
+| 2022 | WTA | 2,437 | 64.5% / 0.6247 | 64.6% / 0.6274 | 65.8% / 0.6129 | 66.1% / 0.6117 | 64.0% |
+| 2022 | Both | 5,242 | 64.4% / 0.6208 | 65.4% / 0.6192 | 66.1% / 0.6093 | 66.5% / 0.6059 | 64.5% |
+| 2023 | ATP | 2,843 | 64.3% / 0.6373 | 64.5% / 0.6340 | 65.0% / 0.6196 | 65.7% / 0.6174 | 63.7% |
+| 2023 | WTA | 2,642 | 65.3% / 0.6157 | 65.5% / 0.6158 | 66.6% / 0.6089 | 66.4% / 0.6071 | 64.3% |
+| 2023 | Both | 5,485 | 64.8% / 0.6269 | 65.0% / 0.6252 | 65.8% / 0.6145 | 66.0% / 0.6124 | 64.0% |
+| 2024 | ATP | 3,003 | 64.1% / 0.6233 | 64.4% / 0.6240 | 65.4% / 0.6155 | 64.9% / 0.6140 | 63.9% |
+| 2024 | WTA | 2,669 | 64.6% / 0.6232 | 64.3% / 0.6237 | 64.7% / 0.6132 | 64.8% / 0.6116 | 63.7% |
+| 2024 | Both | 5,672 | 64.3% / 0.6233 | 64.3% / 0.6239 | 65.1% / 0.6144 | 64.8% / 0.6129 | 63.8% |
+| 2025 | ATP | 2,677 | 64.0% / 0.6269 | 63.6% / 0.6282 | 65.4% / 0.6145 | 65.2% / 0.6158 | 64.8% |
+| 2025 | WTA | 2,577 | 64.4% / 0.6296 | 64.0% / 0.6292 | 65.0% / 0.6189 | 65.0% / 0.6157 | 62.8% |
+| 2025 | Both | 5,254 | 64.2% / 0.6282 | 63.8% / 0.6287 | 65.2% / 0.6167 | 65.1% / 0.6157 | 63.8% |
+| 2026 Jan–May | ATP | 1,367 | 65.8% / 0.6299 | 65.3% / 0.6274 | 66.1% / 0.6120 | 66.5% / 0.6100 | 64.2% |
+| 2026 Jan–May | WTA | 1,247 | 66.2% / 0.6080 | 67.0% / 0.6055 | 67.2% / 0.6005 | 67.1% / 0.5999 | 63.6% |
+| 2026 Jan–May | Both | 2,614 | 66.0% / 0.6195 | 66.1% / 0.6170 | 66.6% / 0.6065 | 66.8% / 0.6052 | 63.9% |
+| 2026 Jun–Oct | ATP | 1,308 | 62.3% / 0.6414 | 63.0% / 0.6433 | 64.3% / 0.6235 | 64.3% / 0.6176 | 64.1% |
+| 2026 Jun–Oct | WTA | 1,185 | 63.8% / 0.6256 | 65.4% / 0.6220 | 65.8% / 0.6078 | 66.5% / 0.6058 | 66.0% |
+| 2026 Jun–Oct | Both | 2,493 | 63.0% / 0.6339 | 64.2% / 0.6332 | 65.0% / 0.6160 | 65.3% / 0.6120 | 65.0% |
+
+### What it shows (descriptive)
+
+- **Probabilities improve in each phase.** Phase 3 and Phase 4 have lower log loss and Brier scores than both Elo models in every period, every year, and both tours.
+- **Phase 4 beats Phase 3 on log loss almost everywhere:** in every period, every combined year, and 13 of 14 tour-years. The exception is ATP 2025, 0.6158 against 0.6145. The margins are small, 0.001–0.004 per match, matching the pre-registered results: consistent in direction, but statistically confirmed only where reported above.
+- **Accuracy is less consistent than log loss.** Phase 4 picks more winners than Phase 3 overall (+0.24 points pooled, 76 more of 31,854). It picks fewer in 2024 and 2025. Accuracy ignores how confident a prediction was, which is what these models were built to get right.
+- **The ranking heuristic** trails both models on accuracy in every period except June–October 2026, where it ties Phase 3 (64.98% against 65.02%) and is 0.36 points behind Phase 4.
+- **The two halves of 2026 differ sharply, and they also use different data sources.** January–May 2026 (Sackmann) has the lowest log loss of any year for every method. June–October (provider data) is the worst year for both Elo models: log loss 0.634 and 0.633, and Elo's 63.0% accuracy is its lowest of any year. The logistic models degraded less. Their worst year is 2025 (Phase 3 0.6167, Phase 4 0.6157), not the held-out months. Year-to-year swings of about 0.01 in log loss are larger than the Phase 3 to Phase 4 gap.
+- **Pooling 2021–2026 mixes model versions.** Each period uses the version its own evaluation specified: fitted to 2020, to 2023, or to May 2026. Two of the three periods were used for selection or already examined. These pooled figures describe long-run behavior; they are not an independent test.
+
 ## Final verification before the freeze
 
 `python -m matchup_dna.phase4_experiment verify` reads no sealed outcome. Every check passed on 6 November 2026:
