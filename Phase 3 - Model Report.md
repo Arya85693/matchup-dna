@@ -62,6 +62,7 @@ Calibration alone is worth twice the whole surface-Elo gain over ordinary Elo. I
 ATP favorites that raw surface Elo gives 0.8–0.9 won 78.5% of the time. After scaling, favorites in that bucket are predicted at 0.842 and win 83.2%.
 
 Two variants were checked and did not do better:
+
 - one \(b\) shared by both tours (combined 0.6178);
 - \(b\) fitted on 2016–2020 only (combined 0.6178).
 
@@ -79,12 +80,14 @@ A coefficient of 1 on a feature reproduces that Elo model exactly. Temperature s
 | WTA | 0.289 | 0.513 | 0.802 | 0.64 |
 
 **How to read the coefficients:**
+
 - The sum, about 0.74–0.80, is the overconfidence correction, similar to the temperature found in Experiment A.
 - The split shows that WTA predictions should lean more on surface Elo than ATP predictions do.
 
 On validation, the change against calibrated surface Elo is +0.0000 on ATP matches (standard error 0.0007), −0.0008 on WTA matches (0.0005), and −0.0003 combined (0.0004). That fails the keep rule. **Re-weighting the two ratings adds nothing beyond rescaling them.**
 
 Two numbers separate rescaling from information:
+
 - Moving from raw surface Elo to Experiment B is worth 0.0039 per match.
 - 0.0036 of that comes from temperature scaling alone, so the rest is within noise.
 
@@ -125,6 +128,7 @@ Feature groups were added to Experiment B one at a time, in an order fixed befor
 Against calibrated surface Elo, the change is −0.0076 on ATP matches (standard error 0.0017), −0.0091 on WTA matches (0.0019), and −0.0084 combined (0.0013).
 
 **Where the gain holds:**
+
 - every validation year on both tours: ATP 2021, 2022, and 2023 by 0.004–0.011, and WTA 2021, 2022, and 2023 by 0.006–0.012;
 - every surface: ATP clay 0.6323 → 0.6220, and WTA hard courts 0.6126 → 0.6046;
 - after removing the 967 overlap-flagged matches, where the combined change is still −0.0084.
@@ -143,6 +147,7 @@ The model is also well calibrated. ATP favorites predicted at 0.747 won 75.0% of
 | Form, A minus B | +0.135 | +0.284 |
 
 **What the coefficients mean, near even odds:**
+
 - **Rank.** A player whose rank number is twice the opponent's, for example 40 against 20, loses about 0.14 log-odds, roughly 3.5 points of win probability, beyond what Elo says.
 - **Inactivity.** Coming back after 60 days against an opponent who played a week ago costs about 0.25 log-odds, roughly 6 points.
 - **Form.** Form adds little.
@@ -173,6 +178,7 @@ Against the selected logistic model, the change is −0.0020 on ATP matches (sta
 That is 2.1 standard errors, so it **passes the keep rule narrowly**.
 
 **Decision: the logistic model stays primary, and LightGBM is scored as secondary.** The keep rule is a filter, not the only input to this choice. Four reasons:
+
 - The margin is small compared with how many comparisons have been made on validation.
 - LightGBM's gain mixes two effects: non-linear structure, and the extra context features the logistic model doesn't have.
 - Phase 4 tests matchup features and asks for interpretable reports, and that is much easier with a logistic model.
@@ -192,11 +198,13 @@ The official baselines stay Elo with K = 32 and surface Elo with K = 48, at a we
 | Validation WTA | 0.6186 | 0.6190 | 0.6220 | 0.6183 | +0.0004 (0.0017) | −0.0038 (0.0021) |
 
 **What it shows:**
+
 - At the same K, blending in a surface rating helps clearly on ATP matches.
 - On WTA validation at K = 32 it doesn't help.
 - At K = 48 blending looks better partly because K = 48 is too large for an overall-only rating, and averaging with the surface rating damps that.
 
 **What it doesn't justify:**
+
 - Changing the baseline. K was fixed on 1990–2009, and choosing it again now would mean tuning on validation.
 - Reading these gaps as the pure value of surface information. The surface rating is updated less often, so its effective K is different.
 
@@ -244,6 +252,7 @@ Both models and both temperature scalings were refitted on all 73,908 matches fr
 Against raw Elo the combined change is −0.0127 (standard error 0.0019). Against raw surface Elo it is −0.0126 (0.0018).
 
 **Where it holds:**
+
 - Every reserved year, on both tours. The smallest year is WTA 2026, 0.6027 to 0.5999. The largest is ATP 2025, 0.6240 to 0.6098.
 - Every surface with a recorded name. The hard-court ATP gain is the large one, 0.6213 to 0.6077. ATP grass is the small one, 0.6073 to 0.6049, on 605 matches. On that same grass slice, calibrated ordinary Elo scores 0.6030, so the selected model does not beat every baseline there.
 - After removing 797 overlap-flagged matches, the combined change against calibrated surface Elo is −0.0084 (standard error 0.0015).
@@ -283,7 +292,7 @@ Each command prints the numbers in its section. Each also writes `results/phase3
 
 Phase 2 built two ratings. Elo is a number that goes up when a player wins and down when they lose. Surface Elo keeps a separate number for clay, grass, and hard courts, then averages it with the overall number. From those numbers, Phase 2 turns a match into a win probability. Phase 3 asks a narrower question: if those probabilities are already known before the match, does anything else we also know before the match make them better?
 
-The machine learning was a logistic regression, fit separately for the men's tour and the women's tour. It is one formula. It takes a handful of differences between the two players and turns them into a win probability for either one. The differences that stayed in the formula are:
+The machine learning was a logistic regression, fit separately for the men's tour and the women's tour. It is one formula. It takes a handful of differences between the two players and turns them into a probability that the first player wins. The differences that stayed in the formula are:
 
 - the two Elo probabilities from Phase 2
 - official ranking
@@ -296,7 +305,7 @@ Two other things were tried and set aside as the main result. Adjusting the Elo 
 
 **What it showed, next to Phase 2:**
 
-- Phase 2's probabilities are too sure of themselves. Pulling them toward 50-50 is a real improvement on both tours. On the held-out matches that correction is worth 0.0047 per match, and it is the part of the gain that comes from fixing Elo rather than from adding anything new.
+- Phase 2's probabilities are too sure of themselves. Pulling them toward 50-50 is a real improvement on both tours. On the held-out matches that correction is worth about 0.005 per match, and it is the part of the gain that comes from fixing Elo rather than from adding anything new.
 - Letting the formula decide how much to trust ordinary Elo versus surface Elo adds nothing beyond that correction.
 - Ranking and time away from the tour do add information Elo does not have. Recent form adds a little. How many matches a player has played does not help, and on the men's tour it made the probabilities worse.
 - On the 13,732 matches from 2024 through May 2026, the formula's probabilities are better than recalibrated surface Elo by 0.0078 per match. It picks the winner in 65.6% of matches, against 64.4% for that Elo. The improvement shows up on both tours and in 2024, 2025, and 2026.
