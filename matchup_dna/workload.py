@@ -25,6 +25,7 @@ import re
 from collections import defaultdict
 
 from matchup_dna.load import DATA_DIR, TOURS, match_files, parse_match, to_int
+from matchup_dna.serve_stats import stat_line
 
 SET_SCORE = re.compile(r"^(\d+)-(\d+)(?:\(\d+\))?$")
 MATCH_TIEBREAK = re.compile(r"^\[(\d+)-(\d+)\]$")
@@ -42,7 +43,8 @@ RECENT_WINDOW_DAYS = 14
 
 
 def load_matches_with_workload(tours=TOURS, data_dir=DATA_DIR):
-    """Sackmann matches as matchup_dna.load builds them, plus minutes, draw size, and entry codes."""
+    """Sackmann matches as matchup_dna.load builds them, plus minutes, draw size, entry codes, and both players'
+    full statistic lines under "stats" ({"w": line, "l": line}, see serve_stats.stat_line)."""
     matches = []
     for tour in tours:
         for path in match_files(tour, data_dir):
@@ -53,6 +55,7 @@ def load_matches_with_workload(tours=TOURS, data_dir=DATA_DIR):
                     match["draw_size"] = row["draw_size"].strip()
                     match["winner_entry"] = row["winner_entry"].strip().upper()
                     match["loser_entry"] = row["loser_entry"].strip().upper()
+                    match["stats"] = {prefix: stat_line(row, prefix) for prefix in ("w", "l")}
                     match["source"] = "sackmann"
                     matches.append(match)
     return matches

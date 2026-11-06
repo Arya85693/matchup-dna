@@ -4,7 +4,8 @@ Precedence (Phase 4 Data Audit, Part 3):
 
 1. Tournament weeks up to and including SACKMANN_LAST_WEEK come from Sackmann only. A TML match linked to a
    Sackmann match is never added; it may only fill that Sackmann match's blank statistics or minutes
-   ("backfill"), and only when both sources name the same winner.
+   ("backfill"), and only when both sources name the same winner. A blank statistic line is replaced by TML's
+   whole line; a line is never mixed field by field.
 2. Editions starting after SACKMANN_LAST_WEEK come from TML, plus TennisData.app rows that match no TML row.
    (Assembling the held-out period happens only inside the frozen held-out command.)
 3. Player ids from TML and TennisData.app are mapped to Sackmann ids through validated crosswalks. A player
@@ -18,6 +19,7 @@ import hashlib
 from collections import defaultdict
 
 from matchup_dna.load import match_outcome, normalize_surface, to_int
+from matchup_dna.serve_stats import stat_line
 from matchup_dna.workload import to_day
 
 SACKMANN_LAST_WEEK = 20260525
@@ -26,7 +28,6 @@ MAX_EDITION_GAP_DAYS = 3
 # TML level codes -> Sackmann's.
 TML_LEVELS = {("ATP", "250"): "A", ("ATP", "500"): "A", ("WTA", "1000"): "PM", ("WTA", "500"): "P",
               ("WTA", "250"): "I"}
-BACKFILL_FIELDS = ("minutes", "w_ace", "w_svpt", "w_first_in", "l_ace", "l_svpt", "l_first_in")
 
 
 def provider_only_id(source, tour, provider_id):
@@ -75,15 +76,17 @@ def tml_match(row, links, tourney_date):
         match[f"{prefix}_ace"] = to_int(row[f"{prefix}_ace"])
         match[f"{prefix}_svpt"] = to_int(row[f"{prefix}_svpt"])
         match[f"{prefix}_first_in"] = to_int(row[f"{prefix}_1stIn"])
+    match["stats"] = {prefix: stat_line(row, prefix) for prefix in ("w", "l")}
     return match
 
 
-def combine(sackmann, additions):
+def combine(sackmann, additions, last_sackmann_week=SACKMANN_LAST_WEEK):
     """Sackmann matches plus additions under the precedence rules.
 
     `additions` is a list of (match, linked Sackmann match or None, same_winner) from another source. A linked
     addition is never added: when it names the same winner it fills the Sackmann match's blank fields. An unlinked
-    addition dated on or before SACKMANN_LAST_WEEK is dropped (Sackmann is the record for those weeks).
+    addition dated on or before last_sackmann_week is dropped (Sackmann is the record for those weeks). A rehearsal
+    that removes Sackmann's matches from a date passes that date's eve as last_sackmann_week.
 
     Returns (matches, report). Sackmann's own match dicts are never modified: a backfilled match is a copy with a
     "backfilled" list of the fields filled.
@@ -96,13 +99,20 @@ def combine(sackmann, additions):
                 report["linked, winners differ: not used"] += 1
                 continue
             target = replaced.get(id(linked)) or dict(linked, backfilled=[])
-            for field in BACKFILL_FIELDS:
-                if target.get(field) is None and match.get(field) is not None:
-                    target[field] = match[field]
-                    target["backfilled"].append(field)
+            if target.get("minutes") is None and match.get("minutes") is not None:
+                target["minutes"] = match["minutes"]
+                target["backfilled"].append("minutes")
+            # A statistic line is replaced whole, never mixed field by field, and only when Sackmann's is blank.
+            for prefix in ("w", "l"):
+                if "stats" in target and "stats" in match and target["stats"][prefix]["svpt"] is None \
+                        and match["stats"][prefix]["svpt"] is not None:
+                    target["stats"] = dict(target["stats"], **{prefix: match["stats"][prefix]})
+                    for field in ("ace", "svpt", "first_in"):
+                        target[f"{prefix}_{field}"] = match.get(f"{prefix}_{field}")
+                    target["backfilled"].append(f"{prefix} statistics")
             replaced[id(linked)] = target
             report["linked to Sackmann"] += 1
-        elif match["tourney_date"] <= SACKMANN_LAST_WEEK:
+        elif match["tourney_date"] <= last_sackmann_week:
             report["unlinked, in Sackmann's weeks: dropped"] += 1
         else:
             added.append(match)
