@@ -53,6 +53,24 @@ class GuardTests(unittest.TestCase):
             with self.assertRaises(SystemExit):
                 experiment.freeze(dry_run=False)
 
+    def test_an_uncommitted_or_foreign_amendment_is_refused(self):
+        amendment = Path(self.directory.name) / "phase4_protocol_amendment_1.json"
+        amendment.write_text(json.dumps({"amendment": 1, "amends_sha256": "0" * 64, "original_code_commit": "x",
+                                         "code_commit": "y", "changed_files": []}), encoding="utf-8")
+        protocol = {"code_commit": "x", "code_paths": ["matchup_dna"]}
+        with mock.patch.object(experiment, "AMENDMENT_PATH", amendment):
+            with self.assertRaises(SystemExit):
+                experiment.frozen_code_commit(protocol)
+        with mock.patch.object(experiment, "AMENDMENT_PATH", amendment), \
+                mock.patch.object(experiment, "git_ok", return_value=True), \
+                mock.patch.object(experiment, "PROTOCOL_PATH", amendment):
+            with self.assertRaises(SystemExit):
+                experiment.frozen_code_commit(protocol)
+
+    def test_without_an_amendment_the_protocol_commit_is_used(self):
+        with mock.patch.object(experiment, "AMENDMENT_PATH", Path(self.directory.name) / "none.json"):
+            self.assertEqual(experiment.frozen_code_commit({"code_commit": "abc"}), ("abc", None))
+
     def test_freeze_never_overwrites(self):
         self.missing.write_text("{}", encoding="utf-8")
         with mock.patch.object(experiment, "PROTOCOL_PATH", self.missing):

@@ -786,19 +786,91 @@ def require_committed_protocol():
     return protocol
 
 
-def check_frozen_state(protocol):
-    """Stops unless every hashed input is unchanged and the code equals the commit recorded at the freeze."""
+AMENDMENT_PATH = EXPERIMENTS_DIR / "phase4_protocol_amendment_1.json"
+AMENDMENT_REASON = (
+    "Implementation defect found when `holdout --confirm` first ran on 2026-11-05: merge.tml_match refused every TML "
+    "row whose `sealed` flag was set, including held-out rows correctly unlocked by the frozen protocol, so the "
+    "command stopped while assembling its first held-out match. No held-out output was printed, scored, or written. "
+    "The rehearsal had not exercised this path because its January-May 2026 rows were never sealed.")
+AMENDMENT_FIX = (
+    "merge.tml_match now refuses only rows without a winner column (the sealed view); a regression test checks that an "
+    "unlocked held-out row converts and a sealed row is still refused. phase4_experiment gains this amendment record "
+    "and its check. No model, feature, parameter, dataset, input file, or protocol value changed.")
+
+
+def git_ok(*arguments):
     import subprocess
+    from matchup_dna.experiment import ROOT
+    return subprocess.run(["git", *arguments], cwd=ROOT, capture_output=True).returncode == 0
+
+
+def changed_code_files(old, new, paths):
+    import subprocess
+    from matchup_dna.experiment import ROOT
+    found = subprocess.run(["git", "diff", "--name-only", old, new, "--", *paths], cwd=ROOT, capture_output=True, text=True)
+    return sorted(found.stdout.split())
+
+
+def amend():
+    """Writes amendment 1: the corrected code commit for the frozen procedure, after a documented defect. Refuses to
+    overwrite, and requires the original protocol and the corrected code to be committed and the inputs unchanged."""
+    from matchup_dna.experiment import sha256
+    if AMENDMENT_PATH.exists():
+        raise SystemExit(f"{AMENDMENT_PATH} already exists. It is never overwritten.")
+    protocol = json.loads(PROTOCOL_PATH.read_text(encoding="utf-8"))
+    if not git_ok("ls-files", "--error-unmatch", str(PROTOCOL_PATH)) or not git_ok("diff", "--quiet", "HEAD", "--", str(PROTOCOL_PATH)):
+        raise SystemExit("The original protocol must be committed and unchanged.")
+    check_inputs(protocol)
+    if uncommitted_code():
+        raise SystemExit("Commit the corrected code first, so the amendment records an exact commit:\n" + "\n".join(uncommitted_code()))
+    head = head_commit()
+    contents = {
+        "amendment": 1, "amends": str(PROTOCOL_PATH.relative_to(EXPERIMENTS_DIR.parent)),
+        "amends_sha256": sha256(PROTOCOL_PATH), "created": datetime.date.today().isoformat(),
+        "reason": AMENDMENT_REASON, "fix": AMENDMENT_FIX,
+        "original_code_commit": protocol["code_commit"], "code_commit": head,
+        "changed_files": changed_code_files(protocol["code_commit"], head, protocol["code_paths"]),
+        "results_seen_before_the_fix": "the retrospective check (2024-May 2026) only; no held-out result",
+        "inputs_unchanged": True,
+    }
+    AMENDMENT_PATH.write_text(json.dumps(contents, indent=2) + "\n", encoding="utf-8")
+    print(json.dumps(contents, indent=2))
+    print(f"\nWritten to {AMENDMENT_PATH}. Commit it before running holdout.")
+
+
+def check_inputs(protocol):
     from matchup_dna.experiment import ROOT, sha256
     changed = [path for path, digest in protocol["inputs"].items()
                if not (ROOT / path).exists() or sha256(ROOT / path) != digest]
     if changed:
         raise SystemExit("Inputs differ from the frozen protocol, so the frozen procedure cannot run:\n" + "\n".join(changed))
-    commit = protocol["code_commit"]
+
+
+def frozen_code_commit(protocol):
+    """The commit the frozen procedure must run on: the protocol's, or a committed amendment's. An amendment counts
+    only if it is committed unchanged, names this protocol by its hash, and lists exactly the code files that differ
+    between the two commits."""
+    from matchup_dna.experiment import sha256
+    if not AMENDMENT_PATH.exists():
+        return protocol["code_commit"], None
+    amendment = json.loads(AMENDMENT_PATH.read_text(encoding="utf-8"))
+    if not git_ok("ls-files", "--error-unmatch", str(AMENDMENT_PATH)) or not git_ok("diff", "--quiet", "HEAD", "--", str(AMENDMENT_PATH)):
+        raise SystemExit(f"{AMENDMENT_PATH} must be committed, unchanged.")
+    if amendment["amends_sha256"] != sha256(PROTOCOL_PATH) or amendment["original_code_commit"] != protocol["code_commit"]:
+        raise SystemExit("The amendment does not belong to this protocol.")
+    if changed_code_files(protocol["code_commit"], amendment["code_commit"], protocol["code_paths"]) != amendment["changed_files"]:
+        raise SystemExit("The code changed by the amendment is not exactly the files it lists.")
+    return amendment["code_commit"], amendment
+
+
+def check_frozen_state(protocol):
+    """Stops unless every hashed input is unchanged and the code equals the frozen commit (or a committed
+    amendment's corrected commit)."""
+    check_inputs(protocol)
+    commit, _ = frozen_code_commit(protocol)
     if uncommitted_code():
         raise SystemExit("The code has uncommitted changes; the frozen procedure runs only on the frozen code.")
-    same = subprocess.run(["git", "diff", "--quiet", commit, "HEAD", "--", *protocol["code_paths"]], cwd=ROOT)
-    if same.returncode != 0:
+    if changed_code_files(commit, "HEAD", protocol["code_paths"]):
         raise SystemExit(f"The code under {protocol['code_paths']} has changed since the frozen commit {commit}.")
 
 
@@ -855,6 +927,11 @@ def holdout(confirm):
     from matchup_dna.phase4_model import PHASE3_GROUPS
 
     out = Output()
+    commit, amendment = frozen_code_commit(protocol)
+    if amendment:
+        out(f"Running under amendment {amendment['amendment']} (code {commit}): {amendment['reason']}")
+        out(f"Fix: {amendment['fix']}")
+        out()
     rows, keys, report, _ = provider_period(*HELD_OUT, unseal_with=PROTOCOL_PATH)
     fit_rows = [r for r in rows if 20100101 <= r["tourney_date"] < HELD_OUT[0]]
     held = [r for r in rows if r["tourney_date"] >= HELD_OUT[0]]
@@ -884,7 +961,7 @@ def holdout(confirm):
             writer.writerow([row["match_id"], row["tourney_date"], row["tour"], row["a_id"], row["b_id"], row[LABEL]]
                             + [f"{predictions[name][i]:.6f}" for name in predictions])
     save("holdout", out, [PROTOCOL_PATH], ["Held-out evaluation run; see results/phase4/experiments/holdout.txt"],
-         extra={"protocol": protocol})
+         extra={"protocol": protocol, "amendment": amendment})
 
 
 # ---------------------------------------------------------------- tour-average diagnostic
@@ -1101,7 +1178,7 @@ def experiment_verify():
 def main():
     parser = argparse.ArgumentParser(description="Phase 4 experiments")
     parser.add_argument("command", choices=["profiles", "dataset", "tournament", "gbm", "round-aware", "rehearse",
-                                            "mean-check", "verify", "freeze", "retrospective", "holdout"])
+                                            "mean-check", "verify", "freeze", "amend", "retrospective", "holdout"])
     parser.add_argument("--confirm", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
@@ -1109,6 +1186,8 @@ def main():
         return freeze(args.dry_run)
     if args.command == "holdout":
         return holdout(args.confirm)
+    if args.command == "amend":
+        return amend()
     {"profiles": experiment_profiles, "dataset": experiment_dataset, "tournament": experiment_tournament,
      "gbm": experiment_gbm, "round-aware": experiment_round_aware, "rehearse": experiment_rehearse,
      "mean-check": experiment_mean_check, "verify": experiment_verify, "retrospective": retrospective}[args.command]()

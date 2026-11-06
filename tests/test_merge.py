@@ -9,6 +9,34 @@ def stats(svpt):
             "bpFaced": 2}
 
 
+class UnsealedRowTests(unittest.TestCase):
+    """Amendment 1: a held-out row unlocked by the frozen protocol must convert; a sealed row must not."""
+
+    def test_unlocked_held_out_rows_convert_and_sealed_rows_do_not(self):
+        import json
+        import tempfile
+        from pathlib import Path
+        from matchup_dna import tennisismylife as tml
+        from matchup_dna.merge import tml_match
+        from test_tennisismylife import SealTests
+
+        helper = SealTests()
+        helper.setUp()
+        try:
+            protocol = Path(helper.directory.name) / "phase4.json"
+            protocol.write_text(json.dumps({"phase": 4, "frozen": "2026-11-05"}), encoding="utf-8")
+            unlocked = tml.load_tml(helper.directory.name, unseal_with=protocol)[1]
+            self.assertTrue(unlocked["sealed"])
+            match = tml_match(unlocked, {}, 20260601)
+            self.assertEqual(match["outcome"], "completed")
+            self.assertIn("stats", match)
+            sealed = tml.load_tml(helper.directory.name)[1]
+            with self.assertRaises(PermissionError):
+                tml_match(sealed, {}, 20260601)
+        finally:
+            helper.tearDown()
+
+
 class BackfillTests(unittest.TestCase):
     def test_a_blank_line_is_replaced_whole_and_sackmann_values_are_kept(self):
         rows = eight_draw()

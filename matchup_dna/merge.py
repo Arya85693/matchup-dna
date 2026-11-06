@@ -43,8 +43,10 @@ def resolve(source, tour, provider_id, links):
 
 
 def tml_match(row, links, tourney_date):
-    """An open TML row as a Sackmann-shaped match. Sealed rows carry no result and are refused."""
-    if row.get("sealed") or "winner_id" not in row:
+    """A TML row with its result as a Sackmann-shaped match. A sealed row (rebuilt by load_tml without its winner
+    and loser columns) is refused. A held-out row unlocked by the frozen protocol keeps its `sealed` flag, which marks
+    its period, and is accepted. (Amendment 1: version 1 refused on the flag too, so the held-out command stopped.)"""
+    if "winner_id" not in row:
         raise PermissionError("sealed TML rows have no result; they open only inside the frozen held-out command")
     tour = row["tour"]
     match = {
