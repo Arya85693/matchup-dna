@@ -176,6 +176,8 @@ python -m matchup_dna.phase4_correction erratum     # writes the erratum record,
 python -m matchup_dna.phase4_correction check       # code still matches the hashes the erratum recorded
 python -m matchup_dna.posthoc_disagreement --corrected --rebuild
 python -m matchup_dna.posthoc_longrun --corrected
+python -m matchup_dna.posthoc_rank_disagreement       # June-October: Phase 4 against the ranking where they differ
+python -m matchup_dna.posthoc_rank_history            # the same for 2021 to October 2026, plus a ranking-only probability model
 ```
 
 `freeze` writes `experiments/phase4_frozen_protocol.json`, never overwrites it, and refuses while code has uncommitted changes. `retrospective` and `holdout --confirm` each run once, and only after three conditions hold:
@@ -213,7 +215,7 @@ Runs the tests. The test that counts every match is skipped when `data/` is miss
 | `matchup_dna/phase4_features.py`, `matchup_dna/phase4_model.py`, `matchup_dna/selection.py`, `matchup_dna/phase4_experiment.py` | Phase 4 dataset, features, model, selection, and commands |
 | `matchup_dna/audit_*.py` | The three Phase 4 audits |
 | `matchup_dna/phase4_correction.py` | Phase 4 erratum 1: diagnostics, independent reconciliation, the corrected held-out rebuild, and the erratum record |
-| `matchup_dna/posthoc_rank_benchmark.py`, `matchup_dna/posthoc_longrun.py`, `matchup_dna/posthoc_disagreement.py` | Post-hoc descriptive analyses (not pre-registered). `--corrected` reruns them on the erratum's predictions |
+| `matchup_dna/posthoc_rank_benchmark.py`, `matchup_dna/posthoc_longrun.py`, `matchup_dna/posthoc_disagreement.py`, `matchup_dna/posthoc_rank_disagreement.py`, `matchup_dna/posthoc_rank_history.py` | Post-hoc descriptive analyses (not pre-registered). `--corrected` reruns them on the erratum's predictions |
 | `tests/test_heldout.py` | Erratum 1 regressions: duplicates under alternate spellings, Vallejo, repeat meetings, ambiguity, split ids, chronology and leakage, reconciliation, and a sealed-row check of all 68 known duplicates |
 | `matchup_dna/matchup.py`, `matchup_dna/interpret.py`, `explain.py` | The matchup report |
 | `compare.py` | Command-line comparison of two players |

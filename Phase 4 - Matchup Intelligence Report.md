@@ -989,6 +989,51 @@ About 30 groups are compared below, so one or two will look notable by chance. G
 - **Wide intervals.** Group comparisons have broad intervals and were not corrected for multiple comparisons.
 - **The brief was cut off.** The pasted request ended part-way through Part 3, so any later parts were not done.
 
+## Post-hoc: Phase 4 against the ranking, January 2021 to October 2026 (not pre-registered)
+
+*Added 6 November 2026, after erratum 1. Descriptive only.* 2021–2023 chose the Phase 4 model, and 2024–May 2026 had already been examined. June–October 2026 uses the corrected predictions, which were examined before their rebuild. **Nothing here is an independent confirmation, and nothing here changes a model.** The 2010–2020 training matches are excluded. Every match is ranking-eligible: both ranks known and different. All methods are scored on identical matches.
+
+Two questions:
+1. **Winner picks.** When Phase 4 and "the higher-ranked player wins" pick different players, which is right more often? Exactly one is, so an exact sign test against 50% applies. Matches in one tournament are not independent, so a second test clusters the per-match difference in correct picks by tournament date. The two agree throughout.
+2. **Probabilities.** Is Phase 4 better than a ranking-only probability model? That model is a per-tour logistic regression on one feature, log(rank B ÷ rank A), with no intercept. It is fitted only on matches before each period, as Phase 4's own models were: 2010–2020, 2010–2023 and 2010–May 2026. Nothing is tuned.
+
+**Winner picks, where Phase 4 and the ranking disagree:**
+
+| Period | Eligible | Disagree | Phase 4 right | Ranking right | Phase 4 share (95%) | Exact p |
+|---|---:|---:|---:|---:|---|---:|
+| 2021–2023 (used for selection) | 15,821 | 2,234 (14.1%) | 1,281 | 953 | 57.3% (55.3–59.4) | <0.001 |
+| 2024–May 2026 (already examined) | 13,540 | 2,034 (15.0%) | 1,118 | 916 | 55.0% (52.8–57.1) | <0.001 |
+| Jun–Oct 2026, corrected | 2,430 | 310 (12.8%) | 161 | 149 | 51.9% (46.4–57.4) | 0.53 |
+| Pooled 2021–Oct 2026 | 31,791 | 4,578 (14.4%) | 2,560 | 2,018 | 55.9% (54.5–57.4) | <0.001 |
+
+- **By tour.** ATP and WTA look alike. The one weak spot is ATP in 2024–May 2026, at 53.3% (p = 0.03).
+- **Phase 3 for comparison:** 56.2%, 55.7%, 51.3% and 55.9% pooled over 4,147 disagreements.
+- **On June–October alone,** Phase 4 is right 52% of the time when it disagrees with the ranking. That is no evidence either way: 310 disagreements cannot tell 52% from 55%.
+- **Over the longer record,** both models beat the ranking about 56% of the time when they disagree.
+- **The edge shrinks across the three periods:** 57.3%, 55.0%, 51.9%.
+- **Phase 4 becomes overconfident on these matches.** It gives its own pick 0.566, 0.568 and 0.559 on average. Its picks win 0.573, 0.550 and 0.519: well calibrated in 2021–2023, increasingly overconfident afterwards.
+- **The shrinking edge has two explanations, and these data cannot separate them.** 2021–2023 was the selection period, so some optimism there is expected. Rankings may also have caught up with what ratings knew.
+
+**Probabilities, Phase 4 against the ranking-only model** (identical matches; negative favours Phase 4):
+
+| Period | Phase 4 log loss | Ranking-only log loss | Difference (se), 95% interval | p | Phase 4 / ranking Brier |
+|---|---:|---:|---|---:|---|
+| 2021–2023 | 0.6083 | 0.6291 | −0.0208 (0.0019), −0.0245 to −0.0171 | <0.001 | 0.2108 / 0.2196 |
+| 2024–May 2026 | 0.6125 | 0.6287 | −0.0162 (0.0020), −0.0202 to −0.0122 | <0.001 | 0.2129 / 0.2198 |
+| Jun–Oct 2026, corrected | 0.6081 | 0.6190 | −0.0110 (0.0050), −0.0208 to −0.0011 | 0.030 | 0.2109 / 0.2152 |
+| Pooled | 0.6101 | 0.6282 | −0.0181 (0.0013), −0.0207 to −0.0154 | <0.001 | 0.2117 / 0.2194 |
+
+By tour in June–October: ATP −0.0133 (p = 0.04), and WTA −0.0084, whose interval includes zero.
+
+**What it says:**
+- **Phase 4's probabilities are clearly better than rankings alone.** That holds in every period, including the corrected June–October matches. The gap is two to four times Phase 4's gain over Phase 3.
+- **Most of that gap was already in Phase 3.** On the same June–October matches, Phase 3's log loss is 0.6128 against the ranking-only 0.6190, so Elo, form and inactivity account for about 0.006 of Phase 4's 0.011. Phase 4's further gain over Phase 3 is the 0.005 reported in Erratum 1.
+- **Winner picks show the same direction more weakly.** Over 4,578 historical disagreements Phase 4 wins about 56%, but in the most recent five months it is no better than the ranking on picks.
+- **The trend is worth watching.** The edge on disagreements, and the calibration on them, weaken over time. Fresh predictions from November 2026 on, made before results are known, are the way to tell whether that is selection optimism fading or the advantage itself shrinking.
+- **This analysis rests entirely on outcomes already seen.** Even the very small p-values are historical evidence, not proof on unseen matches.
+
+`python -m matchup_dna.posthoc_rank_history` writes `results/phase4/experiments/posthoc_rank_history.txt` and `.json`. `python -m matchup_dna.posthoc_rank_disagreement` gives the June–October-only analysis, with breakdowns by Phase 4's confidence, the rank gap, Elo's side and surface; all are near 50/50. Add `--original` for the original rows.
+
 ## Final verification before the freeze
 
 `python -m matchup_dna.phase4_experiment verify` reads no sealed outcome. Every check passed on 6 November 2026:
