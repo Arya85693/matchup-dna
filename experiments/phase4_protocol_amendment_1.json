@@ -1,0 +1,18 @@
+{
+  "amendment": 1,
+  "amends": "experiments\\phase4_frozen_protocol.json",
+  "amends_sha256": "980e2ab80e5536adff1dbe04f25bfcaadd91bce4ba647edcc7ff5bd5420bcdbd",
+  "created": "2026-11-05",
+  "reason": "Implementation defect found when `holdout --confirm` first ran on 2026-11-05: merge.tml_match refused every TML row whose `sealed` flag was set, including held-out rows correctly unlocked by the frozen protocol, so the command stopped while assembling its first held-out match. No held-out output was printed, scored, or written. The rehearsal had not exercised this path because its January-May 2026 rows were never sealed.",
+  "fix": "merge.tml_match now refuses only rows without a winner column (the sealed view); a regression test checks that an unlocked held-out row converts and a sealed row is still refused. phase4_experiment gains this amendment record and its check. No model, feature, parameter, dataset, input file, or protocol value changed.",
+  "original_code_commit": "5cea719315eb6c11eb4d422ab9a0145dfae5f9b9",
+  "code_commit": "4f6076ef8ed3895c491e3f1d65641dc7371af964",
+  "changed_files": [
+    "matchup_dna/merge.py",
+    "matchup_dna/phase4_experiment.py",
+    "tests/test_merge.py",
+    "tests/test_phase4_experiment.py"
+  ],
+  "results_seen_before_the_fix": "the retrospective check (2024-May 2026) only; no held-out result",
+  "inputs_unchanged": true
+}
