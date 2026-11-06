@@ -1,6 +1,6 @@
 # Matchup DNA — Phase 4 Matchup Intelligence Report
 
-**Status:** Development complete, 6 November 2026. The protocol is ready to freeze. The one-time held-out evaluation (June to October 2026) has **not** been run, and its outcomes are still sealed.  
+**Status:** Complete, 5 November 2026. The protocol was frozen and committed (`7237aea`). The retrospective check ran once. The one-time held-out evaluation (June to October 2026) ran once, under amendment 1 (`00f4f50`), which corrected an implementation defect that had stopped the first attempt before it produced any output.  
 **Question:** Do serve-return abilities and genuine matchup interactions improve pre-match win probabilities beyond the Phase 3 model? And do physical workload and the difficulty of a player's route through a tournament add anything once a tournament is under way?  
 **Answer, on the 2021–2023 validation years:**
 
@@ -8,6 +8,12 @@
 - **The other groups add nothing measurable:** surface-specific and recent serve-return, first- and second-serve detail, break points, all four matchup interactions, head-to-head, and recent workload. All of them fail the pre-registered keep rule.
 - **LightGBM** with the same features is no better than the logistic model.
 - **Once a tournament is under way, knowing its earlier results helps clearly:** 0.0054 per match (0.0011) on later-round matches. Neither the workload a player carried through earlier rounds nor the strength of the opponents they beat adds anything beyond those results.
+
+**Out of sample:**
+
+- **2024–May 2026 retrospective** (seen once in Phase 3, so not fresh): the serve-return model gains 0.0014 per match (0.0006), 95% interval −0.0026 to −0.0002. WTA is clearly better; ATP is not distinguishable from zero.
+- **June–October 2026, the one-time held-out test** (2,518 matches never seen before): the gain is **0.0040 per match (0.0021), 95% interval −0.0081 to +0.0001, p = 0.055**. The direction and size are consistent with validation, and the point estimate is larger, but the interval just includes zero. Under the pre-registered rule this is **not called a statistically supported improvement**. The test was expected to be underpowered: its minimum detectable gain was 0.0050.
+- **Within a tournament,** knowing earlier results again helps clearly on held-out later-round matches: 0.0072 per match (0.0023), with an interval that excludes zero.
 
 The last section, "What Phase 4 did," says this in ordinary language. The data behind every number here is audited in [Phase 4 - Data Audit.md](Phase%204%20-%20Data%20Audit.md).
 
@@ -224,9 +230,14 @@ Individual inputs often differ a little. Elo differences are identical in only 3
 
 Both are fixed: the boundary is a parameter, and provider matches already in Sackmann within 14 days are dropped.
 
-## Frozen protocol (ready, not yet frozen)
+## Frozen protocol
 
-`python -m matchup_dna.phase4_experiment freeze --dry-run` prints the protocol without writing it. Running `freeze` writes `experiments/phase4_frozen_protocol.json`, which is never overwritten. The held-out command then requires that file to be committed and unchanged.
+`freeze` wrote `experiments/phase4_frozen_protocol.json` on 5 November 2026, and it was committed as `7237aea`:
+- **Code commit:** `5cea719`.
+- **Protocol SHA-256:** `980e2ab8…`.
+- **Inputs:** 138 hashed.
+
+It is never overwritten. The one correction, amendment 1 (below), is a separate committed record.
 
 | Item | Choice |
 |---|---|
@@ -251,9 +262,166 @@ Both are fixed: the boundary is a parameter, and provider matches already in Sac
 
 The validation gain (0.0027) is about half the tournament-start figure. Even if that gain is real, the held-out test has only about a one-in-three chance of confirming it at the 5% level. A null-looking result there would therefore be weak evidence against the feature, and it will be described that way.
 
-## Held-out evaluation, June–October 2026
+## Retrospective check, January 2024–May 2026 (run once under the frozen protocol)
 
-**Not run.** The held-out outcomes are sealed. This section will report the one-time run, all of it whatever the result.
+`retrospective` ran once on 5 November 2026, after the protocol was frozen and committed (`7237aea`, code `5cea719`). These 13,732 matches were scored once in Phase 3, so this is a robustness check, not a fresh test. Models were fitted on 2010–2023 with the frozen settings, and nothing was changed after seeing these results.
+
+P3-refit reproduces Phase 3's published reserved-period scores exactly (0.6128 / 0.2128 / 65.58%), which checks the pipeline end to end.
+
+| Model | ATP log loss | WTA log loss | Combined | Brier | Accuracy |
+|---|---|---|---|---|---|
+| P3-refit (Phase 3 groups) | 0.6116 | 0.6142 | 0.6128 | 0.2128 | 65.58% |
+| P4-refit (+ serve-return) | 0.6108 | 0.6120 | 0.6114 | 0.2123 | 65.47% |
+
+| P4-refit minus P3-refit (log loss per match) | Gap (se, by week) | 95% interval | se clustered by month |
+|---|---|---|---|
+| ATP (7,190 matches) | −0.0008 (0.0010) | −0.0028 to +0.0012 | 0.0011 |
+| WTA (6,542) | −0.0021 (0.0007) | −0.0035 to −0.0007 | 0.0008 |
+| Combined (13,732) | **−0.0014 (0.0006)** | **−0.0026 to −0.0002** | 0.0007 (interval −0.0028 to 0.0000) |
+
+**How to read it:**
+- **About half the validation gain.** The combined gain is half of the 0.0027 seen on validation, the shrinkage expected after selecting on a reused validation period.
+- **The interval excludes zero with week clustering, and only just touches it with month clustering.** So the evidence for a gain in this period is modest.
+- **WTA carries the result.** Its interval excludes zero. ATP's −0.0008 cannot be told apart from zero, and ATP 2025 was slightly worse (0.6098 to 0.6108).
+- **By year:** ATP 2024 and 2026 improve; WTA improves in all three years.
+- **By surface:** both grass slices gain about 0.005; clay is flat.
+- **Accuracy and Brier:** accuracy is 0.1 points lower, and the Brier score is 0.0005 better.
+- **Calibration:** ATP stays overconfident (calibration slope 0.911, against 0.998 for P3-refit), as on validation. Recalibration was not pre-registered.
+
+**Round-aware track (6,959 later-round matches).** R0 beats the tournament-start reference by **−0.0052 (0.0014)**, 95% interval −0.0079 to −0.0025: ATP −0.0030 (0.0017), WTA −0.0075 (0.0023). That replicates the validation result (−0.0054), and R0 again fixes calibration (slope 0.885 to 0.975). D and E were not kept, so they were not scored.
+
+## Implementation defect during the held-out run, and amendment 1
+
+`holdout --confirm` first ran on 5 November 2026, under the committed protocol, and **stopped with an error before producing any output.** Nothing was printed, scored, or written: there is no `results/phase4/final/` and no log entry.
+
+**The defect.** `merge.tml_match` refused every TML row whose `sealed` flag was set. That included held-out rows correctly unlocked by the frozen protocol, which keep the flag because it marks their period. So the command stopped while assembling its first held-out match. The rehearsal had not exercised this path, because its January–May 2026 rows were never sealed.
+
+**The correction, versioned rather than overwritten.**
+1. `tml_match` now refuses only rows without a winner column, which is what a sealed row looks like.
+2. A regression test checks that an unlocked held-out row converts and a sealed row is still refused. It fails on the frozen code and passes on the fix.
+3. A new command, `amend`, writes `experiments/phase4_protocol_amendment_1.json`. That record names the original protocol by its SHA-256, gives the defect and the fix, and records the corrected code commit and the exact files changed.
+4. The held-out command accepts the corrected code only if the amendment is committed, matches the protocol's hash, and lists exactly the files that differ from the frozen commit.
+
+The original protocol is not modified. No model, feature, parameter, dataset, input file, or protocol value changed. The only result seen before the fix was the retrospective check above, and the fix does not touch any code it used.
+
+## Held-out evaluation, June–October 2026 (run once)
+
+`holdout --confirm` ran once on 5 November 2026 under amendment 1. The amendment record (`00f4f50`) was committed and matched the protocol's hash, the corrected code was identical to `4f6076e`, and all 138 input hashes matched. Nothing was changed after seeing the results.
+
+**What was scored:**
+- **Matches:** 2,518 rated main-tour matches (1,325 ATP, 1,193 WTA) from editions starting 1 June 2026 and finished by the 5 November snapshot.
+- **Fitting rows:** every model was refitted on 87,640 matches from 2010 to the week of 25 May 2026.
+
+| How the held-out period was assembled | Count |
+|---|---|
+| TML rows in the window | 2,536 |
+| TennisData.app rows matched to TML rows | 2,431. **Both sources name the same winner in all 2,431** |
+| TennisData.app rows added because TML lacks them | 73 |
+| TennisData.app rows dropped | 136 with no usable result; 15 duplicates of TML rows by player ids |
+| Player ids, TML | 4,856 by crosswalk, 80 by unique full name, 136 new to Sackmann |
+| Player ids, TennisData.app | 141 by crosswalk, 6 by unique surname and initial, 29 new to Sackmann |
+
+### Tournament-start track (primary claim)
+
+| Model | ATP log loss | WTA log loss | Combined | Brier | Accuracy |
+|---|---|---|---|---|---|
+| P3-original (Phase 3 final model, fitted on 2010–2023) | 0.6208 | 0.6083 | 0.6149 | 0.2139 | 65.03% |
+| P3-refit (Phase 3 groups, refitted to May 2026) | 0.6209 | 0.6080 | 0.6148 | 0.2139 | 65.11% |
+| **P4-refit (+ opponent-adjusted serve and return)** | **0.6151** | **0.6060** | **0.6108** | **0.2121** | **65.47%** |
+
+| P4-refit minus P3-refit (log loss per match) | Gap | Standard error (by tournament date) | 95% interval | Two-sided p |
+|---|---|---|---|---|
+| ATP (1,325 matches, 22 tournament dates) | −0.0058 | 0.0035 | −0.0127 to +0.0011 | 0.099 |
+| WTA (1,193 matches, 20 dates) | −0.0020 | 0.0019 | −0.0058 to +0.0017 | 0.283 |
+| **Combined (2,518 matches, 28 dates)** | **−0.0040** | **0.0021** | **−0.0081 to +0.0001** | **0.055** |
+
+**Verdict under the pre-registered rule: not a statistically supported improvement.** The 95% interval includes zero, by 0.0001. What the evidence does show:
+- **It points the same way, and is larger.** The held-out gain, 0.0040, is in the same direction as validation (0.0027) and the retrospective check (0.0014), and is larger than both.
+- **Every summary measure improves:** Brier score (0.2139 to 0.2121), accuracy (65.11% to 65.47%), and the share of matches where Phase 4 had the lower loss (56.5%).
+- **The test was too small to be decisive.** Its pre-registered minimum detectable gain was 0.0050, and the observed gain is below that. So the result is inconclusive, not negative.
+
+The month-clustered standard error is smaller (0.0005), but the held-out period has only five months, too few clusters for that estimate to be trusted. The tournament-date clustering, the one specified in the protocol, is the one that counts.
+
+**Breakdowns:**
+- **By surface:** ATP improves on clay (0.6233 to 0.6106), grass (0.6193 to 0.6109), and hard (0.6192 to 0.6152). WTA improves on hard (0.6052 to 0.6022) and clay, and is flat on grass (0.6194 to 0.6201).
+- **By month:** ATP improves in all five months. WTA improves in August and October, and is flat or marginally worse in June, July, and September.
+- **By round:** finals are worse on both tours, ATP 0.7058 to 0.7421 and WTA 0.7508 to 0.7648, on 28 and 24 matches, too few to read.
+
+**Calibration.**
+
+| Model | Calibration slope, ATP | WTA | Both |
+|---|---:|---:|---:|
+| P3-refit | 0.984 | 0.988 | 0.986 |
+| P4-refit | 0.946 | 0.979 | 0.962 |
+
+Phase 4 stays a little more confident than the outcomes support on ATP, as on validation (0.913) and in the retrospective check (0.911), though less so here. ATP favorites predicted at 0.550 won 50.5% of the time. Those predicted at 0.843 won 84.3%.
+
+**P3-original against P3-refit:** +0.0001 (0.0001). Refitting Phase 3 through May 2026 changes almost nothing.
+
+### Round-aware track
+
+1,286 held-out later-round matches (657 ATP, 629 WTA).
+
+| Model | ATP | WTA | Combined | Brier | Accuracy |
+|---|---|---|---|---|---|
+| Reference: P4-refit, tournament-start information | 0.6231 | 0.5932 | 0.6085 | 0.2110 | 65.63% |
+| **R0: + round-aware Elo shifts and earlier-round dominance** | **0.6167** | **0.5853** | **0.6013** | **0.2081** | 65.47% |
+
+| R0 minus reference | Gap | Standard error | 95% interval |
+|---|---|---|---|
+| ATP | −0.0064 | 0.0028 | −0.0119 to −0.0009 |
+| WTA | −0.0079 | 0.0037 | −0.0152 to −0.0006 |
+| **Combined** | **−0.0072** | **0.0023** | **−0.0117 to −0.0027** |
+
+**Knowing a tournament's earlier results improves later-round predictions, and the interval excludes zero on both tours.** The held-out gain is larger than validation's (0.0054) and the retrospective's (0.0052), and close to that track's pre-registered minimum detectable gain of 0.0076.
+
+R0 also fixes calibration again: the slope goes from 0.909 to 1.016, and ATP from 0.854 to 0.974.
+
+Workload (D) and route difficulty (E) were rejected on validation and so were not carried into this test. The held-out period says nothing new about them.
+
+### What the three out-of-sample periods say together
+
+| Period | Matches | Serve-return gain (se) | Round-aware gain (se) |
+|---|---:|---|---|
+| Validation 2021–2023 (used for selection) | 16,039 | −0.0027 (0.0007) | −0.0054 (0.0011) |
+| Retrospective 2024–May 2026 (seen in Phase 3) | 13,732 | −0.0014 (0.0006) | −0.0052 (0.0014) |
+| **Held-out June–October 2026 (fresh)** | **2,518** | **−0.0040 (0.0021)** | **−0.0072 (0.0023)** |
+
+**The serve-return gain** is negative in all three periods, so the direction is consistent. Only the selection period and the retrospective clear the 95% bar, and the fresh test falls just short of it.
+
+**The round-aware gain** is the most robust finding of Phase 4. It is clear in every period, including the fresh one.
+
+These are associations learned from past matches, not proof of causes.
+
+## Post-hoc descriptive benchmark: "the higher-ranked player wins" (not pre-registered)
+
+**This was added after the held-out evaluation and is not part of it.** It is descriptive only:
+- no model was refitted, rescored, or changed;
+- the frozen experiment was not rerun;
+- nothing here bears on the pre-registered conclusions above.
+
+`python -m matchup_dna.posthoc_rank_benchmark` reads the saved held-out predictions, plus each player's pre-match rank on the provider row behind each match, which is the same rank the models used. It reproduces the held-out accuracies exactly before comparing.
+
+On the same 2,518 held-out matches, 25 have a missing rank and none a tied rank, so **2,493 matches are eligible**. Every method below is scored on exactly those matches.
+
+| Method, 2,493 eligible matches | ATP (1,308) | WTA (1,185) | Combined | Correct picks |
+|---|---|---|---|---:|
+| Higher-ranked player wins | 64.07% | 65.99% | 64.98% | 1,620 |
+| Phase 3 (refitted) | 64.30% | 65.82% | 65.02% | 1,621 |
+| Phase 3 (original fit) | 64.22% | 65.74% | 64.94% | 1,619 |
+| **Phase 4** | **64.30%** | **66.50%** | **65.34%** | **1,629** |
+
+| Accuracy difference, percentage points | ATP | WTA | Combined |
+|---|---:|---:|---:|
+| Phase 3 minus ranking | +0.23 | −0.17 | +0.04 |
+| Phase 4 minus ranking | +0.23 | +0.51 | +0.36 |
+| Phase 4 minus Phase 3 | +0.00 | +0.68 | +0.32 |
+
+**How to read it:**
+- **On picking winners, the models barely beat the ranking.** Phase 4 gets 9 more of 2,493 matches right than the ranking does, and 8 more than Phase 3.
+- **Those differences are a handful of matches,** well within chance at this sample size. No significance test was pre-registered for accuracy, and none is claimed here.
+- **It matches what Phase 2 found.** On validation, Elo beat the ranking by under a point on ATP, and the value of these models was in their probabilities, not their picks.
+- **What accuracy can't see.** It treats a 51% favorite who wins the same as a 90% favorite who wins. The ranking gives no probability at all, so it can't be scored on log loss or Brier score, the measures Phase 4 was built to improve.
 
 ## Final verification before the freeze
 
@@ -322,7 +490,9 @@ Phase 3 had already made about two dozen on the same years. With that many looks
 - Workload omits qualifying matches, which are not in the tour-level files. 14–19% of later-round matches involve a qualifier or lucky loser.
 - Rest days, the draw still ahead, and shot-level style could not be studied with these sources.
 - **Held-out data differs in source.** In the held-out period, ranks come from the providers, which lag the official lists by one to three weeks in 2026, and about 5% of matches come from TennisData.app without point counts. Both models get the same inputs.
-- **The held-out period is small.** At about 2,500 matches it is unlikely to detect a true gain of 0.0027 (see the protocol section).
+- **The held-out period was small.** With 2,518 matches across 28 tournament dates, it was expected to be underpowered: the minimum detectable gain was 0.0050. Its serve-return interval just includes zero (p = 0.055). It also has only five months, too few clusters for the month-clustered standard error to be trusted.
+- **Held-out inputs come from the providers, not Sackmann.** That means stale ranks and per-round dates, and 73 TennisData.app-only matches without statistics. The rehearsal showed these move probabilities by about 0.004 on average.
+- **The first held-out attempt stopped on an implementation defect.** It was corrected under amendment 1 before any held-out output existed.
 
 ## Matchup report
 
@@ -367,11 +537,14 @@ python -m matchup_dna.phase4_experiment freeze --dry-run
 python -m unittest discover -s tests
 ```
 
-**After review, in order:**
-1. `freeze` writes `experiments/phase4_frozen_protocol.json`. It refuses to overwrite.
-2. You commit that file.
-3. `retrospective` reports 2024–May 2026 once.
-4. `holdout --confirm` scores June–October 2026 once. It refuses without a committed protocol, and refuses to run twice.
+**The frozen procedure, as it was run on 5 November 2026:**
+1. `freeze` wrote `experiments/phase4_frozen_protocol.json`, committed as `7237aea`.
+2. `retrospective` reported 2024–May 2026 once.
+3. `holdout --confirm` stopped on the defect described above before any output.
+4. The fix was committed (`4f6076e`). `amend` wrote `experiments/phase4_protocol_amendment_1.json`, committed as `00f4f50`.
+5. `holdout --confirm` scored June–October 2026 once. Its output and predictions are in `results/phase4/final/` and `results/phase4/experiments/holdout.txt`.
+
+Both final commands now refuse to run again.
 
 **Run times:** about 10 minutes for `profiles`, 4 for `dataset`, 10 for `tournament`, 10 for `round-aware`, 5 for `gbm`, and 10 for `rehearse`.
 
@@ -478,4 +651,8 @@ A more flexible model, LightGBM, did no better than the simple formula.
 
 Inside a tournament, knowing who has already won helps clearly. But once those results are counted, how long the earlier matches were and how strong the beaten opponents were made no difference. A player who reaches a final through long, hard matches is predicted just as well without any fatigue adjustment.
 
-The last step is to freeze these choices and test them once on the sealed June–October 2026 matches. Those are about 2,500 matches, which may be too few to confirm a gain this size. Whatever the result, it will be reported.
+Then the choices were frozen and tested once on 2,518 matches from June to October 2026 that had never been looked at.
+
+The serving-and-returning version did better there too, by about 0.004 per match, with a higher hit rate (65.5% against 65.1%). But a test that small can't fully rule out luck: the 95% range ran from a gain of 0.008 to a loss of 0.0001. So the honest summary is "consistently better in every period, but not yet proven on fresh data." A larger fresh sample, such as next season's matches, would settle it.
+
+Inside a tournament, using the earlier results helped clearly on the fresh matches as well, by 0.007 per match. That's the most solid finding of this phase.

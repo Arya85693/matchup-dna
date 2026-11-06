@@ -85,3 +85,26 @@ commit `d5e7b0439a1b0f1fd1d979a61d93175106f2e3c5+uncommitted`
 commit `5cea719315eb6c11eb4d422ab9a0145dfae5f9b9+uncommitted`
 
 - verification: passed
+
+## 2026-11-05T20:03:48 · retrospective
+
+commit `66100ee6e2b854e2ba6425633293c7664ec87af9+uncommitted`
+
+- Retrospective check run; see results/phase4/experiments/retrospective.txt
+
+## 2026-11-05T20:22:57 · holdout
+
+commit `00f4f504968d71e50f3673c554a5e1f65ab2cce3+uncommitted`
+
+- Held-out evaluation run; see results/phase4/experiments/holdout.txt
+
+## 2026-11-05 · summary of the frozen evaluations (added by hand from the command outputs)
+
+- Retrospective 2024-May 2026 (13,732 matches, models fitted on 2010-2023): P3-refit 0.6128, P4-refit 0.6114; gap -0.0014 (se 0.0006), 95% interval -0.0026 to -0.0002; ATP -0.0008 (0.0010), WTA -0.0021 (0.0007). Round-aware R0 vs reference -0.0052 (0.0014).
+- holdout --confirm first attempt stopped on an implementation defect before any output (merge.tml_match refused unlocked held-out rows); fixed in 4f6076e and recorded as experiments/phase4_protocol_amendment_1.json (00f4f50).
+- Held-out June-October 2026 (2,518 matches, run once under amendment 1, models refitted on 87,640 matches 2010-May 2026): P3-refit 0.6148 / Brier 0.2139 / 65.11%; P4-refit 0.6108 / 0.2121 / 65.47%. Gap -0.0040 (se 0.0021, by tournament date), 95% interval -0.0081 to +0.0001, p = 0.055: not called an improvement under the pre-registered rule. ATP -0.0058 (0.0035), WTA -0.0020 (0.0019). Round-aware (1,286 later-round matches): R0 vs reference -0.0072 (0.0023), interval excludes zero.
+
+## 2026-11-05 · post-hoc descriptive benchmark (NOT pre-registered; added by hand)
+
+- `python -m matchup_dna.posthoc_rank_benchmark`: saved held-out predictions only, nothing refitted or rescored. 2,518 held-out matches; 25 with a missing rank, 0 tied; 2,493 eligible.
+- Accuracy on the 2,493: higher-ranked player 64.98% (1,620 correct); Phase 3 refit 65.02% (1,621); Phase 3 original 64.94% (1,619); Phase 4 65.34% (1,629). Phase 4 minus ranking +0.36 points; Phase 4 minus Phase 3 +0.32 points (ATP +0.00, WTA +0.68).

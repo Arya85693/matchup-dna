@@ -1,6 +1,6 @@
 # Matchup DNA
 
-**Status: Phases 0–3 complete; Phase 4 development complete, held-out test pending — local Python program**
+**Status: Phases 0–4 complete — local Python program**
 
 Matchup DNA is a long-term machine-learning and quantitative research project on professional tennis. It will start as a small local Python program and grow into a public site that serves match probabilities, player profiles, historical model evaluations, and, later, live match analysis.
 
