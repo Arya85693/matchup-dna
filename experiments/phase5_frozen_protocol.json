@@ -1,0 +1,87 @@
+{
+  "phase": 5,
+  "frozen": "2026-11-08T12:49:42",
+  "base_commit": "0ba82a19835c5935835d86b9b3ac2b4462432bb5",
+  "evaluation": {
+    "rows": "linked model matches with usable opening prices, January 2024 - October 2026",
+    "command": "python -m matchup_dna.phase5_experiment evaluate (refuses to run twice)"
+  },
+  "development": "2021-2023 (the Phase 4 validation years); its model-against-market result was first seen on 6 November 2026 by an earlier, removed draft",
+  "status_of_the_evaluation_window": "the models' outcomes there were seen in Phases 3 and 4; the models were never compared with the market there",
+  "decision_price": "opening price; the closing price is a benchmark only",
+  "margin_method": "power",
+  "blend_weights": {
+    "Phase 4": [
+      1.0991136356299627,
+      -0.0932357919914673
+    ],
+    "Phase 3": [
+      1.1140900462373964,
+      -0.11982437195022642
+    ]
+  },
+  "primary_model": "Phase 4",
+  "rules": {
+    "primary": {
+      "probability": "Phase 4",
+      "threshold": 0.05,
+      "sizing": "flat",
+      "haircut": 0.0
+    },
+    "primary, 2% price haircut": {
+      "probability": "Phase 4",
+      "threshold": 0.05,
+      "sizing": "flat",
+      "haircut": 0.02
+    },
+    "primary, quarter Kelly capped at 2%": {
+      "probability": "Phase 4",
+      "threshold": 0.05,
+      "sizing": "kelly",
+      "haircut": 0.0
+    },
+    "secondary: frozen blend": {
+      "probability": "blend Phase 4",
+      "threshold": 0.02,
+      "sizing": "flat",
+      "haircut": 0.0
+    }
+  },
+  "slices": [
+    "year",
+    "tour",
+    "surface",
+    "level",
+    "market favourite's probability",
+    "ranking"
+  ],
+  "questions": {
+    "Q1": "Phase 4 minus opening market, log loss per match, se clustered by tourney_date",
+    "Q2": "frozen Phase 4 blend minus opening market, log loss per match",
+    "Q3": "information slope of Phase 4, b with clustered se",
+    "Q4": "slices, descriptive only",
+    "Q5": "primary paper rule ROI with a tournament-date bootstrap interval; closing line value"
+  },
+  "reporting_rule": "a result is called supported only if its 95% interval excludes zero in the stated direction; slices are descriptive; nothing is changed after the evaluation is seen",
+  "code_sha256": {
+    "matchup_dna/valuebetennis.py": "ebc9aa107544f538f89fedb08bc9cd4298e3defad864fb5044f270765eff908b",
+    "matchup_dna/market.py": "02d583a786f740f1089d424f82729baf4b98a3557b5393766d69316960e3ef7e",
+    "matchup_dna/market_link.py": "cd212a747b0fcaba4b3922d5a075c8468faf9f751f7b68818580993ac8e9492c",
+    "matchup_dna/phase5_dataset.py": "61c99a098c882ebafeb9c2db4536930ec3e854a2680252c7b49e1359b8b79775",
+    "matchup_dna/signals.py": "474cb71ca537c71d031527bb7d84178f43bb880b7d6dcc9d33b509a93cd306d0",
+    "matchup_dna/backtest.py": "198bba89462f7dbbc62587692bde798ef320503a77692aa92a0848594f92d10d",
+    "matchup_dna/uncertainty.py": "e1417952e53495f1b76c2a82976303f15234d195b698cf1820ca7ce7d2d20149",
+    "matchup_dna/phase5_experiment.py": "c18731088e88ec5a953a6ef03a231dc8839668204efa7482de1355980c8bd0a6"
+  },
+  "inputs_sha256": {
+    "results/phase5/dataset.csv": "e7e55afc7fe9614ef945897073e441a246b8854c8c706386b5b30266ff7cafc7",
+    "results/phase5/settings.json": "68b99f4c3c5bee5fbb3785d1509acf84c546225abdedc3834efb4a6af845304a",
+    "results/phase4/experiments/posthoc_longrun_predictions_corrected.csv": "0f45f1f88eec92347f1e0d80bfd2f27069ed73c94cff438b997aaedb5fc7baec",
+    "data/external/valuebetennis/valuebetennis-matchs-2021.csv": "ea30ae06fab7734ada518b974aacf55bea3cde41ff569f1135c9d05f79cc9aee",
+    "data/external/valuebetennis/valuebetennis-matchs-2022.csv": "e4bab3987820ecdded8895648ac7bcbdac2539410fc5d4a9901febb6f95b114c",
+    "data/external/valuebetennis/valuebetennis-matchs-2023.csv": "fa45622d678b17176c8b950d09872538dd765a684b16e1910a3ede4e75664bfb",
+    "data/external/valuebetennis/valuebetennis-matchs-2024.csv": "09437d8208c937d9efb82af232edf6c6f8520be7ec2d6773dde71886b79c68ef",
+    "data/external/valuebetennis/valuebetennis-matchs-2025.csv": "46bd9c25673228aeb279f653b508a6e1c8f0b5291645614de6912a581f217d21",
+    "data/external/valuebetennis/valuebetennis-matchs-2026.csv": "3e1cc5f501dfbe4adad1e6c341181608dbbffd6ddaec06f6701d15dfef3d3f09"
+  }
+}
