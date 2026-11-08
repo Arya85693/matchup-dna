@@ -1,10 +1,10 @@
 # Matchup DNA
 
-**Status: Phases 0–4 complete — local Python program** (Phase 4 includes erratum 1, a post-unblinding correction of its held-out data)
+**Status: Phases 0–5 complete — local Python program** (Phase 4 includes erratum 1, a post-unblinding correction of its held-out data)
 
 Matchup DNA is a long-term machine-learning and quantitative research project on professional tennis. It will start as a small local Python program and grow into a public site that serves match probabilities, player profiles, historical model evaluations, and, later, live match analysis.
 
-The repository holds the project brief, the Phase 0 feasibility report, the Phase 1 program, and the Phase 2 rating engine. Phase 1 loads the Sackmann tour-level singles files, validates them, and compares two players using only matches from earlier tournament weeks. Phase 2 replays those matches in date order to build Elo and surface-adjusted Elo ratings, and scores their win probabilities on matches held out from tuning. The results are in [Phase 2 - Elo Report.md](Phase%202%20-%20Elo%20Report.md), in time order from the 1968 warm-up to 2023, with ATP and WTA shown separately at each stage. Phase 3 builds a pre-match feature dataset split into training (2010–2020), validation (2021–2023), and reserved (2024–May 2026) rows, chooses a model on validation, and scores that frozen model once on the reserved rows. The results are in [Phase 3 - Model Report.md](Phase%203%20-%20Model%20Report.md). Phase 4 adds point-in-time serve and return profiles, matchup interactions, and a round-aware track for workload and route difficulty. It tests them with the same keep rule, and prepares a one-time test on June–October 2026 matches from two newer sources. The sources are audited in [Phase 4 - Data Audit.md](Phase%204%20-%20Data%20Audit.md), and the results are in [Phase 4 - Matchup Intelligence Report.md](Phase%204%20-%20Matchup%20Intelligence%20Report.md).
+The repository holds the project brief, the Phase 0 feasibility report, the Phase 1 program, and the Phase 2 rating engine. Phase 1 loads the Sackmann tour-level singles files, validates them, and compares two players using only matches from earlier tournament weeks. Phase 2 replays those matches in date order to build Elo and surface-adjusted Elo ratings, and scores their win probabilities on matches held out from tuning. The results are in [Phase 2 - Elo Report.md](Phase%202%20-%20Elo%20Report.md), in time order from the 1968 warm-up to 2023, with ATP and WTA shown separately at each stage. Phase 3 builds a pre-match feature dataset split into training (2010–2020), validation (2021–2023), and reserved (2024–May 2026) rows, chooses a model on validation, and scores that frozen model once on the reserved rows. The results are in [Phase 3 - Model Report.md](Phase%203%20-%20Model%20Report.md). Phase 4 adds point-in-time serve and return profiles, matchup interactions, and a round-aware track for workload and route difficulty. It tests them with the same keep rule, and prepares a one-time test on June–October 2026 matches from two newer sources. The sources are audited in [Phase 4 - Data Audit.md](Phase%204%20-%20Data%20Audit.md), and the results are in [Phase 4 - Matchup Intelligence Report.md](Phase%204%20-%20Matchup%20Intelligence%20Report.md). Phase 5 compares the models' probabilities with Valuebetennis opening prices from 2021 to October 2026: development on 2021–2023, then one frozen evaluation on January 2024–October 2026. The market is the better forecaster, the models add no information to its price, and a paper betting rule loses. The odds data and the join are audited in [Phase 5 - Market Data Audit.md](Phase%205%20-%20Market%20Data%20Audit.md), and the results are in [Phase 5 - Quantitative Research Report.md](Phase%205%20-%20Quantitative%20Research%20Report.md).
 
 ## Purpose
 
@@ -191,6 +191,18 @@ python -m unittest discover -s tests
 
 Runs the tests. The test that counts every match is skipped when `data/` is missing.
 
+#### Phase 5
+
+Phase 5 reads the Valuebetennis season files from `data/external/valuebetennis/` (CC BY 4.0, private and gitignored). Opening prices are the decision price; closing prices are a benchmark only. Nothing is refitted: the models' probabilities are the saved chronological predictions of Phases 2–4.
+
+```powershell
+python -m matchup_dna.audit_valuebetennis          # odds audit and the join to the model's matches (no comparison)
+python -m matchup_dna.phase5_experiment dataset    # linked matches with opening prices
+python -m matchup_dna.phase5_experiment develop    # 2021-2023 only: margin method, blend weights, all analyses
+python -m matchup_dna.phase5_experiment freeze     # experiments/phase5_frozen_protocol.json, never overwritten
+python -m matchup_dna.phase5_experiment evaluate   # January 2024 - October 2026, once; checks every code and input hash
+```
+
 ### Code
 
 | File | What it does |
@@ -217,6 +229,13 @@ Runs the tests. The test that counts every match is skipped when `data/` is miss
 | `matchup_dna/phase4_correction.py` | Phase 4 erratum 1: diagnostics, independent reconciliation, the corrected held-out rebuild, and the erratum record |
 | `matchup_dna/posthoc_rank_benchmark.py`, `matchup_dna/posthoc_longrun.py`, `matchup_dna/posthoc_disagreement.py`, `matchup_dna/posthoc_rank_disagreement.py`, `matchup_dna/posthoc_rank_history.py` | Post-hoc descriptive analyses (not pre-registered). `--corrected` reruns them on the erratum's predictions |
 | `tests/test_heldout.py` | Erratum 1 regressions: duplicates under alternate spellings, Vallejo, repeat meetings, ambiguity, split ids, chronology and leakage, reconciliation, and a sealed-row check of all 68 known duplicates |
+| `matchup_dna/valuebetennis.py`, `matchup_dna/audit_valuebetennis.py` | Phase 5 odds reader and its audit |
+| `matchup_dna/market_link.py` | Odds rows to model matches: names, opponent-verified name variants, verified ids, edition tie-breaks |
+| `matchup_dna/market.py` | Implied probabilities, overround, four margin-removal methods, expected value, Kelly fraction |
+| `matchup_dna/signals.py`, `matchup_dna/backtest.py`, `matchup_dna/uncertainty.py` | Model-against-market signals (blend, information slope), paper backtests, clustered errors and the tournament-date bootstrap |
+| `matchup_dna/phase5_dataset.py`, `matchup_dna/phase5_experiment.py` | Phase 5 dataset (evaluation rows locked until the freeze) and commands |
+| `matchup_dna/posthoc_round_aware_market.py` | Post-hoc: Phase 4's round-aware model against the opening market, on later-round matches |
+| `tests/test_valuebetennis.py`, `tests/test_market*.py`, `tests/test_signals.py`, `tests/test_backtest.py`, `tests/test_uncertainty.py`, `tests/test_phase5_*.py` | Phase 5 reader, odds arithmetic, join (spelling variants, repeat meetings, team rounds, two-id players), signals, backtests, bootstrap, and the evaluation lock |
 | `matchup_dna/matchup.py`, `matchup_dna/interpret.py`, `explain.py` | The matchup report |
 | `compare.py` | Command-line comparison of two players |
 | `rate.py` | Command-line ratings and win probability for two players |
