@@ -73,15 +73,15 @@ export async function getMatch(uid: string): Promise<Loaded<MatchPage>> {
 }
 
 /** Player histories (web/.data/history, written by `python -m web.publisher.players`), checked like the snapshot. */
-async function getHistoryFile<S extends z.ZodType>(schema: S, name: string): Promise<Loaded<z.infer<S>>> {
+async function getHistoryFile<S extends z.ZodType>(schema: S, name: string, root: string = HISTORY_ROOT): Promise<Loaded<z.infer<S>>> {
   try {
-    const text = await readText("v1/manifest.json", HISTORY_ROOT);
+    const text = await readText("v1/manifest.json", root);
     if (text === null) return { ok: false, reason: "unavailable", detail: "Player histories have not been published yet." };
     const manifest = HistoryManifestSchema.safeParse(JSON.parse(text));
     if (!manifest.success) return { ok: false, reason: "unavailable", detail: "The player manifest is not valid." };
     const expected = manifest.data.files[name];
     if (!expected) return { ok: false, reason: "not_found", detail: "No such player." };
-    const body = await readText(`v1/${manifest.data.snapshot}/${name}`, HISTORY_ROOT);
+    const body = await readText(`v1/${manifest.data.snapshot}/${name}`, root);
     if (body === null) return { ok: false, reason: "unavailable", detail: `${name} is missing.` };
     if (createHash("sha256").update(body, "utf8").digest("hex") !== expected) {
       return { ok: false, reason: "unavailable", detail: `${name} does not match its hash.` };
@@ -95,9 +95,13 @@ async function getHistoryFile<S extends z.ZodType>(schema: S, name: string): Pro
 
 export const getHistoryIndex = (): Promise<Loaded<HistoryIndex>> => getHistoryFile(HistoryIndexSchema, "players/index.json");
 
-export async function getHistoryPlayer(id: string): Promise<Loaded<HistoryPlayer>> {
-  // Canonical ids: positive for Sackmann players, negative for players known only from newer providers.
-  if (!/^-?\d{1,18}$/.test(id)) return { ok: false, reason: "not_found", detail: "No such player." };
-  const loaded = await getHistoryFile(HistoryPlayerSchema, `players/${id}.json`);
-  return loaded.ok ? { ok: true, data: loaded.data.player } : loaded;
+/** A player by address, `atp-<id>` or `wta-<id>`. Canonical ids are positive for Sackmann players and negative for
+ * players known only from newer providers; ATP and WTA ids are separate pools, so the tour is always part of it. */
+export async function getHistoryPlayer(slug: string): Promise<Loaded<HistoryPlayer>> {
+  const m = /^(atp|wta)-(-?\d{1,18})$/.exec(slug);
+  if (!m) return { ok: false, reason: "not_found", detail: "No such player." };
+  const loaded = await getHistoryFile(HistoryPlayerSchema, `players/${m[1]}-${m[2]}.json`);
+  if (!loaded.ok) return loaded;
+  const p = loaded.data.player;
+  return p.tour.toLowerCase() === m[1] && String(p.id) === m[2] ? { ok: true, data: p } : { ok: false, reason: "not_found", detail: "No such player." };
 }

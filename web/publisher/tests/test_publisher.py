@@ -183,6 +183,10 @@ class SnapshotTests(unittest.TestCase):
         self.assertEqual({e["prediction_id"] for e in archive["entries"]}, stored)
         self.assertEqual(len(archive["entries"]), len(stored))
         self.assertTrue(all(abs(sum(e["p"]) - 1) < 1e-12 for e in archive["entries"]))
+        import math
+        for e in archive["entries"]:                           # the inspection data reproduces each stored probability
+            self.assertAlmostEqual(1 / (1 + math.exp(-sum(v for _, v in e["contributions"]))), e["p"][0], places=9)
+            self.assertTrue(e["issued_before_start"])
 
     def test_players_come_only_from_forecasts(self):
         manifest = self.publish()
@@ -281,11 +285,85 @@ class PlayersExportTests(unittest.TestCase):
         self.assertEqual(ann["season"]["Clay"], [1, 0])
         self.assertEqual(ann["recent"][0]["won"], False)                   # newest first
         self.assertEqual(ann["recent"][0]["opponent"], "Bo Base")
-        self.assertEqual(ann["rank"], 20)                                  # the rank printed on her latest match
         self.assertEqual(index[0]["elo_rank"], 1)
+        spark = next(p for p in index if p["id"] == 1)["spark"]
+        self.assertEqual([d for d, _ in spark], sorted(d for d, _ in spark))   # dated, oldest first
+        self.assertEqual(spark[-1][1], ann["elo"])                              # ends at the current rating
         self.assertTrue(ann["series"][-1][0].startswith("2026-03-01"))     # the trend ends today
         for doc in profiles.values():
             contract.check_any(doc)
+
+    def test_head_to_head(self):
+        import datetime as dt
+        from types import SimpleNamespace
+        from web.publisher import players
+        history = self.history()
+        retired = dict(history[0], tourney_date=20260126, match_day=20260127, outcome="retired", score="6-4 2-0 RET")
+        walkover = dict(history[0], tourney_date=20260202, match_day=20260202, outcome="walkover", score="W/O")
+        index, profiles = players.build(history + [retired, walkover], SimpleNamespace(td_rows=[], td_links={}),
+                                        dt.datetime(2026, 3, 1, tzinfo=dt.timezone.utc))
+        ann, bo = profiles[("ATP", 1)], profiles[("ATP", 2)]
+        self.assertEqual(sorted(ann["h2h"]), ["2"])                        # inactive player 3 is not an opponent here
+        meetings = ann["h2h"]["2"]
+        self.assertEqual(len(meetings), 4)                                 # the walkover does not count
+        self.assertEqual(meetings[0]["date"], "2026-01-27")                # newest first
+        self.assertTrue(meetings[0]["retired"])
+        self.assertEqual(sum(x["won"] for x in meetings), 3)
+        self.assertEqual(sum(x["won"] for x in bo["h2h"]["1"]), 1)         # mirrored from the other side
+        self.assertEqual([x["date"] for x in bo["h2h"]["1"]], [x["date"] for x in meetings])
+
+    def test_retired_players_leave_the_tables_but_not_the_history(self):
+        import datetime as dt
+        from types import SimpleNamespace
+        from web.publisher import players
+        history = self.history()
+        now = dt.datetime(2026, 3, 1, tzinfo=dt.timezone.utc)
+        sources = SimpleNamespace(td_rows=[], td_links={})
+        _, before = players.build(history, sources, now)
+        index, profiles = players.build(history, sources, now, retired={("ATP", 2): "Bo Base"})
+        self.assertEqual([p["id"] for p in index], [1])
+        ann = profiles[("ATP", 1)]
+        self.assertEqual(ann["elo"], before[("ATP", 1)]["elo"])           # their matches still count in the ratings
+        self.assertEqual(ann["recent"][0]["opponent"], "Bo Base")         # and in other players' results
+        self.assertEqual(ann["elo_rank"], 1)
+        with self.assertRaises(ValueError):                                # a listing must name the right player
+            players.build(history, sources, now, retired={("ATP", 2): "Someone Else"})
+
+    def test_retired_list_is_sourced(self):
+        from web.publisher import players
+        doc = json.loads(players.RETIRED.read_text(encoding="utf-8"))
+        for r in doc["players"]:
+            self.assertIn(r["tour"], ("ATP", "WTA"))
+            self.assertTrue(r["source"].startswith("https://"))
+            self.assertRegex(r["retired"], r"^\d{4}-\d{2}$")
+
+    def test_photos_only_for_verified_unique_identities(self):
+        from types import SimpleNamespace
+        from web.publisher.players import espn_photos
+        verdicts = {"11": {"status": "verified", "player_id": 1}, "12": {"status": "ambiguous", "player_id": 2},
+                    "13": {"status": "verified", "player_id": 3}, "14": {"status": "verified", "player_id": 3}}
+        rec = lambda h, a: SimpleNamespace(provider="espn", tour="ATP", home_id=h, away_id=a, home_name="x", away_name="y")
+        assembly = SimpleNamespace(resolvers={"espn": lambda tour, pid, name: verdicts.get(str(pid))},
+                                   records=[rec("11", "12"), rec("13", "14")])
+        photos = espn_photos(assembly)
+        self.assertEqual(set(photos), {("ATP", 1)})                  # ambiguous id 12 and two ids for player 3: no photo
+        self.assertIn("/full/11.png", photos[("ATP", 1)])
+
+    def test_missing_headshots_are_dropped_and_cached(self):
+        import datetime as dt
+        from web.publisher.players import available
+        with tempfile.TemporaryDirectory() as d:
+            cache = Path(d) / "cache.json"
+            calls = []
+            def check(url):
+                calls.append(url)
+                return {"u1": True, "u2": False, "u3": None}[url]
+            now = dt.datetime(2026, 11, 9, tzinfo=dt.timezone.utc)
+            kept = available({("ATP", 1): "u1", ("ATP", 2): "u2", ("ATP", 3): "u3"}, now, check, cache, pause=0)
+            self.assertEqual(kept, {("ATP", 1): "u1"})
+            kept_again = available({("ATP", 1): "u1", ("ATP", 2): "u2"}, now, check, cache, pause=0)
+            self.assertEqual(kept_again, {("ATP", 1): "u1"})
+            self.assertEqual(calls, ["u1", "u2", "u3"])           # the second run used the cache
 
     def test_thin_keeps_the_ends(self):
         from web.publisher.players import thin

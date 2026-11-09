@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, IBM_Plex_Mono } from "next/font/google";
 import { Sidebar } from "@/components/Sidebar";
 import { getStatus } from "@/lib/snapshot";
 import "./globals.css";
 
 const sans = Geist({ subsets: ["latin", "latin-ext"], variable: "--font-geist", display: "swap" });
-const mono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono", display: "swap" });
+const mono = IBM_Plex_Mono({ subsets: ["latin"], weight: ["400", "500", "600"], variable: "--font-plex-mono", display: "swap" });
 
 export const metadata: Metadata = {
   title: { default: "Matchup DNA", template: "%s · Matchup DNA" },

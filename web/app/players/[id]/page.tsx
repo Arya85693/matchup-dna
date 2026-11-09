@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { getHistoryIndex, getHistoryPlayer, getPlayers } from "@/lib/snapshot";
-import { pct, roundLabel } from "@/lib/format";
-import { ComparePicker } from "@/components/ComparePicker";
+import { pct, playerSlug, roundLabel } from "@/lib/format";
+import { PlayerPhoto } from "@/components/PlayerPhoto";
 import { EloChart } from "@/components/EloChart";
-import { Badge, Card, Metric, PageHeader, SurfaceDot } from "@/components/ui";
+import { Badge, Card, Metric, SurfaceDot } from "@/components/ui";
 
 export const revalidate = 300;
 type Params = { params: Promise<{ id: string }> };
@@ -18,24 +18,34 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 
 export default async function PlayerPage({ params }: Params) {
   const { id } = await params;
-  const [loaded, index, forecasts] = await Promise.all([getHistoryPlayer(id), getHistoryIndex(), getPlayers()]);
-  if (!loaded.ok) notFound();
+  const [loaded, forecasts, index] = await Promise.all([getHistoryPlayer(id), getPlayers(), getHistoryIndex()]);
+  if (!loaded.ok) {
+    // Older addresses carried only the id; send them on when exactly one player (on either tour) has it.
+    const same = /^-?\d{1,18}$/.test(id) && index.ok ? index.data.players.filter((x) => String(x.id) === id) : [];
+    if (same.length === 1) permanentRedirect(`/players/${playerSlug(same[0]!.tour, same[0]!.id)}`);
+    notFound();
+  }
   const p = loaded.data;
-  const options = index.ok
-    ? index.data.players.filter((o) => o.tour === p.tour && o.id !== p.id).map((o) => ({ id: o.id, name: o.name })).sort((a, b) => a.name.localeCompare(b.name))
-    : [];
+  const listed = new Set(index.ok ? index.data.players.filter((x) => x.tour === p.tour).map((x) => x.id) : []);
   const forecastMatches = forecasts.ok ? forecasts.data.players.find((f) => f.id === p.id)?.matches ?? [] : [];
   const [w, l] = p.season.All;
   const best = SURFACES.reduce<(typeof SURFACES)[number]>((a, s) => (p.surfaces[s].elo > p.surfaces[a].elo ? s : a), "Hard");
-  const rankText = p.rank ? `Ranked ${p.rank}${p.rank_as_of ? ` (as of ${p.rank_as_of})` : ""}` : "Unranked";
 
   return (
     <>
       <nav aria-label="Breadcrumb" className="mb-4 flex items-center gap-2 text-[13px] text-muted">
         <Link href="/players" className="hover:text-text">Players</Link><span className="text-dim">/</span><span className="text-text">{p.name}</span>
       </nav>
-      <PageHeader title={p.name} description={`${p.tour} · ${rankText} · last played ${p.last_match}`}
-                  actions={options.length > 0 ? <ComparePicker id={p.id} options={options} /> : undefined} />
+      <header className="flex flex-wrap items-center gap-5 pb-8">
+        <PlayerPhoto name={p.name} src={p.photo} size={72} />
+        <div className="min-w-0 flex-1">
+          <h1 className="text-[22px] font-semibold">{p.name}</h1>
+          <p className="mt-1 text-muted">{p.tour} · Elo #{p.elo_rank} · last played {p.last_match}</p>
+        </div>
+        <Link href={`/players/compare?tour=${p.tour}&a=${p.id}`} className="inline-flex items-center gap-2 rounded-md border border-border-strong px-3 py-1.5 text-[13px] transition-colors hover:bg-card">
+          Compare with another player
+        </Link>
+      </header>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Metric label="Elo rating" value={Math.round(p.elo)}
@@ -76,7 +86,9 @@ export default async function PlayerPage({ params }: Params) {
               {p.recent.map((r, i) => (
                 <li key={i} className="flex items-center justify-between gap-4 px-5 py-2.5">
                   <div className="min-w-0">
-                    <Link href={`/players/${r.opponent_id}`} className="truncate hover:text-accent">{r.won ? "Beat" : "Lost to"} {r.opponent}</Link>
+                    {listed.has(r.opponent_id)
+                      ? <Link href={`/players/${playerSlug(p.tour, r.opponent_id)}`} className="truncate hover:text-accent">{r.won ? "Beat" : "Lost to"} {r.opponent}</Link>
+                      : <span className="truncate">{r.won ? "Beat" : "Lost to"} {r.opponent}</span>}
                     <p className="text-[12px] text-dim"><span className="inline-flex items-center gap-1.5"><SurfaceDot surface={r.surface} />{r.event} · {roundLabel(r.round)} · {r.date}</span></p>
                   </div>
                   <Badge tone={r.won ? "pos" : "neg"}>{r.won ? "W" : "L"}</Badge>

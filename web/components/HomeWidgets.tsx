@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import type { HistoryListing, MatchSummary } from "@/lib/contract";
-import { favourite, pct, roundLabel } from "@/lib/format";
+import { favourite, pct, playerSlug, roundLabel } from "@/lib/format";
 import { Spark } from "./EloChart";
 import { LocalTime } from "./LocalTime";
 import { Badge, ProbBar, SurfaceDot } from "./ui";
@@ -155,11 +155,11 @@ export function TopPlayers({ players }: { players: HistoryListing[] }) {
       <ul className="divide-y divide-border">
         {top.map((p) => (
           <li key={p.id}>
-            <Link href={`/players/${p.id}`} className="grid grid-cols-[24px_minmax(0,1fr)_auto_72px] items-center gap-3 px-5 py-2.5 hover:bg-card-hover">
+            <Link href={`/players/${playerSlug(p.tour, p.id)}`} className="grid grid-cols-[24px_minmax(0,1fr)_auto_72px] items-center gap-3 px-5 py-2.5 hover:bg-card-hover">
               <span className="num text-[12px] text-dim">{p.elo_rank}</span>
               <span className="truncate">{p.name}</span>
               <span className="num text-[13px] font-medium">{Math.round(p.elo)}</span>
-              <Spark values={p.spark} />
+              <Spark points={p.spark} />
             </Link>
           </li>
         ))}

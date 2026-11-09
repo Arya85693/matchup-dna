@@ -1,0 +1,14 @@
+{
+  "about": "Players who have announced or completed their retirement. They are left out of player tables, Elo positions and comparisons, but their matches stay in the history, in other players' results and ratings, and in every backtest. Matched by tour and canonical id; the export checks the name too. Add a player only with a published source.",
+  "checked": "2026-11-09",
+  "players": [
+    {"tour": "ATP", "id": 104527, "name": "Stan Wawrinka", "retired": "2026-10", "note": "Retired after the Swiss Indoors, Basel.", "source": "https://lastwordonsports.com/tennis/2026/11/02/8-tennis-players-retire-october-2026/"},
+    {"tour": "ATP", "id": 105676, "name": "David Goffin", "retired": "2026-10", "note": "Retired at the Brussels ATP 250.", "source": "https://lastwordonsports.com/tennis/2026/11/02/8-tennis-players-retire-october-2026/"},
+    {"tour": "ATP", "id": 105062, "name": "Mikhail Kukushkin", "retired": "2026-10", "note": "Retired after Almaty.", "source": "https://lastwordonsports.com/tennis/2026/11/02/8-tennis-players-retire-october-2026/"},
+    {"tour": "ATP", "id": 105453, "name": "Kei Nishikori", "retired": "2026-10", "note": "Announced in April 2026 that this season would be his last; listed among October retirements after the Japan Open.", "source": "https://lastwordonsports.com/tennis/2026/11/02/8-tennis-players-retire-october-2026/"},
+    {"tour": "ATP", "id": 104792, "name": "Gael Monfils", "retired": "2026-10", "note": "Placed on the ITIA retirement list.", "source": "https://lastwordonsports.com/tennis/2026/11/02/8-tennis-players-retire-october-2026/"},
+    {"tour": "ATP", "id": 144817, "name": "Marc Andrea Huesler", "retired": "2026-07", "note": "Farewell tournament at the Zug Challenger.", "source": "https://lastwordonsports.com/tennis/2026/08/02/6-tennis-players-retire-july-2026/"},
+    {"tour": "WTA", "id": 202536, "name": "Ana Bogdan", "retired": "2026-10", "note": "Last played at the Transylvania Open, February 2026.", "source": "https://lastwordonsports.com/tennis/2026/11/02/8-tennis-players-retire-october-2026/"},
+    {"tour": "WTA", "id": 201610, "name": "Zarina Diyas", "retired": "2026-04", "note": "Formally retired in April 2026.", "source": "https://lastwordonsports.com/tennis/2026/05/01/four-tennis-players-retire-in-april-2026/"}
+  ]
+}

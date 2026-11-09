@@ -22,6 +22,10 @@ async function noHorizontalScroll(page: Page) {
 }
 
 async function accessible(page: Page) {
+  // Measure colours at rest, not halfway through an entrance animation.
+  await page.evaluate(() => Promise.all(document.getAnimations()
+    .filter((x) => x.effect?.getComputedTiming().iterations !== Infinity)
+    .map((x) => x.finished.catch(() => undefined))));
   const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
   const serious = results.violations.filter((v) => v.impact === "serious" || v.impact === "critical");
   expect(serious.map((v) => `${v.id}: ${v.help} (${v.nodes.map((n) => n.target.join(" ")).slice(0, 3).join(", ")})`)).toEqual([]);
@@ -81,7 +85,7 @@ test("matches without a forecast show a reason and never a number", async ({ pag
   expect(await rows.count()).toBeGreaterThan(0);
   for (const text of await rows.allInnerTexts()) {
     expect(text).not.toMatch(/\d+\.\d%/);
-    expect(text).toMatch(/Awaiting start time|Not forecast|No forecast|Identity check/);
+    expect(text).toMatch(/Forecast once a start time is set|Not forecast|No forecast|Identity check/);
   }
 });
 
@@ -103,23 +107,59 @@ test("old research addresses redirect to the Model Lab", async ({ page }) => {
   await expect(page).toHaveURL(/\/lab$/);
 });
 
-test("players: list, profile, and comparison", async ({ page }) => {
+test("players: filters, sorting, row navigation and comparison", async ({ page }) => {
+  test.setTimeout(120_000);
   const problems = watch(page);
   await page.goto("/players", { waitUntil: "networkidle" });
-  await page.getByRole("button", { name: "WTA", exact: true }).click();
-  await page.getByRole("button", { name: /Clay/ }).click();
-  const first = page.locator('main a[href^="/players/"]').first();
-  await first.click();
-  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-  await expect(page.getByText("Elo over time")).toBeVisible();
-  await page.getByRole("button", { name: "3Y" }).click();
+  await page.getByRole("button", { name: /^WTA/ }).click();
+  await expect(page).toHaveURL(/tour=WTA/);
+  await page.getByRole("group", { name: "Surface" }).getByRole("button", { name: "Clay" }).click();
+  await expect(page.locator('th[aria-sort="descending"]')).toContainText("Clay");
+  const elo = page.getByRole("button", { name: "Elo", exact: true });
+  await elo.click();
+  await expect(page.locator('th[aria-sort="descending"]')).toContainText("Elo");
+  await elo.click();
+  await expect(page.locator('th[aria-sort="ascending"]')).toContainText("Elo");
+
+  await page.locator("#player-search").fill("zzzz-no-such-player");
+  await expect(page.getByText(/No players match/)).toBeVisible();
+  await page.getByRole("button", { name: "Clear search and filters" }).click();
+  await expect(page.locator("tbody tr")).not.toHaveCount(1);
+
+  const spark = page.locator('tbody svg[role="img"]').first();
+  if (await spark.isVisible()) {
+    await spark.hover();
+    await expect(page.getByRole("tooltip").filter({ hasText: /\d{4}/ }).first()).toBeVisible();
+  }
+
+  // Compare opens on the tour being browsed, and only offers players from that tour.
+  await page.getByRole("link", { name: "Compare players" }).click();
+  await expect(page).toHaveURL(/\/players\/compare\?tour=WTA$/);
+  const pickers = page.getByRole("combobox");
+  await pickers.nth(0).click();
+  for (const text of await page.getByRole("option").allTextContents()) expect(text).toContain("WTA");
+  await pickers.nth(0).press("ArrowDown");
+  await pickers.nth(0).press("Enter");
+  await expect(page).toHaveURL(/\/players\/compare\?tour=WTA&a=-?\d+$/);
+  await page.getByRole("combobox").nth(1).click();
+  await page.getByRole("option").first().click();
+  await expect(page).toHaveURL(/\/players\/compare\?tour=WTA&a=-?\d+&b=-?\d+/);
+  await expect(page.getByRole("region", { name: "Statistics" })).toBeVisible();
+  const h2h = page.getByRole("region", { name: "Head to head", exact: true });
+  await expect(h2h).toContainText(/Never played before|\d+ meetings?/);
   await noHorizontalScroll(page);
   await accessible(page);
-  const select = page.locator("#compare-with");
-  const second = await select.locator("option:not([disabled])").first().getAttribute("value");
-  await select.selectOption(second!);
-  await expect(page).toHaveURL(/\/players\/compare\?a=-?\d+&b=-?\d+/);
-  await expect(page.getByText("Side by side", { exact: true })).toBeVisible();
+
+  // Switching tour starts a new comparison with that tour's players.
+  await page.getByRole("group", { name: "Tour" }).getByRole("button", { name: /^ATP/ }).click();
+  await expect(page).toHaveURL(/\/players\/compare\?tour=ATP$/);
+  await page.getByRole("combobox").nth(0).click();
+  for (const text of await page.getByRole("option").allTextContents()) expect(text).toContain("ATP");
+
+  await page.goto("/players", { waitUntil: "networkidle" });
+  await page.locator("tbody tr").first().locator("td").nth(2).click();     // the Elo cell, not the name link
+  await expect(page).toHaveURL(/\/players\/(atp|wta)--?\d+$/);
+  await expect(page.getByText("Elo over time")).toBeVisible();
   await accessible(page);
   expect(problems).toEqual([]);
 });
@@ -138,4 +178,135 @@ test("home: the carousel, the walkthrough and the Elo playground respond", async
   await page.locator("#elo-b").fill("1400");
   await expect(page.getByText(/A wins \d+%/)).toContainText("A wins 98%");
   expect(problems).toEqual([]);
+});
+
+test("model lab: every tab renders, passes accessibility checks and is keyboard navigable", async ({ page }) => {
+  test.setTimeout(120_000);
+  const problems = watch(page);
+  await page.goto("/lab", { waitUntil: "networkidle" });
+  for (const name of ["Live record", "Benchmarks", "Calibration", "Market", "Models"]) {
+    await page.getByRole("tab", { name }).click();
+    await expect(page.getByRole("tabpanel")).toBeVisible();
+    await noHorizontalScroll(page);
+    await accessible(page);
+  }
+  await page.getByRole("tab", { name: "Market" }).click();
+  await expect(page.getByText("The betting market forecast better than Matchup DNA.")).toBeVisible();
+  await expect(page.getByText("The model did not demonstrate a profitable market edge.")).toBeVisible();
+  await page.getByRole("tab", { name: "Market" }).press("ArrowRight");
+  await expect(page.getByRole("tab", { name: "Models" })).toHaveAttribute("aria-selected", "true");
+  await expect(page).toHaveURL(/#models$/);
+  await page.goto("/lab#calibration", { waitUntil: "networkidle" });
+  await expect(page.getByRole("tab", { name: "Calibration" })).toHaveAttribute("aria-selected", "true");
+  expect(problems).toEqual([]);
+});
+
+
+test("matches board: majors filter and two-sided bars", async ({ page }) => {
+  const problems = watch(page);
+  await page.goto("/matches", { waitUntil: "networkidle" });
+  await page.getByRole("button", { name: "Majors and 1000s only" }).click();
+  await expect(page).toHaveURL(/majors=1/);
+  await page.getByRole("button", { name: "Majors and 1000s only" }).click();
+  await expect(page.locator("main section[aria-label] a[href^='/matches/']").first()).toBeVisible();
+  await noHorizontalScroll(page);
+  expect(problems).toEqual([]);
+});
+
+test("match page: forecast summary, contributions, timeline and verification", async ({ page }) => {
+  test.setTimeout(90_000);
+  const problems = watch(page);
+  await page.goto("/matches", { waitUntil: "networkidle" });
+  await page.locator("main section[aria-label] a[href^='/matches/']").first().click();
+  await expect(page.getByRole("region", { name: "Forecast", exact: true })).toBeVisible();
+  const bar = page.getByRole("button", { name: /log-odds toward/ }).first();
+  if (await bar.count()) {
+    await bar.focus();
+    await expect(page.getByText(/log-odds toward/).first()).toBeVisible();
+  }
+  await expect(page.getByRole("region", { name: "Forecast history" })).toBeVisible();
+  await page.getByText("Show records").click();
+  await expect(page.getByText("Prediction id").first()).toBeVisible();
+  await page.getByRole("tab", { name: /Round-aware/ }).click();
+  await expect(page.getByRole("tab", { name: /Round-aware/ })).toHaveAttribute("aria-selected", "true");
+  await noHorizontalScroll(page);
+  await accessible(page);
+  expect(problems).toEqual([]);
+});
+
+test("archive: match and ledger views, search, filters and inspection", async ({ page }) => {
+  test.setTimeout(90_000);
+  const problems = watch(page);
+  await page.goto("/archive", { waitUntil: "networkidle" });
+  const main = page.locator("main");
+  const count = main.getByText(/\d+ of \d+ records/);
+  const total = Number((await count.textContent())!.match(/of (\d+)/)![1]);
+  expect(total).toBeGreaterThan(0);
+
+  // Match view: open the first forecast version and check its inspection panel.
+  const firstVersion = main.locator("li button[aria-expanded]").first();
+  await firstVersion.click();
+  await expect(firstVersion).toHaveAttribute("aria-expanded", "true");
+  await expect(main.getByText("Feature snapshot")).toBeVisible();
+  await expect(main.getByText(/matches the frozen protocol|differs from the frozen protocol/).first()).toBeVisible();
+  await noHorizontalScroll(page);
+  await accessible(page);
+
+  // Search narrows the records; a nonsense query shows the empty state and clearing restores everything.
+  await page.getByLabel("Search the archive").fill("zzzz-no-such-player");
+  await expect(main.getByText("No forecasts match.")).toBeVisible();
+  await main.getByRole("button", { name: "Clear filters" }).click();
+  await expect(count).toHaveText(`${total} of ${total} records`);
+
+  // Model filter keeps only one model's records.
+  await page.getByRole("group", { name: "Model" }).getByRole("button", { name: "Round-aware" }).click();
+  const roundAware = Number((await count.textContent())!.match(/^(\d+)/)![1]);
+  expect(roundAware).toBeLessThanOrEqual(total);
+  await page.getByRole("group", { name: "Model" }).getByRole("button", { name: "Both models" }).click();
+
+  // Ledger view: one row per stored forecast, sortable, each inspectable.
+  await page.getByRole("group", { name: "View" }).getByRole("button", { name: "Ledger records" }).click();
+  await expect(main.locator("tbody tr")).toHaveCount(total);
+  const position = main.getByRole("columnheader", { name: "#" });
+  await position.getByRole("button").click();
+  await expect(position).toHaveAttribute("aria-sort", "ascending");
+  const positions = await main.locator("tbody tr td:first-child").allTextContents();
+  expect(positions.map(Number)).toEqual([...positions.map(Number)].sort((a, b) => a - b));
+  await main.getByRole("button", { name: "Inspect" }).first().click();
+  await expect(main.getByText("Feature snapshot")).toBeVisible();
+  await noHorizontalScroll(page);
+  await accessible(page);
+  expect(problems).toEqual([]);
+});
+
+test("players: ATP and WTA ids are separate, and old addresses redirect only when unambiguous", async ({ page }) => {
+  // The players route streams (it has a loading state), so a missing player shows the not-found page with status 200
+  // and a noindex tag; check what is rendered rather than the status code.
+  const notFound = async (path: string) => {
+    await page.goto(path, { waitUntil: "networkidle" });
+    return (await page.locator("h1").textContent()) === "Not found";
+  };
+  // 200748 is Venus Williams on the WTA and a different player on the ATP: each tour address loads its own player.
+  await page.goto("/players/wta-200748", { waitUntil: "networkidle" });
+  await expect(page.locator("h1")).toHaveText("Venus Williams");
+  await page.goto("/players/atp-200748", { waitUntil: "networkidle" });
+  await expect(page.locator("h1")).not.toHaveText(/Venus Williams|Not found/);
+  expect(await notFound("/players/200748")).toBe(true);                    // ambiguous old address: never guessed
+  expect(await notFound("/players/wta-999999999999")).toBe(true);
+
+  // The top ATP player's old numeric address redirects to the tour address when no WTA player shares the id.
+  await page.goto("/players", { waitUntil: "networkidle" });
+  const href = await page.locator('main a[href^="/players/atp-"]').first().getAttribute("href");
+  const id = href!.replace("/players/atp-", "");
+  if (await notFound(`/players/wta-${id}`)) {
+    await page.goto(`/players/${id}`, { waitUntil: "networkidle" });
+    await expect(page).toHaveURL(new RegExp(`/players/atp-${id}$`));
+  }
+});
+
+test("compare: the tour decides which player an id means", async ({ page }) => {
+  await page.goto("/players/compare?tour=WTA&a=200748");
+  await expect(page.getByRole("region", { name: "Players" })).toContainText("Venus Williams");
+  await page.goto("/players/compare?tour=ATP&a=200748");
+  await expect(page.getByRole("region", { name: "Players" })).not.toContainText("Venus Williams");
 });

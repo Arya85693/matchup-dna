@@ -13,6 +13,11 @@ export const LEVELS: Record<string, Record<string, string>> = {
   WTA: { G: "Grand Slam", PM: "WTA 1000", P: "WTA 500", I: "WTA Tour", F: "WTA Finals", D: "Billie Jean King Cup", O: "Olympics" },
 };
 
+/** A player's address: ATP and WTA ids are separate pools, so the tour is part of it (e.g. atp-206173, wta--12345). */
+export function playerSlug(tour: string, id: number): string {
+  return `${tour.toLowerCase()}-${id}`;
+}
+
 export function roundLabel(round: string): string {
   return ROUNDS[round] ?? round;
 }

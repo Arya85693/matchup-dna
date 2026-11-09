@@ -392,8 +392,11 @@ def archive(snap, now):
         order = snap.order(uid)
         summary = snap.summary(uid, now)
         result = summary["result"]
+        settlement = snap.settled.get(uid)
         for row in rows:
-            p, _ = snap.aligned(row, order)
+            p, sign = snap.aligned(row, order)
+            content = json.loads(row["content_json"])
+            inputs = content["inputs"]
             fav = 0 if p[0] > p[1] else 1 if p[1] > p[0] else None
             won = None
             if result and result["status"] == "completed" and result["winner_index"] is not None and fav is not None:
@@ -407,6 +410,16 @@ def archive(snap, now):
                 "superseded": row["prediction_id"] != rows[-1]["prediction_id"],
                 "result_status": result["status"] if result else None, "favourite_won": won,
                 "record_hash": row["record_hash"], "ledger_position": row["seq"],
+                # Inspection: everything below is copied from the stored forecast, oriented to the first player listed.
+                "supersedes": row["supersedes"],
+                "issued_before_start": bool(row["scheduled_start"]) and row["issued_at"] < row["scheduled_start"],
+                "settled_at": settlement.get("settled_at") if settlement else None,
+                "result_state": settlement.get("state") if settlement else None,
+                "features": {k: sign * v for k, v in inputs["features"].items()},
+                "contributions": sorted(([k, sign * v] for k, v in inputs["contributions"].items()), key=lambda kv: -abs(kv[1])),
+                "integrity": {"input_sha256": row["input_sha256"], "model_sha256": content["model_sha256"],
+                              "code_sha256": content.get("code_sha256"),
+                              "code_matches_protocol": content.get("code_sha256") == snap.protocol["code_sha256"]},
             })
     entries.sort(key=lambda e: (e["issued_at"], e["ledger_position"]), reverse=True)
     return _clean({"schema_version": SCHEMA_VERSION, "generated_at": iso(now), "entries": entries})

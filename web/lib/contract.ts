@@ -241,6 +241,15 @@ export const ArchiveSchema = z.object({
     favourite_won: z.boolean().nullable(),
     record_hash: z.string(),
     ledger_position: z.number().int(),
+    supersedes: z.string().nullable(),
+    issued_before_start: z.boolean(),
+    settled_at: UtcTime.nullable(),
+    result_state: z.enum(["settled", "conflict"]).nullable(),
+    features: z.record(z.string(), z.number()),
+    contributions: z.array(z.tuple([z.string(), z.number()])),
+    integrity: z.object({
+      input_sha256: z.string(), model_sha256: z.string(), code_sha256: z.string().nullable(), code_matches_protocol: z.boolean(),
+    }),
   })),
 });
 
@@ -276,10 +285,10 @@ export const HistoryIndexSchema = z.object({
   schema_version: z.literal("1"),
   generated_at: UtcTime,
   players: z.array(z.object({
-    id: z.number().int(), tour: z.enum(["ATP", "WTA"]), name: z.string(), rank: z.number().int().nullable(),
-    elo: z.number(), elo_rank: z.number().int(), elo_change_90d: z.number().nullable(), last_match: z.string(),
-    rated_matches: z.number().int(), surfaces: z.record(z.enum(SURFACE_KEYS), z.number()), season: WinLoss,
-    spark: z.array(z.number()),
+    id: z.number().int(), tour: z.enum(["ATP", "WTA"]), name: z.string(), photo: z.string().url().nullable(), elo: z.number(), elo_rank: z.number().int(), elo_change_90d: z.number().nullable(),
+    last_match: z.string(), rated_matches: z.number().int(), surfaces: z.record(z.enum(SURFACE_KEYS), z.number()),
+    season: WinLoss, spark: z.array(z.tuple([z.string(), z.number()])),
+    surface_matches: z.record(z.enum(SURFACE_KEYS), z.number().int()),
   })),
 });
 
@@ -287,8 +296,7 @@ export const HistoryPlayerSchema = z.object({
   schema_version: z.literal("1"),
   generated_at: UtcTime,
   player: z.object({
-    id: z.number().int(), tour: z.enum(["ATP", "WTA"]), name: z.string(), rank: z.number().int().nullable(),
-    rank_as_of: z.string().nullable(), elo: z.number(), elo_rank: z.number().int(), rated_matches: z.number().int(),
+    id: z.number().int(), tour: z.enum(["ATP", "WTA"]), name: z.string(), photo: z.string().url().nullable(), elo: z.number(), elo_rank: z.number().int(), rated_matches: z.number().int(),
     elo_change_90d: z.number().nullable(), last_match: z.string(),
     surfaces: z.record(z.enum(SURFACE_KEYS), z.object({ elo: z.number(), matches: z.number().int() })),
     season: z.object({ year: z.number().int(), All: WinLoss, Hard: WinLoss, Clay: WinLoss, Grass: WinLoss }),
@@ -297,12 +305,16 @@ export const HistoryPlayerSchema = z.object({
       date: z.string(), event: z.string(), round: z.string(), surface: z.string().nullable(),
       opponent_id: z.number().int(), opponent: z.string(), won: z.boolean(),
     })),
+    /** Meetings with each other active player on the same tour, newest first; keys are opponent ids. */
+    h2h: z.record(z.string().regex(/^-?\d{1,18}$/), z.array(z.object({
+      date: z.string(), event: z.string(), round: z.string(), surface: z.string().nullable(), won: z.boolean(), retired: z.boolean(),
+    }))).default({}),
   }),
 });
 
 export const HistoryManifestSchema = z.object({
   schema_version: z.literal("1"), generated_at: UtcTime, snapshot: z.string().regex(/^\d{8}T\d{6}Z$/),
-  files: z.record(z.string(), z.string().regex(/^[0-9a-f]{64}$/)), players: z.number().int(),
+  files: z.record(z.string(), z.string().regex(/^[0-9a-f]{64}$/)), players: z.number().int().optional(),
 });
 
 export type HistoryIndex = z.infer<typeof HistoryIndexSchema>;
@@ -325,3 +337,4 @@ export type MatchPage = z.infer<typeof MatchPageSchema>;
 export type Status = z.infer<typeof StatusSchema>;
 export type TrackRecord = z.infer<typeof TrackRecordSchema>;
 export type Manifest = z.infer<typeof ManifestSchema>;
+

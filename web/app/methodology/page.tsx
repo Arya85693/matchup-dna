@@ -42,7 +42,7 @@ export default function Methodology() {
         </Card>
         <Card title="What works, and what does not">
           <div className="grid gap-3 text-muted">
-            <p>Ranking, inactivity and form improve on Elo alone, and the round-aware update helps later rounds.</p>
+            <p>Ranking, inactivity and form improve on Elo alone, and the round-aware update helps later rounds. Official rankings were the benchmark the earlier models had to beat; in post-hoc checks, the model&apos;s probabilities did, though its edge in picking winners narrowed over time.</p>
             <p>Serve-and-return gains were not confirmed, matchup and fatigue features added nothing, and the betting market forecasts better.</p>
           </div>
         </Card>

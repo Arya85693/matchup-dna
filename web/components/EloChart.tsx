@@ -105,15 +105,44 @@ export function EloChart({ series, height = 260 }: { series: Series[]; height?: 
   );
 }
 
-/** A tiny trend line for tables (single series, no axes). */
-export function Spark({ values, width = 72, height = 22 }: { values: number[]; width?: number; height?: number }) {
-  if (values.length < 2) return <span className="text-dim">—</span>;
+/**
+ * A small Elo trend for tables. With dated points it shows the date and rating under the pointer (or keyboard focus,
+ * stepping with the arrow keys); the line is green when the trend ends higher than it starts, red when lower.
+ */
+export function Spark({ points, width = 84, height = 24 }: { points: [string, number][]; width?: number; height?: number }) {
+  const [i, setI] = useState<number | null>(null);
+  if (points.length < 2) return <span className="text-dim">—</span>;
+  const values = points.map(([, v]) => v);
   const lo = Math.min(...values), hi = Math.max(...values), span = hi - lo || 1;
-  const pts = values.map((v, i) => `${(i / (values.length - 1)) * width},${height - 2 - ((v - lo) / span) * (height - 4)}`).join(" ");
+  const px = (k: number) => (k / (points.length - 1)) * width;
+  const py = (v: number) => height - 3 - ((v - lo) / span) * (height - 6);
   const up = values[values.length - 1]! >= values[0]!;
+  const fmt = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+  const first = points[0]!, last = points[points.length - 1]!;
   return (
-    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} aria-hidden="true">
-      <polyline className="anim-draw" pathLength={1} points={pts} fill="none" stroke={up ? "var(--color-pos)" : "var(--color-neg)"} strokeWidth="1.5" strokeLinejoin="round" />
-    </svg>
+    <span className="relative inline-block align-middle" onMouseLeave={() => setI(null)}>
+      <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} role="img" tabIndex={0}
+           aria-label={`Elo trend from ${Math.round(first[1])} on ${fmt(first[0])} to ${Math.round(last[1])} on ${fmt(last[0])}`}
+           className="block cursor-crosshair rounded-sm outline-offset-2"
+           onClick={(e) => e.stopPropagation()}
+           onMouseMove={(e) => {
+             const box = e.currentTarget.getBoundingClientRect();
+             setI(Math.round(((e.clientX - box.left) / box.width) * (points.length - 1)));
+           }}
+           onFocus={() => setI(points.length - 1)} onBlur={() => setI(null)}
+           onKeyDown={(e) => {
+             if (e.key === "ArrowLeft") { e.preventDefault(); e.stopPropagation(); setI((k) => Math.max(0, (k ?? points.length - 1) - 1)); }
+             if (e.key === "ArrowRight") { e.preventDefault(); e.stopPropagation(); setI((k) => Math.min(points.length - 1, (k ?? 0) + 1)); }
+           }}>
+        <polyline className="anim-draw" pathLength={1} points={points.map(([, v], k) => `${px(k)},${py(v)}`).join(" ")} fill="none"
+                  stroke={up ? "var(--color-pos)" : "var(--color-neg)"} strokeWidth="1.5" strokeLinejoin="round" />
+        {i !== null && <circle cx={px(i)} cy={py(points[i]![1])} r="2.5" fill="var(--color-text)" />}
+      </svg>
+      {i !== null && (
+        <span role="tooltip" className="pointer-events-none absolute bottom-full right-0 z-20 mb-1.5 whitespace-nowrap rounded border border-border-strong bg-bg px-2 py-1 text-[11px] shadow-lg">
+          <span className="text-dim">{fmt(points[i]![0])}</span> <span className="fig text-text">{Math.round(points[i]![1])}</span>
+        </span>
+      )}
+    </span>
   );
 }
