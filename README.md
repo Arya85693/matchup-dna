@@ -228,6 +228,17 @@ python -m matchup_dna.forecasting evaluate --monitor # interim monitor of the pr
 python -m matchup_dna.forecasting evaluate --final   # the one P1 evaluation, on or after 15 July 2027
 ```
 
+To run the daily job automatically on Windows, register it in Task Scheduler at 07:00 and 19:00 local time:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\install_schedule.ps1            # uses the python first on PATH
+powershell -ExecutionPolicy Bypass -File scripts\install_schedule.ps1 -Remove    # removes both tasks
+```
+
+- Each task runs `scripts\run_daily.cmd` with that Python, and appends the output to `data\logs\daily.log`.
+- A run missed while the computer was off starts when it is next on.
+- Commit `forecasts/ledger.jsonl` every few days: the commit history is the outside evidence that forecasts preceded results.
+
 `python -m matchup_dna.forecasting protocol freeze` writes the prospective protocol to `experiments/phase6_prospective_protocol.json` and refuses to overwrite it. Freeze it after committing the code; the prospective record (P1) starts at the freeze.
 
 ### Code
