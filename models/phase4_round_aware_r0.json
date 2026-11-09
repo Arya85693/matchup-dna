@@ -1,0 +1,177 @@
+{
+  "description": "Phase 4 round-aware model (R0): the tournament-start information plus the completed earlier rounds of the same tournament. Not a live, point-by-point model.",
+  "fit": {
+    "from": 20100101,
+    "rule": "every model refitted per tour on all rated matches from 2010 to the week of 25 May 2026, L2 held at the values above; P3-original fitted on 2010-2023; profile settings and means held fixed",
+    "through_week": 20260525
+  },
+  "kind": "round_aware",
+  "model_version": "phase4-r0-v1",
+  "population": "later-round knockout matches where at least one player has already played in the edition and both players' earlier rounds are complete (Phase 4 Data Audit A6-A7)",
+  "provenance": {
+    "erratum": "experiments/phase4_erratum_1.json",
+    "erratum_sha256": "86484333f047ea74d963c4dff424c6967423f040c0d2daca7fa547383cf8a781",
+    "feature_code": "matchup_dna/phase4_model.py, profiles.py, round_aware.py, features.py",
+    "frozen_protocol": "experiments/phase4_frozen_protocol.json",
+    "frozen_protocol_sha256": "980e2ab80e5536adff1dbe04f25bfcaadd91bce4ba647edcc7ff5bd5420bcdbd",
+    "numpy": "2.3.0",
+    "profile_settings_sha256": "4e37f9ddd4c8feefd292f46320f642f6468cd129d673ca181350c1d48e99c546"
+  },
+  "research_name": "R0",
+  "tours": {
+    "ATP": {
+      "coefficients": [
+        0.11499686193392743,
+        0.5432135848252474,
+        -0.21915381614937396,
+        -0.03952504734793988,
+        -0.1083074487402187,
+        0.04333821386776033,
+        0.3245907694977315,
+        0.21893777312582188,
+        -0.05245485340952627,
+        0.13662711310544223,
+        -0.0035058626350176303,
+        0.15024760515453228
+      ],
+      "coefficients_per_feature_unit": {
+        "elo_logit": 0.08258458652397555,
+        "form_diff": 0.19973523170536828,
+        "log_days_since_diff": -0.1050017687062671,
+        "log_rank_diff": -0.13213984156213196,
+        "no_stats_diff": -0.5744846970864689,
+        "ra_dominance_diff": 1.3611629666473288,
+        "ra_elo_shift_logit": 1.2451332298731352,
+        "ra_surface_elo_shift_logit": -0.02157492006580718,
+        "rank_missing_diff": -1.316546043113274,
+        "return_diff": 1.3982554214179455,
+        "serve_diff": 1.8259638125251956,
+        "surface_elo_logit": 0.37889184356249983
+      },
+      "feature_names": [
+        "elo_logit",
+        "surface_elo_logit",
+        "log_rank_diff",
+        "rank_missing_diff",
+        "log_days_since_diff",
+        "form_diff",
+        "serve_diff",
+        "return_diff",
+        "no_stats_diff",
+        "ra_elo_shift_logit",
+        "ra_surface_elo_shift_logit",
+        "ra_dominance_diff"
+      ],
+      "fit_rows": 22190,
+      "fit_rows_sha256": "d3d47e2fe2eee280e4fb7b8a380394237f340ebd42cfae95d0d9818772b983fb",
+      "groups": [
+        "rank",
+        "inactivity",
+        "form",
+        "serve_return",
+        "ra_controls"
+      ],
+      "l2": 100.0,
+      "preprocessing": {
+        "dominance_mean": -9.894443684086118e-17,
+        "experience_mean": 4.56358952212183,
+        "rank_impute": 316.0,
+        "representation": "adjusted",
+        "return_mean": 0.3725814835526976,
+        "serve_mean": 0.6454460537353344
+      },
+      "representation": "adjusted",
+      "scale": [
+        1.3924736657795351,
+        1.4336903632385583,
+        1.6584991593646503,
+        0.030021773681742168,
+        1.0314821366790397,
+        0.2169783142299553,
+        0.17776407575615777,
+        0.15657924136907767,
+        0.09130766002219724,
+        0.1097289107924322,
+        0.16249713205537505,
+        0.1103817903043646
+      ]
+    },
+    "WTA": {
+      "coefficients": [
+        -0.22454786924712497,
+        0.7863977151037588,
+        -0.1452053285551587,
+        0.009278966499978262,
+        -0.1412205344930921,
+        0.0382294418668757,
+        0.35623492930852274,
+        0.23241664846552076,
+        -0.030314058573074856,
+        -0.02471710015690154,
+        0.20608914482300675,
+        0.14460672561866816
+      ],
+      "coefficients_per_feature_unit": {
+        "elo_logit": -0.1823810461495744,
+        "form_diff": 0.17515508417581363,
+        "log_days_since_diff": -0.1317661146287223,
+        "log_rank_diff": -0.08955860107426614,
+        "no_stats_diff": -0.1717499430108063,
+        "ra_dominance_diff": 1.10102301833335,
+        "ra_elo_shift_logit": -0.24274157845325126,
+        "ra_surface_elo_shift_logit": 1.3766349031975031,
+        "rank_missing_diff": 0.18330017504041685,
+        "return_diff": 1.9568318267367524,
+        "serve_diff": 2.4915479302968464,
+        "surface_elo_logit": 0.6231587502120086
+      },
+      "feature_names": [
+        "elo_logit",
+        "surface_elo_logit",
+        "log_rank_diff",
+        "rank_missing_diff",
+        "log_days_since_diff",
+        "form_diff",
+        "serve_diff",
+        "return_diff",
+        "no_stats_diff",
+        "ra_elo_shift_logit",
+        "ra_surface_elo_shift_logit",
+        "ra_dominance_diff"
+      ],
+      "fit_rows": 19902,
+      "fit_rows_sha256": "5d93537f31b916debf7914b6dcbaa0e0b078ee6981c0ae392a0914e30911aceb",
+      "groups": [
+        "rank",
+        "inactivity",
+        "form",
+        "serve_return",
+        "ra_controls"
+      ],
+      "l2": 0.0,
+      "preprocessing": {
+        "dominance_mean": -7.742887941813472e-18,
+        "experience_mean": 4.406231834165044,
+        "rank_impute": 363.0,
+        "representation": "adjusted",
+        "return_mean": 0.4440733579766785,
+        "serve_mean": 0.573658592683689
+      },
+      "representation": "adjusted",
+      "scale": [
+        1.2312017832322812,
+        1.2619540603998798,
+        1.6213443132586194,
+        0.05062170015894579,
+        1.0717515264907793,
+        0.21826053206941182,
+        0.14297735354666866,
+        0.11877190737085613,
+        0.17650112740455196,
+        0.10182474841928128,
+        0.1497050120873185,
+        0.13133851264759522
+      ]
+    }
+  }
+}
