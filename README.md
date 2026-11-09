@@ -1,10 +1,16 @@
 # Matchup DNA
 
-**Status: Phases 0–5 complete — local Python program** (Phase 4 includes erratum 1, a post-unblinding correction of its held-out data)
+**Status: Phases 0–5 complete; Phase 6 forecasting foundation in place — local Python program** (Phase 4 includes erratum 1, a post-unblinding correction of its held-out data. Phase 6 takes fixtures and recent results from ESPN's public scoreboards; the daily job exists but no scheduler runs it yet)
 
 Matchup DNA is a long-term machine-learning and quantitative research project on professional tennis. It will start as a small local Python program and grow into a public site that serves match probabilities, player profiles, historical model evaluations, and, later, live match analysis.
 
-The repository holds the project brief, the Phase 0 feasibility report, the Phase 1 program, and the Phase 2 rating engine. Phase 1 loads the Sackmann tour-level singles files, validates them, and compares two players using only matches from earlier tournament weeks. Phase 2 replays those matches in date order to build Elo and surface-adjusted Elo ratings, and scores their win probabilities on matches held out from tuning. The results are in [Phase 2 - Elo Report.md](Phase%202%20-%20Elo%20Report.md), in time order from the 1968 warm-up to 2023, with ATP and WTA shown separately at each stage. Phase 3 builds a pre-match feature dataset split into training (2010–2020), validation (2021–2023), and reserved (2024–May 2026) rows, chooses a model on validation, and scores that frozen model once on the reserved rows. The results are in [Phase 3 - Model Report.md](Phase%203%20-%20Model%20Report.md). Phase 4 adds point-in-time serve and return profiles, matchup interactions, and a round-aware track for workload and route difficulty. It tests them with the same keep rule, and prepares a one-time test on June–October 2026 matches from two newer sources. The sources are audited in [Phase 4 - Data Audit.md](Phase%204%20-%20Data%20Audit.md), and the results are in [Phase 4 - Matchup Intelligence Report.md](Phase%204%20-%20Matchup%20Intelligence%20Report.md). Phase 5 compares the models' probabilities with Valuebetennis opening prices from 2021 to October 2026: development on 2021–2023, then one frozen evaluation on January 2024–October 2026. The market is the better forecaster, the models add no information to its price, and a paper betting rule loses. The odds data and the join are audited in [Phase 5 - Market Data Audit.md](Phase%205%20-%20Market%20Data%20Audit.md), and the results are in [Phase 5 - Quantitative Research Report.md](Phase%205%20-%20Quantitative%20Research%20Report.md).
+The repository holds the project brief, the Phase 0 feasibility report, the Phase 1 program, and the Phase 2 rating engine. Phase 1 loads the Sackmann tour-level singles files, validates them, and compares two players using only matches from earlier tournament weeks. Phase 2 replays those matches in date order to build Elo and surface-adjusted Elo ratings, and scores their win probabilities on matches held out from tuning. The results are in [Phase 2 - Elo Report.md](Phase%202%20-%20Elo%20Report.md), in time order from the 1968 warm-up to 2023, with ATP and WTA shown separately at each stage. Phase 3 builds a pre-match feature dataset split into training (2010–2020), validation (2021–2023), and reserved (2024–May 2026) rows, chooses a model on validation, and scores that frozen model once on the reserved rows. The results are in [Phase 3 - Model Report.md](Phase%203%20-%20Model%20Report.md). Phase 4 adds point-in-time serve and return profiles, matchup interactions, and a round-aware track for workload and route difficulty. It tests them with the same keep rule, and prepares a one-time test on June–October 2026 matches from two newer sources. The sources are audited in [Phase 4 - Data Audit.md](Phase%204%20-%20Data%20Audit.md), and the results are in [Phase 4 - Matchup Intelligence Report.md](Phase%204%20-%20Matchup%20Intelligence%20Report.md). Phase 5 compares the models' probabilities with Valuebetennis opening prices from 2021 to October 2026: development on 2021–2023, then one frozen evaluation on January 2024–October 2026. The market is the better forecaster, the models add no information to its price, and a paper betting rule loses. The odds data and the join are audited in [Phase 5 - Market Data Audit.md](Phase%205%20-%20Market%20Data%20Audit.md), and the results are in [Phase 5 - Quantitative Research Report.md](Phase%205%20-%20Quantitative%20Research%20Report.md). Phase 6 runs both frozen Phase 4 models forward:
+- the tournament-start model, and the round-aware model R0 for later rounds;
+- forecasts are issued for fixtures that have not been played and stored before the match, unchangeable;
+- results are attached afterwards;
+- the forecasts are scored under a prospective protocol frozen before any counted forecast.
+
+The design is in [Phase 6 - Audit, Plan and Architecture.md](Phase%206%20-%20Audit%2C%20Plan%20and%20Architecture.md), and the verification and open issues are in [Phase 6 - Production Forecasting Report.md](Phase%206%20-%20Production%20Forecasting%20Report.md).
 
 ## Purpose
 
@@ -38,7 +44,7 @@ Each phase is finished only when its completion standard in the brief is met. La
 | 3 | Point-in-time features and a supervised model compared with that baseline |
 | 4 | Matchup features, tested for whether they improve predictions, plus interpretable reports |
 | 5 | Market-odds comparison, signals, and paper backtests |
-| 6 | PostgreSQL storage and a Python API |
+| 6 | Production forecasting: frozen models run forward, an immutable prediction store (SQLite now, PostgreSQL when hosted), outcome settlement, prospective evaluation, and the API layer the site will call |
 | 7 | Public website MVP |
 | 8 | Scheduled updates for fixtures, results, and new predictions |
 | 9 | In-play win probabilities from incoming match states |
@@ -203,6 +209,27 @@ python -m matchup_dna.phase5_experiment freeze     # experiments/phase5_frozen_p
 python -m matchup_dna.phase5_experiment evaluate   # January 2024 - October 2026, once; checks every code and input hash
 ```
 
+#### Phase 6
+
+Phase 6 reads the same Sackmann, TennisIsMyLife and TennisData.app files for the history. ESPN's public scoreboards supply the fixtures and the results after the files' snapshot date. Each response is archived under `data/raw/espn/` (local) before it is used. The live store is `data/store/live.sqlite` (local), and the forecast ledger `forecasts/ledger.jsonl` is meant to be committed.
+
+```powershell
+python -m matchup_dna.forecasting models export      # once: writes models/*.json after three reproduction checks
+python -m matchup_dna.forecasting models check       # refits and confirms the artifacts byte for byte
+python -m matchup_dna.forecasting espn sync --first 2025-01-01  # once: archive ESPN scoreboards (evidence for events and players)
+python -m matchup_dna.forecasting daily              # the scheduled job: refresh ESPN, forecast, settle, write the ledger
+python -m matchup_dna.forecasting forecast           # refresh ESPN, then forecast every eligible fixture now (live store)
+python -m matchup_dna.forecasting settle             # refresh ESPN, then attach results to stored matches
+python -m matchup_dna.forecasting status             # last runs, decisions, conflicts, integrity, identity changes
+python -m matchup_dna.forecasting verify             # every hash, and every probability recomputed from its snapshot
+python -m matchup_dna.forecasting api upcoming       # the website's payload for pending matches
+python -m matchup_dna.forecasting rehearse           # replays past days into a replay store; compares with research
+python -m matchup_dna.forecasting evaluate --monitor # interim monitor of the prospective window (decides nothing)
+python -m matchup_dna.forecasting evaluate --final   # the one P1 evaluation, on or after 15 July 2027
+```
+
+`python -m matchup_dna.forecasting protocol freeze` writes the prospective protocol to `experiments/phase6_prospective_protocol.json` and refuses to overwrite it. Freeze it after committing the code; the prospective record (P1) starts at the freeze.
+
 ### Code
 
 | File | What it does |
@@ -236,6 +263,14 @@ python -m matchup_dna.phase5_experiment evaluate   # January 2024 - October 2026
 | `matchup_dna/phase5_dataset.py`, `matchup_dna/phase5_experiment.py` | Phase 5 dataset (evaluation rows locked until the freeze) and commands |
 | `matchup_dna/posthoc_round_aware_market.py` | Post-hoc: Phase 4's round-aware model against the opening market, on later-round matches |
 | `tests/test_valuebetennis.py`, `tests/test_market*.py`, `tests/test_signals.py`, `tests/test_backtest.py`, `tests/test_uncertainty.py`, `tests/test_phase5_*.py` | Phase 5 reader, odds arithmetic, join (spelling variants, repeat meetings, team rounds, two-id players), signals, backtests, bootstrap, and the evaluation lock |
+| `matchup_dna/forecasting/espn.py` | ESPN scoreboards: archived fetch, parsing (seeds kept apart from ranks), linking to the history, gap results, fixtures |
+| `matchup_dna/forecasting/records.py`, `providers.py` | Phase 6 provider-neutral match records with event, publication, retrieval and ingestion times; the TennisData.app snapshot adapter; an authenticated HTTP probe that archives raw responses |
+| `matchup_dna/forecasting/history.py` | Canonical history and pending fixtures as of a snapshot (erratum 1's identity and duplicate rules, ongoing editions kept), identity status, "already played" and "still playing elsewhere" checks |
+| `matchup_dna/forecasting/frozen_models.py`, `models/` | The two production models exported once from the frozen Phase 4 procedure, and their reproduction check |
+| `matchup_dna/forecasting/engine.py` | A fixture's features by the unchanged research replay (placeholder match), eligibility for each model, the stored input snapshot |
+| `matchup_dna/forecasting/store.py`, `pipeline.py` | SQLite store with append-only tables and a hash-chained ledger; the forecast, settle and replay jobs |
+| `matchup_dna/forecasting/prospective.py`, `api.py`, `rehearsal.py`, `__main__.py` | Prospective protocol and evaluation; the website's read-only payloads; the replay rehearsal; the commands |
+| `tests/test_forecast_*.py` | Phase 6: storage immutability and idempotency, production row = research row, no leakage, eligibility, identity and duplicate cases from erratum 1, end-to-end settlement, prospective counting and metrics, provider records |
 | `matchup_dna/matchup.py`, `matchup_dna/interpret.py`, `explain.py` | The matchup report |
 | `compare.py` | Command-line comparison of two players |
 | `rate.py` | Command-line ratings and win probability for two players |
