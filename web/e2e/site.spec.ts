@@ -99,7 +99,7 @@ test("the tour filter is reflected in the address", async ({ page }) => {
   await page.goto("/matches", { waitUntil: "networkidle" });
   await page.getByRole("button", { name: "WTA", exact: true }).click();
   await expect(page).toHaveURL(/tour=WTA/);
-  await expect(page.locator("main section h3").first()).toBeVisible();
+  await expect(page.locator("main section h2").first()).toBeVisible();          // an event group's title
 });
 
 test("old research addresses redirect to the Model Lab", async ({ page }) => {

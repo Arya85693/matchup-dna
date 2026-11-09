@@ -94,7 +94,7 @@ export function TournamentGroup({ matches }: { matches: MatchSummary[] }) {
     <section aria-label={e.name} className={`overflow-hidden rounded-lg border bg-card ${tier === "slam" ? "border-accent/40" : "border-border"}`}>
       <header className={`flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-border px-4 py-3 sm:px-5 ${tier === "slam" ? "shadow-[inset_3px_0_0_var(--color-accent)]" : ""}`}>
         <SurfaceDot surface={e.surface} />
-        <h3 className={`text-[14px] ${tier === "tour" ? "font-medium" : "font-semibold"}`}>{e.name}</h3>
+        <h2 className={`text-[14px] ${tier === "tour" ? "font-medium" : "font-semibold"}`}>{e.name}</h2>
         <TierBadge tour={m0.tour} level={e.level} />
         <span className="text-[12px] text-dim">{e.surface ?? "Surface unknown"} · {rounds}</span>
         <span className="fig ml-auto text-[11px] text-dim">{matches.length} {matches.length === 1 ? "match" : "matches"}</span>

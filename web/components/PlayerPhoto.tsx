@@ -18,9 +18,12 @@ export function PlayerPhoto({ name, src, size = 40, className = "" }: { name: st
       </span>
     );
   }
+  // Wikimedia sets tracking cookies on its images; it allows anonymous (credential-free) loading, which drops them.
+  // Other hosts may not send CORS headers, so they load normally.
+  const anonymous = /^https:\/\/(thumb|upload)\.wikimedia\.org\//.test(src) ? "anonymous" : undefined;
   return (
     // eslint-disable-next-line @next/next/no-img-element -- remote headshots, linked rather than proxied
-    <img src={src} alt={name} width={size} height={size} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={() => setFailed(true)}
+    <img src={src} alt={name} width={size} height={size} loading="lazy" decoding="async" referrerPolicy="no-referrer" crossOrigin={anonymous} onError={() => setFailed(true)}
          style={box} className={`shrink-0 rounded-full border border-border bg-card-hover object-cover object-top ${className}`} />
   );
 }
