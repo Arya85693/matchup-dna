@@ -7,7 +7,7 @@ import { CountUp } from "@/components/CountUp";
 import { FeaturedCarousel, HowItWorks, TopPlayers } from "@/components/HomeWidgets";
 import { IconArchive, IconLab, IconMatches, IconMethod } from "@/components/icons";
 
-export const revalidate = 300;
+export const revalidate = 60;
 
 const UPCOMING = new Set(["scheduled", "in_progress", "postponed", "suspended"]);
 const delay = (ms: number) => ({ animationDelay: `${ms}ms` });

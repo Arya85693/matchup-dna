@@ -18,6 +18,8 @@ if not defined AREA (
     echo unknown step "%STEP%": use publish or players
     exit /b 2
 )
+rem Unbuffered, so the log shows how far a step got even if it is stopped.
+set "PYTHONUNBUFFERED=1"
 if not exist "data\logs" mkdir "data\logs"
 echo ===== %DATE% %TIME% %STEP% start >> "data\logs\website.log"
 "%PYTHON%" -m web.publisher.%STEP% >> "data\logs\website.log" 2>&1

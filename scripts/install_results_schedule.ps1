@@ -1,19 +1,20 @@
 <#
-Registers the results-only check (scripts\run_settle.ps1) in Windows Task Scheduler, for the current user.
+Registers the results watcher (scripts\run_settle.ps1 -Watch) in Windows Task Scheduler, for the current user.
 
     powershell -ExecutionPolicy Bypass -File scripts\install_results_schedule.ps1
     powershell -ExecutionPolicy Bypass -File scripts\install_results_schedule.ps1 -Python "C:\path\to\python.exe"
+    powershell -ExecutionPolicy Bypass -File scripts\install_results_schedule.ps1 -EveryMinutes 20
     powershell -ExecutionPolicy Bypass -File scripts\install_results_schedule.ps1 -Remove
 
-One task, "MatchupDNA results", every two hours on the hour, except the forecasting job's own hours (07:00 and 19:00,
-which settle results themselves): 09:00, 11:00, 13:00, 15:00, 17:00, 21:00, 23:00, 01:00, 03:00, 05:00. Each lands
-35 minutes before a website publish. A missed check is not caught up (the next one is two hours later), so it never
-starts at the same moment as a forecasting run catching up after the computer wakes. The forecasting and website
+One task, "MatchupDNA results", every 15 minutes (at :10, :25, :40, :55). Each run does nothing unless a match is
+waiting for its result or two hours have passed since the last check; then it settles results and publishes and
+uploads at once (see run_settle.ps1). It never runs within 30 minutes of the 07:00 and 19:00 forecasting runs, which
+settle results themselves. A missed run is not caught up (the next one is minutes away). The forecasting and website
 tasks are not touched.
 #>
 param(
     [string]$Python = (Get-Command python -ErrorAction Stop).Source,
-    [string[]]$Times = @("09:00", "11:00", "13:00", "15:00", "17:00", "21:00", "23:00", "01:00", "03:00", "05:00"),
+    [int]$EveryMinutes = 15,
     [switch]$Remove
 )
 
@@ -28,15 +29,14 @@ if ($Remove) {
     return
 }
 if (-not (Test-Path $Python)) { throw "Python not found: $Python" }
-foreach ($t in $Times) {
-    if ($t -in @("07:00", "19:00")) { throw "$t is a forecasting run; the results check must not share its hour" }
-}
+if ($EveryMinutes -lt 10) { throw "-EveryMinutes must be at least 10" }
 
 $Action = New-ScheduledTaskAction -Execute "powershell.exe" `
-    -Argument "-NoProfile -ExecutionPolicy Bypass -File `"$Script`" -Python `"$Python`"" -WorkingDirectory $Repo
-$Settings = New-ScheduledTaskSettingsSet -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Minutes 30) `
+    -Argument "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$Script`" -Python `"$Python`" -Watch" -WorkingDirectory $Repo
+$Settings = New-ScheduledTaskSettingsSet -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Minutes 20) `
     -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
-$Triggers = $Times | ForEach-Object { New-ScheduledTaskTrigger -Daily -At $_ }
-Register-ScheduledTask -TaskName $Name -Action $Action -Trigger $Triggers -Settings $Settings `
-    -Description "Matchup DNA: attach finished results between forecasting runs; never forecasts ($Repo)" | Out-Null
-Write-Output "Registered '$Name' at $($Times -join ', ') with $Python"
+$Trigger = New-ScheduledTaskTrigger -Once -At ([datetime]::Today.AddMinutes(10)) `
+    -RepetitionInterval (New-TimeSpan -Minutes $EveryMinutes) -RepetitionDuration (New-TimeSpan -Days 3650)
+Register-ScheduledTask -TaskName $Name -Action $Action -Trigger $Trigger -Settings $Settings `
+    -Description "Matchup DNA: when a match is waiting for its result, settle results and publish; never forecasts ($Repo)" | Out-Null
+Write-Output "Registered '$Name' every $EveryMinutes minutes with $Python"

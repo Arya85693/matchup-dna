@@ -52,7 +52,8 @@ async function fetchText(area: Area, relative: string): Promise<string | null> {
   }
   const key = `${area}/${relative}`.split("/").map(encodeURIComponent).join("/");
   const signed = await R2.client.sign(`${R2.base}/${key}`, { method: "GET" });
-  const response = await fetch(signed.url, { method: "GET", headers: signed.headers });
+  // A time limit, so a stalled storage request shows "not available" instead of holding the page.
+  const response = await fetch(signed.url, { method: "GET", headers: signed.headers, signal: AbortSignal.timeout(15_000) });
   if (response.status === 404) return null;
   if (!response.ok) throw new Error(`storage answered ${response.status}`);
   return await response.text();

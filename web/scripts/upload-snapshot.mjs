@@ -27,6 +27,7 @@ const WEB = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const STAMP = /^\d{8}T\d{6}Z$/;
 export const KEEP = { snapshot: 24, history: 3 };
 const PARALLEL = 8;
+const TIMEOUT_MS = 60_000;
 
 export function storage(env) {
   const { R2_ACCOUNT_ID: account, R2_BUCKET: bucket, R2_UPLOAD_ACCESS_KEY_ID: id, R2_UPLOAD_SECRET_ACCESS_KEY: secret } = env;
@@ -39,7 +40,8 @@ export function storage(env) {
   async function call(target, init = {}) {
     for (let attempt = 1; ; attempt++) {
       try {
-        const response = await client.fetch(target, init);
+        // Signed here, sent with a time limit, so a stalled connection fails (and is retried) instead of hanging.
+        const response = await fetch(await client.sign(target, init), { signal: AbortSignal.timeout(TIMEOUT_MS) });
         if (response.status < 500 || attempt === 3) return response;
       } catch (error) {
         if (attempt === 3) throw error;

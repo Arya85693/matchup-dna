@@ -3,7 +3,7 @@ import { getIndex } from "@/lib/snapshot";
 import { MatchList } from "@/components/MatchList";
 import { EmptyState, PageHeader } from "@/components/ui";
 
-export const revalidate = 300;
+export const revalidate = 60;          // results arrive between scheduled publishes; show them within a minute
 export const metadata: Metadata = { title: "Matches" };
 
 export default async function MatchesPage() {

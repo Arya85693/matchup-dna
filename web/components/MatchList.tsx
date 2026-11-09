@@ -10,7 +10,8 @@ import { ProbabilitySplit, Pct, TierBadge, tierOf } from "./match/parts";
 import { Badge, EmptyState, SurfaceDot } from "./ui";
 
 const UPCOMING = new Set(["scheduled", "in_progress", "postponed", "suspended"]);
-const RESULTS = new Set(["completed", "retired", "walkover", "cancelled", "result_pending", "result_conflict"]);
+const PENDING = new Set(["result_pending", "result_conflict"]);        // started, no final result yet
+const RESULTS = new Set(["completed", "retired", "walkover", "cancelled"]);
 const SHORT_REASON: Record<string, string> = {
   start_unconfirmed: "Forecast once a start time is set",
   too_late_in_progress: "Not forecast: under way when first seen",
@@ -145,6 +146,8 @@ export function MatchList({ matches }: { matches: MatchSummary[] }) {
     }));
     const tbc = matches.filter((m) => m.state === "time_tbc").length;
     if (tbc) list.push({ key: "tbc", label: "Time TBC", count: tbc });
+    const pending = matches.filter((m) => PENDING.has(m.state)).length;
+    if (pending) list.push({ key: "pending", label: "Results pending", count: pending });
     const results = matches.filter((m) => RESULTS.has(m.state)).length;
     if (results) list.push({ key: "results", label: "Results", count: results });
     return list;
@@ -167,6 +170,7 @@ export function MatchList({ matches }: { matches: MatchSummary[] }) {
     if (surface !== "All" && m.edition.surface !== surface) return false;
     if (majors && tierOf(m.edition.level) === "tour") return false;
     if (active === "tbc") return m.state === "time_tbc";
+    if (active === "pending") return PENDING.has(m.state);
     if (active === "results") return RESULTS.has(m.state);
     return Boolean(m.start) && UPCOMING.has(m.state) && dayKey(m.start!, zone) === active;
   });
@@ -215,7 +219,9 @@ export function MatchList({ matches }: { matches: MatchSummary[] }) {
         groups.map((g) => <TournamentGroup key={g[0]!.edition.uid} matches={g} />)
       )}
       <p className="text-[12px] text-dim">
-        {active === "tbc" ? "Forecasts are issued once a start time is published, at least 30 minutes before play." : `Times in ${zone}. Percentages are the tournament-start forecast; open a match for the round-aware update and the reasoning.`}
+        {active === "tbc" ? "Forecasts are issued once a start time is published, at least 30 minutes before play."
+          : active === "pending" ? "These matches have started. Each keeps its pre-match forecast; the final result appears here shortly after the match ends."
+          : `Times in ${zone}. Percentages are the tournament-start forecast; open a match for the round-aware update and the reasoning.`}
       </p>
     </div>
   );
