@@ -1,0 +1,89 @@
+{
+  "phase": 6,
+  "name": "Prospective evaluation 1 (P1)",
+  "frozen_at": "2026-11-09T00:29:15Z",
+  "code_sha256": "21911efc3219c875e35155290de8ff29c257e182e5c9b99785cc99daa58981e8",
+  "code_files": [
+    "matchup_dna/forecasting/__init__.py",
+    "matchup_dna/forecasting/records.py",
+    "matchup_dna/forecasting/providers.py",
+    "matchup_dna/forecasting/espn.py",
+    "matchup_dna/forecasting/history.py",
+    "matchup_dna/forecasting/frozen_models.py",
+    "matchup_dna/forecasting/engine.py",
+    "matchup_dna/forecasting/store.py",
+    "matchup_dna/forecasting/pipeline.py",
+    "matchup_dna/forecasting/prospective.py",
+    "matchup_dna/features.py",
+    "matchup_dna/phase4_features.py",
+    "matchup_dna/phase4_model.py",
+    "matchup_dna/model.py",
+    "matchup_dna/profiles.py",
+    "matchup_dna/round_aware.py",
+    "matchup_dna/elo.py",
+    "matchup_dna/load.py",
+    "matchup_dna/workload.py",
+    "matchup_dna/serve_stats.py",
+    "matchup_dna/heldout.py",
+    "matchup_dna/merge.py",
+    "matchup_dna/crosswalk.py",
+    "matchup_dna/tennisdata.py",
+    "matchup_dna/tennisismylife.py",
+    "matchup_dna/audit_tennisdata.py",
+    "matchup_dna/audit_tennisismylife.py",
+    "models/phase4_tournament_start.json",
+    "models/phase4_round_aware_r0.json",
+    "results/phase4/profile_settings.json"
+  ],
+  "models": {
+    "tournament_start": {
+      "version": "phase4-ts-v1",
+      "artifact_sha256": "a34233a3876d89fe3cd70c782b0d0a31de9192ad0895e05332c7bb5a93fd246c"
+    },
+    "round_aware": {
+      "version": "phase4-r0-v1",
+      "artifact_sha256": "1121f09ca231aab60e0040a11dbbc2f48282ef525341971c93f28465756f7e5f"
+    }
+  },
+  "store": "live mode only; replay stores and the 8 November 2026 pilot store are never pooled with P1",
+  "window": {
+    "issued_from": "2026-11-09T00:29:15Z",
+    "scheduled_up_to": "2027-06-30T23:59:59Z",
+    "final_evaluation_not_before": "2027-07-15T00:00:00Z"
+  },
+  "counted_forecast": "for each match and model, the first stored forecast, if issued at least 0:30:00 before the scheduled start known when issued; sensitivity: the last forecast before the start",
+  "code_rule": "a forecast counts only if its code_sha256 equals this protocol's; a code change during the window needs a committed amendment that lists the changed files and states that features, models and eligibility are unchanged, else forecasts from the changed code are reported separately",
+  "counted_matches": "settled with no conflicting source reports; status completed (retirements, walkovers, defaults and cancellations excluded and counted); best of 3 or 5",
+  "primary": {
+    "A": "tournament-start model (phase4-ts-v1): log loss on all counted matches, ATP and WTA separately and combined, with week-clustered standard errors",
+    "B": "round-aware R0 (phase4-r0-v1) minus tournament start on the identical later-round matches where both were counted: paired log-loss difference, week-clustered 95% interval and a week-level cluster bootstrap (2,000 draws, seed 20261108)"
+  },
+  "secondary": [
+    "Brier score",
+    "accuracy (0.5 counts half)",
+    "reliability in ten 0.1 bins",
+    "calibration line (intercept, slope)",
+    "expected calibration error (descriptive only)",
+    "uncalibrated surface Elo on the same matches (descriptive benchmark)"
+  ],
+  "slices": {
+    "tour": "ATP, WTA",
+    "surface": "Hard, Clay, Grass, Carpet, unknown",
+    "level": "Grand Slam; Masters / WTA 1000; tour finals; team events; other tour level",
+    "best_rank_band": "better-ranked player top 20, 21-100, over 100, both unranked",
+    "coverage": "less-experienced player under 20, 20-99, 100+ rated matches",
+    "identity": "both verified, or a new player involved",
+    "round": "each round"
+  },
+  "clusters": "the Monday of the week the edition starts; both tours together, because the same week shares conditions and data feeds. Sensitivity: clusters by edition",
+  "reporting_rule": "a difference is called an improvement only if its 95% interval excludes zero; slices are descriptive; no slice result is called a finding",
+  "expected_size": "at most about 3,000 rated tournament-start matches and 1,500 later-round pairs (the November-June calendar; June-October 2026 had 2,453 and 1,275), and only if fresh fixtures are ingested at least daily; fewer if snapshots are less frequent. With 1,500 pairs the standard error of the R0 gap is about 0.0025 (Phase 4 validation 0.0011 on 7,829 rows, scaled), so the smallest gain detectable with 80% power is about 0.007, against Phase 4's 0.0054-0.0072: P1 alone may well be inconclusive for R0, and that will be said",
+  "reference_values": {
+    "tournament_start_corrected_held_out_log_loss": 0.6065,
+    "r0_minus_reference_corrected_held_out": -0.0059,
+    "note": "Phase 4 erratum 1, June-October 2026; descriptive comparison only"
+  },
+  "decisions_forbidden": "no model, feature, eligibility rule, threshold or calibration may be chosen from P1 outcomes while P1 is described as untouched. A model changed in response to P1 is a new version, evaluated on a later window that starts after its own freeze",
+  "monitoring": "the monitor may be run at any time; its output is labelled interim, and it can trigger only an operational fix (data, identity, ingestion), never a model change inside P1",
+  "markets": "not part of P1. Market prices, if collected, are stored with their own collection timestamps and evaluated under a separate protocol"
+}
