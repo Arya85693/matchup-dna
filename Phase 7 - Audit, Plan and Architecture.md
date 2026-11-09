@@ -28,6 +28,10 @@
 >
 > **Not yet done (7G, needs your approval):** hosting, the publisher's scheduled task, and the domain. Players and
 > Explorer (7H, 7I) wait for the licensing review.
+>
+> **Phase 7 complete, 9 November 2026.** 7G, 7H and 7I were built and the site launched at matchup-dna.vercel.app.
+> Results, launch checks, deviations from this plan and open items are in
+> [Phase 7 - Website Report.md](Phase%207%20-%20Website%20Report.md).
 
 The document has ten parts:
 1. the repository audit;
