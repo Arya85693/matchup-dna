@@ -1,0 +1,92 @@
+@import "tailwindcss";
+
+/*
+ * Matchup DNA design tokens: a Linear-style research product.
+ * Charcoal canvas, slightly lighter cards, thin borders, one restrained teal accent.
+ * Green and red only for favourable / unfavourable analytical outcomes. Surface colours appear only as small dots.
+ * Contrast measured on --color-card (the lighter of the two grounds): text 13.3, muted 6.3, dim 5.0.
+ */
+@theme {
+  --color-bg: #10151d;
+  --color-card: #19212d;
+  --color-card-hover: #1e2836;
+  --color-border: #252f3d;
+  --color-border-strong: #313c4c;
+  --color-text: #e6e9ee;
+  --color-muted: #98a2b3;
+  --color-dim: #8590a1;
+  --color-accent: #39c7ad;
+  --color-accent-soft: rgba(57, 199, 173, 0.12);
+  --color-track: #2a3444;
+  --color-pos: #3fb97f;
+  --color-neg: #ef6461;
+  --color-warn: #e5b454;
+  --color-hard: #5b9bd5;
+  --color-clay: #d9804f;
+  --color-grass: #55b87a;
+
+  --font-sans: var(--font-geist), "Segoe UI", system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+
+@layer base {
+  html {
+    background: var(--color-bg);
+    color: var(--color-text);
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    letter-spacing: -0.003em;
+  }
+  h1, h2, h3 { text-wrap: balance; letter-spacing: -0.015em; }
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  ::selection { background: var(--color-accent); color: var(--color-bg); }
+}
+
+@layer components {
+  .card {
+    background: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+  }
+  .num { font-variant-numeric: tabular-nums; }
+  .mono { font-family: var(--font-mono); font-size: 12px; }
+  .label { font-size: 12px; color: var(--color-muted); }
+  .link {
+    color: var(--color-accent);
+    text-decoration: underline;
+    text-decoration-color: rgba(57, 199, 173, 0.45);
+    text-underline-offset: 3px;
+  }
+  .link:hover { text-decoration-color: var(--color-accent); }
+}
+
+/*
+ * Motion. Every animated element's resting style is its final state (fill-mode "both" only applies the start
+ * keyframe while waiting), so with reduced motion or no animation support the page is complete and static.
+ */
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes zoom-settle { from { transform: scale(1.08); } to { transform: scale(1); } }
+@keyframes fill-in { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+
+.anim-rise { animation: rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.anim-zoom { animation: zoom-settle 2.6s cubic-bezier(0.2, 0.6, 0.2, 1) both; }
+.anim-fill { transform-origin: left center; animation: fill-in 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.anim-draw { stroke-dasharray: 1; stroke-dashoffset: 0; animation: draw 1.2s ease-out both; }
+.anim-fade { animation: fade 0.45s ease-out both; }
+.lift { transition: transform 0.2s ease, border-color 0.2s ease, background-color 0.2s ease; }
+.lift:hover { transform: translateY(-2px); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}

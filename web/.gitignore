@@ -1,0 +1,20 @@
+# dependencies and builds
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+# local snapshot output and development copies of stores (never committed)
+.data/
+.dev-data/
+# python
+__pycache__/
+.venv/
+# env files hold hosting secrets (Phase 7G)
+.env*
+!.env.example
+
+# The root .gitignore ignores lib/ (Python packaging); the website's TypeScript lib/ is source code.
+!lib/
+test-results/
+playwright-report/
