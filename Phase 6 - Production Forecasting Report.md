@@ -1,6 +1,6 @@
 # Matchup DNA — Phase 6 Production Forecasting Report
 
-**Status, 8 November 2026:** the forecasting engine is built, tested and verified on real data. One step remains before the prospective record starts: committing the code, then freezing the prospective protocol (see [Starting the prospective record](#starting-the-prospective-record)).
+**Status, 9 November 2026:** the forecasting engine is built, tested, committed and verified on real data. The prospective protocol was frozen on 9 November 2026 at 00:29 UTC, and the prospective record (P1) is running. The first official run issued 10 counted forecasts, and the job now runs twice a day on a schedule (see [The prospective record is running](#the-prospective-record-is-running)). Phase 6 closes after a two-week operational check, to about 23 November.
 **Design:** [Phase 6 - Audit, Plan and Architecture.md](Phase%206%20-%20Audit%2C%20Plan%20and%20Architecture.md) has the repository audit, the plan with acceptance criteria, the architecture, the data source, the website interface, and the research agendas.
 
 ## Summary
@@ -149,34 +149,50 @@ The protocol's contents are fixed in `prospective.protocol_contents`; `protocol 
 | Forbidden | Choosing any model, feature, rule, threshold or calibration from P1 outcomes while calling P1 untouched. A changed model is a new version, evaluated on a window after its own freeze |
 | Expected size | At most about 3,000 tournament-start matches and 1,500 later-round pairs, and only with daily runs. The R0 gap's minimum detectable value is about 0.007, against Phase 4's 0.005–0.007: **P1 alone may be inconclusive for R0**, and the report will say so |
 
-## Starting the prospective record
+## The prospective record is running
 
-1. Review and commit the Phase 6 files:
-   - `matchup_dna/forecasting/`
-   - `models/`
-   - `tests/test_forecast_*.py`
-   - `forecasts/`
-   - the two Phase 6 documents and the README
-2. `python -m matchup_dna.forecasting protocol freeze`, then commit `experiments/phase6_prospective_protocol.json`. P1 starts at that moment.
-3. Schedule `python -m matchup_dna.forecasting daily` at least once a day (twice is better: order-of-play times are often published the evening before). Each run:
-   - refreshes ESPN for the last 14 and next 3 days, about 36 requests;
-   - forecasts every eligible fixture;
-   - settles finished matches;
-   - extends `forecasts/ledger.jsonl`.
+| Step | When (UTC) | Record |
+|---|---|---|
+| Phase 6 code, models, tests and documents committed | 9 November 2026 | commits `3007f09` to `9723008` |
+| All 323 tests pass on the committed code | 9 November 2026 | |
+| Protocol frozen: **P1 starts** | 9 November 2026, 00:29:15 | `experiments/phase6_prospective_protocol.json`, commit `f6e1b18`; code hash `21911efc3219…`, which still matches the files on disk |
+| First official run (by hand) | 9 November 2026, 00:36 | 10 forecasts issued, all counted: 9 tournament-start, 1 round-aware. Ledger commit `56903a9` |
+| Daily schedule registered and tested | 9 November 2026, 00:46 | Task Scheduler run, exit code 0; commit `384ed04` |
 
-   Use Windows Task Scheduler on this machine, or GitHub Actions with the history files available.
-4. Commit `forecasts/ledger.jsonl` regularly. The commit history is the outside timestamp that no forecast was added after its match.
-5. Every few weeks, save fresh TML and TennisData.app files. ESPN carries no serve statistics, so between file snapshots the serve-return profiles stop updating, although Elo, form and rest keep updating from ESPN results.
+**The first official run.** ESPN listed 23 main-tour matches still to be played or in progress. The run decided each one:
+
+| Decision | Tournament start | Round-aware R0 |
+|---|---:|---:|
+| Issued and counted | 9: Chennai final, six Stockholm first-round matches, two WTA Finals round-robin matches on 9 November | 1: the Chennai final, where both players have earlier rounds (Linette 44.9% → 42.4% once they are counted) |
+| Deferred: no confirmed start time yet | 12 | 12 |
+| No earlier-round information (first matches, round robins) | – | 8 |
+| Too late (in progress or already played) | 2 | 2 |
+
+`verify` reported the store intact: every stored probability recomputes exactly from its saved inputs. Ranks came from the history, not ESPN's seeds (Toby Samuel 74.8% against Leo Borg, ranks 97 and 512). The single settled match was a walkover, which is recorded but never scored.
+
+**The schedule.** Two Windows Task Scheduler tasks, "MatchupDNA daily 0700" and "MatchupDNA daily 1900", run `scripts\run_daily.cmd` at 07:00 and 19:00 local time with the project's Python (`scripts\install_schedule.ps1` registers or removes them). Each run:
+- refreshes ESPN for the last 14 and next 3 days, about 36 requests;
+- forecasts every eligible fixture;
+- settles finished matches;
+- extends `forecasts/ledger.jsonl`;
+- appends its output to `data\logs\daily.log`.
+
+A run missed while the computer is off starts when it is next on. A missed run loses forecasts for matches that start before the next run; it never produces a wrong one. The scheduled test run re-issued nothing (10 "unchanged"), which confirms the job is idempotent.
+
+**The routine from here:**
+1. **Check health every couple of days** with `python -m matchup_dna.forecasting status`. Its `freshness` section gives the hours since the last forecast, settlement and ESPN download. `"ok": true` means all three happened in the last 18 hours. `failed_runs` must stay empty.
+2. **Commit the ledger every few days:** `forecasts/ledger.jsonl`, pushed with `git push origin main`. The commit history is the outside timestamp that no forecast was added after its match.
+3. **Save fresh TML and TennisData.app files every few weeks.** ESPN carries no serve statistics, so between file snapshots the serve-return profiles stop updating, although Elo, form and rest keep updating from ESPN results.
+4. **Leave the hashed code alone until 30 June 2027.** That means `matchup_dna/forecasting/` (except `api.py`, `__main__.py` and `rehearsal.py`), `models/`, `results/phase4/profile_settings.json`, and the research modules the engine imports; the protocol lists them. A forecast from changed code is excluded from P1 unless a committed amendment covers the change. Documents, tests, `api.py`, the scripts and the CSV files in `forecasts/` may change freely.
 
 ## Open issues
 
 | Issue | Effect | Next step |
 |---|---|---|
-| Protocol not frozen | No forecast counts yet | Steps 1–2 above |
-| No scheduler | Forecasts exist only when someone runs the job | Step 3 above |
+| The job runs on one computer | Forecasts are issued only while this PC is on at, or after, 07:00 and 19:00 | Accepted for now; a hosted scheduler can come with the Phase 7 hosting |
 | The ESPN path has not been rehearsed against the research path | ESPN's archive was retrieved now, so it cannot show what was known before past matches. The replay that matched the research exactly used the TennisData.app fixture path; the ESPN path shares the same engine and history but adds its own linking and ranks | Compare ESPN-added results with the next TML snapshot (agreement of winners, scores and identities), and replay ESPN days once the archive has been collected live |
 | Ranks for players never seen in a crosswalked row | Treated as unranked (e.g. the Swedish wildcard Max Dahlin), which the ATP model penalizes heavily | An official ranking source; until then the input snapshot shows each rank's source date for review |
-| Serve-return profiles between file snapshots | ESPN-added matches move Elo and form only, like the TennisData.app-only matches in Phase 4's held-out period | Periodic TML files (step 5) |
+| Serve-return profiles between file snapshots | ESPN-added matches move Elo and form only, like the TennisData.app-only matches in Phase 4's held-out period | Periodic TML files (routine step 3) |
 | 25 ESPN results held back for identity | Those results are missing from the history | Check them and add reviewed rows to `forecasts/identity_aliases.csv` |
 | R0 in early rounds of draws with byes | When a round is only partly scheduled, `has_byes` can fail to see byes, so R0 declines a few second-round matches the research sample included. It declines; it never guesses | Read the draw size where a source gives it |
 | ESPN's format can change | A changed response would stop parsing or drop records | Raw responses are archived and parses versioned; a run that finds no fixtures for an active week should be treated as a failure (monitoring, next phase) |
@@ -187,7 +203,9 @@ The protocol's contents are fixed in `prospective.protocol_contents`; `protocol 
 
 ## Next milestones
 
-1. **Start P1** (steps 1–3 above) and run the daily job for two weeks. Each week, check that the job ran, that ESPN-added results agree with the next TML snapshot, and that no conflicts or identity changes appear (`status`).
+1. **Two-week operational check, to about 23 November 2026, which closes Phase 6.** Two things:
+   - **Reliability:** `status` stayed `ok`, with no failed runs, conflicts or identity changes.
+   - **Accuracy:** the results ESPN added agree with a fresh TML snapshot, in winners, scores and player identities.
 2. **Website MVP (Phase 7)** on top of `api.py`:
    - an upcoming-matches page with the tournament-start / round-aware toggle;
    - match pages with forecast history;
