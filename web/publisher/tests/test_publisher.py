@@ -205,6 +205,21 @@ class SnapshotTests(unittest.TestCase):
                 self.assertNotIn(secret, text, f"{secret} in {name}")
 
 
+class PruneTests(unittest.TestCase):
+    def test_keeps_the_newest_snapshots_and_nothing_else_is_touched(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            stamps = [f"202611{d:02d}T073500Z" for d in range(1, 8)]
+            for s in stamps:
+                (root / s).mkdir()
+            (root / "notes").mkdir()                                  # not a snapshot: left alone
+            (root / "manifest.json").write_text("{}")
+            publish.prune(root, current=stamps[-1], keep=3)
+            self.assertEqual(sorted(p.name for p in root.iterdir()), sorted(stamps[-3:] + ["notes", "manifest.json"]))
+            publish.prune(root, current=stamps[-1], keep=0)
+            self.assertIn(stamps[-1], {p.name for p in root.iterdir()})    # the current snapshot is never deleted
+
+
 class ContractTests(unittest.TestCase):
     def summary(self, **forecast):
         base = {"available": False, "model_version": "v", "decision": "deferred", "reason_code": "x", "reason": "r"}

@@ -9,7 +9,8 @@ Steps, each of which can stop the publish (the previous snapshot then stays as i
 3. copy the store with SQLite's backup API and close the live file; everything below reads the copy;
 4. build the public views; check every file against the contract (web/publisher/contract.py);
 5. write the files into a new directory v1/<generated-at>/, then replace v1/manifest.json, which names that
-   directory and every file's sha256. A reader following the manifest never sees a half-written snapshot.
+   directory and every file's sha256. A reader following the manifest never sees a half-written snapshot;
+6. delete all but the newest KEEP_SNAPSHOTS snapshot directories (scheduled every two hours: two days' worth).
 
 Uploading the directory to hosting is a separate step (Phase 7G), not done here.
 """
@@ -18,6 +19,7 @@ import datetime
 import hashlib
 import json
 import os
+import re
 import shutil
 import sys
 import tempfile
@@ -32,10 +34,21 @@ ROOT = Path(__file__).resolve().parents[2]
 LIVE_STORE = ROOT / "data" / "store" / "live.sqlite"
 DEFAULT_OUT = ROOT / "web" / ".data" / "snapshot"
 PUBLISHER_VERSION = "1"
+KEEP_SNAPSHOTS = 24
+STAMP = re.compile(r"\d{8}T\d{6}Z")
 
 
 class Skipped(Exception):
     pass
+
+
+def prune(directory, current, keep=KEEP_SNAPSHOTS):
+    """Deletes all but the newest `keep` snapshot directories, never `current`. Only directories named like a
+    snapshot stamp are touched."""
+    stamps = sorted(p for p in Path(directory).iterdir() if p.is_dir() and STAMP.fullmatch(p.name))
+    for old in stamps[:-keep] if keep > 0 else stamps:
+        if old.name != current:
+            shutil.rmtree(old, ignore_errors=True)
 
 
 def _dump(path, document):
@@ -103,6 +116,7 @@ def publish(store_path=LIVE_STORE, out=DEFAULT_OUT, now=None, allow_replay=False
         staging = Path(out) / "v1" / "manifest.json.tmp"
         _dump(staging, manifest)
         os.replace(staging, Path(out) / "v1" / "manifest.json")
+        prune(Path(out) / "v1", stamp)
         return manifest
     finally:
         shutil.rmtree(work, ignore_errors=True)
