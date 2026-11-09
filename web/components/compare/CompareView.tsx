@@ -6,6 +6,7 @@ import type { HistoryPlayer } from "@/lib/contract";
 import { playerSlug, roundLabel } from "@/lib/format";
 import { EloChart } from "../EloChart";
 import { PlayerPhoto } from "../PlayerPhoto";
+import { PhotoCredit } from "../PhotoCredit";
 import { Segmented } from "../lab/parts";
 import { SurfaceDot } from "../ui";
 import { HeadToHead } from "./HeadToHead";
@@ -64,6 +65,7 @@ export function CompareView({ options: everyone, a, b, tour }: { options: PickOp
                   <Link href={`/players/${playerSlug(s.p.tour, s.p.id)}`} className="block truncate text-[22px] font-semibold leading-tight hover:text-accent">{s.p.name}</Link>
                   <p className="mt-1 text-[12px] text-dim">{s.p.tour} · Elo #{s.p.elo_rank} · last played {s.p.last_match}</p>
                   <p className="fig mt-3 text-[32px] font-medium leading-none text-text">{Math.round(s.p.elo)}<span className="ml-1.5 text-[12px] font-normal text-dim">Elo</span></p>
+                  <PhotoCredit credit={s.p.photo_credit} className="mt-2" />
                 </div>
               </div>
             ) : (

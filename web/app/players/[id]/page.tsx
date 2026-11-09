@@ -4,6 +4,7 @@ import { notFound, permanentRedirect } from "next/navigation";
 import { getHistoryIndex, getHistoryPlayer, getPlayers } from "@/lib/snapshot";
 import { pct, playerSlug, roundLabel } from "@/lib/format";
 import { PlayerPhoto } from "@/components/PlayerPhoto";
+import { PhotoCredit } from "@/components/PhotoCredit";
 import { EloChart } from "@/components/EloChart";
 import { Badge, Card, Metric, SurfaceDot } from "@/components/ui";
 
@@ -41,6 +42,7 @@ export default async function PlayerPage({ params }: Params) {
         <div className="min-w-0 flex-1">
           <h1 className="text-[22px] font-semibold">{p.name}</h1>
           <p className="mt-1 text-muted">{p.tour} · Elo #{p.elo_rank} · last played {p.last_match}</p>
+          <PhotoCredit credit={p.photo_credit} className="mt-1.5" />
         </div>
         <Link href={`/players/compare?tour=${p.tour}&a=${p.id}`} className="inline-flex items-center gap-2 rounded-md border border-border-strong px-3 py-1.5 text-[13px] transition-colors hover:bg-card">
           Compare with another player
