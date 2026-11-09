@@ -3,8 +3,8 @@
 import { useState } from "react";
 
 /**
- * A player's headshot (linked from ESPN for players whose identity is verified), or their initials when there is no
- * photo or it fails to load. Lazy-loaded and sent without a referrer.
+ * A player's photo (the official ATP or WTA headshot, else a Wikimedia Commons photo, else ESPN's; only for verified
+ * identities), or their initials when there is no photo or it fails to load. Lazy-loaded and sent without a referrer.
  */
 export function PlayerPhoto({ name, src, size = 40, className = "" }: { name: string; src: string | null; size?: number; className?: string }) {
   const [failed, setFailed] = useState(false);
