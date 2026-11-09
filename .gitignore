@@ -227,3 +227,5 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+# private planning document, never committed
+Matchup DNA - Resume Project.pdf

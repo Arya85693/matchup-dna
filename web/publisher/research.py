@@ -75,7 +75,7 @@ def phase3():
     rows, p, y = read(path, "Selected model")
     _, elo, _ = read(path, "Surface Elo, temperature")
     model, base = scores(p, y), scores(elo, y)
-    # Phase 3 - Model Report.md, lines 240-241: combined 0.6128 / 0.6207, Brier 0.2128, accuracy 65.58%, n 13,732
+    # docs/Phase 3 - Model Report.md, lines 240-241: combined 0.6128 / 0.6207, Brier 0.2128, accuracy 65.58%, n 13,732
     same(model["n"], 13732, 0, "Phase 3 reserved matches")
     same(model["log_loss"], 0.6128, 4, "Phase 3 selected model log loss")
     same(base["log_loss"], 0.6207, 4, "Phase 3 calibrated surface Elo log loss")
@@ -98,7 +98,7 @@ def phase4():
     _, p3_c, _ = read(corrected_path, "P3-refit")
     _, p_o, y_o = read(original_path, "P4-refit")
     corrected, original = scores(p_c, y_c), scores(p_o, y_o)
-    # Phase 4 - Matchup Intelligence Report.md, line 481: 0.6108 / 0.2121 / 65.47% (2,518 rows); 0.6065 / 0.2102 / 65.86%
+    # docs/Phase 4 - Matchup Intelligence Report.md, line 481: 0.6108 / 0.2121 / 65.47% (2,518 rows); 0.6065 / 0.2102 / 65.86%
     same(original["n"], 2518, 0, "Phase 4 original held-out rows")
     same(original["log_loss"], 0.6108, 4, "Phase 4 original log loss")
     same(corrected["n"], 2453, 0, "Phase 4 corrected matches")
@@ -141,7 +141,7 @@ def phase5():
     text = path.read_text(encoding="utf-8").replace("NaN", "null")
     e = json.loads(text)["all"]
     s, g = e["scores"], e["gaps"]
-    # Phase 5 - Quantitative Research Report.md, lines 113-127 and 208
+    # docs/Phase 5 - Quantitative Research Report.md, lines 113-127 and 208
     same(s["opening market"]["log_loss"], 0.5896, 4, "market log loss")
     same(s["Phase 4"]["log_loss"], 0.6132, 4, "Phase 4 log loss against the market")
     same(s["opening market"]["matches"], 13846, 0, "market matches")

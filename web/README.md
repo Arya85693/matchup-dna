@@ -1,7 +1,7 @@
 # Matchup DNA website (Phase 7)
 
 The public website. It **reads published snapshots and never computes a forecast**. The plan and architecture are in
-[`../Phase 7 - Audit, Plan and Architecture.md`](../Phase%207%20-%20Audit%2C%20Plan%20and%20Architecture.md).
+[`../docs/Phase 7 - Audit, Plan and Architecture.md`](../docs/Phase%207%20-%20Audit%2C%20Plan%20and%20Architecture.md).
 
 | Page | Route | Data |
 |---|---|---|

@@ -16,7 +16,7 @@ The model input is one row per completed best-of-3 or best-of-5 tour-level match
 | Validation | 2021–2023 | 8,366 | 7,673 | Choosing feature groups and models with the keep rule |
 | Reserved | 1 January 2024–25 May 2026 | 7,190 | 6,542 | Scored once, after every choice above was frozen |
 
-Each row compares player A with player B. A is chosen by a hash of the match id and the two player ids, so it never depends on who won. A won 49.93% of training rows and 50.54% of validation rows. Ratings and player histories are replayed one tournament date at a time, so every feature uses only earlier dates. The same rule is applied in Phase 2 and is described in the [Phase 2 report](Phase%202%20-%20Elo%20Report.md).
+Each row compares player A with player B. A is chosen by a hash of the match id and the two player ids, so it never depends on who won. A won 49.93% of training rows and 50.54% of validation rows. Ratings and player histories are replayed one tournament date at a time, so every feature uses only earlier dates. The same rule is applied in Phase 2 and is described in the [Phase 2 report](../Phase%202%20-%20Elo%20Report.md).
 
 Every model is fitted separately for ATP and WTA. The combined score pools the two tours' predictions.
 

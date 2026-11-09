@@ -756,7 +756,7 @@ This was found while examining the largest per-match losses in Part 2 below.
 - **65 of them repeat a match already present from TennisIsMyLife (TML):** same tour, tournament week, round and players, with the two providers spelling the names differently. The two copies name the same winner in all 65.
 - So the published held-out evaluation scored 2,518 rows covering about 2,453 distinct matches.
 
-**Why the build kept both copies.** A TennisData.app row is dropped only in two cases ([heldout.py:188-201](matchup_dna/heldout.py#L188-L201)):
+**Why the build kept both copies.** A TennisData.app row is dropped only in two cases ([heldout.py:188-201](../matchup_dna/heldout.py#L188-L201)):
 - it was linked to a TML row by name;
 - its resolved player ids and round match a TML match.
 
