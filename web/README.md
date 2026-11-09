@@ -76,7 +76,14 @@ npm run dev              # development, http://localhost:3000
 npm run build && npx next start -p 3000    # production build
 ```
 
-Pages read `web/.data/snapshot` (override with `SNAPSHOT_DIR`).
+Pages read `web/.data/snapshot` and `web/.data/history` (override with `SNAPSHOT_DIR`, `HISTORY_DIR`). When the R2
+keys are set, as on Vercel, they read the hosted copy instead (`lib/storage.ts`).
+
+## Hosting
+
+The live site runs on Vercel and reads a private Cloudflare R2 bucket. The scheduled tasks
+(`scripts/install_website_schedule.ps1`) publish every two hours and upload each snapshot with
+`web/scripts/upload-snapshot.mjs`. Setup, step by step: [`HOSTING.md`](HOSTING.md).
 
 ## Tests
 
