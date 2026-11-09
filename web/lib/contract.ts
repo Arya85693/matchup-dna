@@ -297,6 +297,10 @@ export const HistoryPlayerSchema = z.object({
   generated_at: UtcTime,
   player: z.object({
     id: z.number().int(), tour: z.enum(["ATP", "WTA"]), name: z.string(), photo: z.string().url().nullable(), elo: z.number(), elo_rank: z.number().int(), rated_matches: z.number().int(),
+    /** Set for freely licensed (Wikimedia Commons) photos, which must be credited. */
+    photo_credit: z.object({
+      author: z.string(), license: z.string(), license_url: z.string().url().nullable(), source: z.string().url(),
+    }).nullable().default(null),
     elo_change_90d: z.number().nullable(), last_match: z.string(),
     surfaces: z.record(z.enum(SURFACE_KEYS), z.object({ elo: z.number(), matches: z.number().int() })),
     season: z.object({ year: z.number().int(), All: WinLoss, Hard: WinLoss, Clay: WinLoss, Grass: WinLoss }),
