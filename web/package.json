@@ -8,10 +8,12 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "test": "node --test --experimental-strip-types --no-warnings lib/*.test.ts",
+    "test": "node --test --experimental-strip-types --no-warnings lib/*.test.ts scripts/*.test.mjs",
+    "upload": "node scripts/upload-snapshot.mjs",
     "e2e": "playwright test"
   },
   "dependencies": {
+    "aws4fetch": "1.0.20",
     "next": "16.4.5",
     "react": "19.3.1",
     "react-dom": "19.3.1",
