@@ -1,7 +1,8 @@
 # Matchup DNA — Phase 7 Website Report
 
 **Status, 9 November 2026:** Phase 7 is complete. The public website is live at
-[matchup-dna.vercel.app](https://matchup-dna.vercel.app) (custom domain `www.matchupdna.com`). It updates itself from
+[www.matchupdna.com](https://www.matchupdna.com) and [matchup-dna.vercel.app](https://matchup-dna.vercel.app); both
+addresses load normally, including on the network that had briefly blocked the new domain. It updates itself from
 the forecasting system every two hours, and it passed its launch checks: browser tests against the live site,
 Lighthouse audits, and a failure drill. A few operational follow-ups carry over; they are listed under
 [Open items](#open-items).
@@ -152,6 +153,9 @@ then the copy was broken. The real bucket and the live site were not touched.
 - **A results-check guard** read a never-run scheduled task as overdue; it now ignores tasks that have never run.
 - **Official ATP headshots** could not be imported automatically; Wikimedia Commons, found through the same ATP
   player codes, was used instead.
+- **The new domain was briefly blocked** by a network web filter, which labelled it "high-risk" because it had just
+  been registered (the site itself was never down). **Resolved:** on 9 November `matchupdna.com`,
+  `www.matchupdna.com` and `matchup-dna.vercel.app` all load normally (HTTP 200) from that network.
 
 ## Open items
 
@@ -166,8 +170,6 @@ These carry over; none blocks the site.
 4. **Forecast cadence.** Forecasts run twice a day. A match whose time is confirmed after the 07:00 run and starts
    before 19:00 is missed. Running the full job every two hours would close that gap without changing which forecast
    counts (the protocol fixes the counting rule, not the schedule). Awaiting the owner's decision.
-5. **Custom domain on filtered networks.** Some network filters label the new domain "high-risk" because it is newly
-   registered. A re-rating request can be filed at urlfiltering.paloaltonetworks.com; it also clears with age.
 
 ## Next milestones
 
