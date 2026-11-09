@@ -207,6 +207,23 @@ class SnapshotTests(unittest.TestCase):
                 self.assertNotIn(secret, text, f"{secret} in {name}")
 
 
+class MatchStateTests(unittest.TestCase):
+    def test_result_pending_from_the_start_until_settled(self):
+        snap = views._Snapshot.__new__(views._Snapshot)
+        snap.settled = {"M-done": {"state": "settled", "status": "completed"}}
+        snap.records = {uid: {"event_time": "2026-11-09T12:00:00Z", **extra} for uid, extra in {
+            "M-later": {}, "M-started": {}, "M-live": {"status": "in_progress"}, "M-done": {"status": "completed"},
+            "M-rain": {"raw_status": "STATUS_SUSPENDED"}}.items()}
+        snap.records["M-tbc"] = {}
+        at = lambda hhmm: datetime.datetime(2026, 11, 9, int(hhmm[:2]), int(hhmm[2:]), tzinfo=datetime.timezone.utc)
+        self.assertEqual(snap.state("M-later", at("1159")), "scheduled")
+        self.assertEqual(snap.state("M-started", at("1200")), "result_pending")       # from the scheduled start
+        self.assertEqual(snap.state("M-live", at("1130")), "result_pending")          # under way (early): still pending
+        self.assertEqual(snap.state("M-done", at("1500")), "completed")
+        self.assertEqual(snap.state("M-rain", at("1300")), "suspended")
+        self.assertEqual(snap.state("M-tbc", at("1300")), "time_tbc")
+
+
 class PilotExceptionTests(unittest.TestCase):
     def _files(self, tmp, issued="2026-11-08T19:23:32Z", players=(1, 2)):
         content = {"player_a": players[0], "player_b": players[1], "p_a": 0.52, "model_version": "ts-v1",

@@ -30,7 +30,6 @@ from web.publisher import reasons
 SCHEMA_VERSION = "1"
 KINDS = ("tournament_start", "round_aware")
 RESULT_DAYS = 7               # results stay on the Match Center for a week
-STARTED_GRACE_HOURS = 3       # as api.upcoming: after this, an unsettled match is "result pending"
 EDITION_DAYS = 21             # an unsettled match from an edition older than this is not "upcoming"
 LEDGER_RECENT = 200
 ROOT = Path(__file__).resolve().parents[2]
@@ -215,11 +214,10 @@ class _Snapshot:
         status = record.get("status")
         if status == "cancelled":
             return "cancelled"
-        if status == "in_progress":
-            return "in_progress"
         start = self.start(uid)
-        if status in ("completed", "retired", "walkover") or (
-                start and (now - start).total_seconds() > STARTED_GRACE_HOURS * 3600):
+        # Once play may have begun, the site says only that the result is pending: the pre-match forecast stays as it
+        # was, and nothing is shown about the match in progress (in-play estimates are a separate, later feature).
+        if status in ("in_progress", "completed", "retired", "walkover") or (start and now >= start):
             return "result_pending"
         return "scheduled" if start else "time_tbc"
 
