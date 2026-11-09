@@ -401,3 +401,117 @@ class ResearchExportTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class HeadshotTests(unittest.TestCase):
+    """Official tour headshots: identity rules and the paced, cached lookups (no network)."""
+
+    def test_atp_codes_through_the_crosswalk_one_to_one(self):
+        from matchup_dna.merge import provider_only_id
+        from web.publisher.headshots import atp_codes
+        rows = [{"tour": "ATP", "winner_id": "S0AG", "loser_id": "A0E2"},
+                {"tour": "ATP", "winner_id": "XX01", "loser_id": "XX02"},
+                {"tour": "WTA", "winner_id": "123", "loser_id": "456"}]
+        links = {("ATP", "S0AG"): 206173, ("ATP", "A0E2"): 207989, ("ATP", "XX01"): 1, ("ATP", "XX02"): 1}
+        found = atp_codes(rows, links)
+        self.assertEqual(found[("ATP", 206173)], "s0ag")
+        self.assertEqual(found[("ATP", 207989)], "a0e2")
+        self.assertNotIn(("ATP", 1), found)                                  # two codes for one player: dropped
+        self.assertNotIn(("ATP", provider_only_id("tml", "WTA", "123")), found)
+
+    def test_wta_matching_needs_a_unique_name_and_agreement(self):
+        from web.publisher.headshots import match_wta
+        people = {1: {"names": {"Cori Gauff", "Coco Gauff"}, "dob": "2004-03-13", "country": "USA"},
+                  2: {"names": {"Ann Same"}, "dob": None, "country": "FRA"},
+                  3: {"names": {"Bea Wrong"}, "dob": "2000-01-01", "country": "ESP"},
+                  4: {"names": {"Cat Shared"}, "dob": None, "country": "ITA"},
+                  5: {"names": {"Cat Shared"}, "dob": None, "country": "ITA"},
+                  6: {"names": {"No Evidence"}, "dob": None, "country": None}}
+        ranked = [{"id": 900, "fullName": "Coco Gauff", "countryCode": "USA", "dateOfBirth": "2004-03-13"},
+                  {"id": 901, "fullName": "Ann Same", "countryCode": "FRA", "dateOfBirth": None},
+                  {"id": 902, "fullName": "Bea Wrong", "countryCode": "ESP", "dateOfBirth": "2001-01-01"},
+                  {"id": 903, "fullName": "Cat Shared", "countryCode": "ITA", "dateOfBirth": None},
+                  {"id": 904, "fullName": "No Evidence", "countryCode": "GER", "dateOfBirth": None}]
+        found = match_wta([1, 2, 3, 4, 6], people, ranked)
+        self.assertEqual(found, {("WTA", 1): 900, ("WTA", 2): 901})          # alias name + birth date; name + country
+        # 3: birth dates disagree; 4: another of our players has the name; 6: nothing to confirm the name with
+
+    def test_official_rejects_the_silhouette_and_caches(self):
+        import datetime as dt
+        from web.publisher import headshots
+        png = lambda tag: b"\x89PNG" + tag
+        calls = []
+
+        def get(url):
+            calls.append(url)
+            if "player-headshot/zzzz" in url:
+                return 200, png(b"silhouette")
+            if "player-headshot/s0ag" in url:
+                return 200, png(b"sinner")
+            if "player-headshot/nope" in url:
+                return 200, png(b"silhouette")
+            if "TENNIS_PLAYER%3A900" in url:
+                return 200, json.dumps({"content": [{"onDemandUrl": "https://photoresources.wtatennis.com/a.jpg",
+                                                     "references": [{"type": "TENNIS_PLAYER", "id": 900}]}]}).encode()
+            return 200, json.dumps({"content": []}).encode()
+
+        now = dt.datetime(2026, 11, 9, tzinfo=dt.timezone.utc)
+        with tempfile.TemporaryDirectory() as tmp:
+            cache = Path(tmp) / "official.json"
+            atp = {("ATP", 1): "s0ag", ("ATP", 2): "nope"}
+            wta = {("WTA", 3): 900, ("WTA", 4): 901}
+            found = headshots.official(atp, wta, now, get=get, cache_path=cache, pause=0)
+            self.assertEqual(found, {("ATP", 1): headshots.ATP_IMAGE.format(code="s0ag"),
+                                     ("WTA", 3): "https://photoresources.wtatennis.com/a.jpg" + headshots.WTA_SIZE})
+            n = len(calls)
+            self.assertEqual(headshots.official(atp, wta, now + dt.timedelta(days=1), get=get, cache_path=cache, pause=0), found)
+            self.assertEqual(len(calls), n)                                  # answered from the cache within a week
+            headshots.official(atp, wta, now + dt.timedelta(days=8), get=get, cache_path=cache, pause=0)
+            self.assertGreater(len(calls), n)                                # re-checked after a week
+
+    def test_commons_photos_through_wikidata_ids_with_credit(self):
+        import datetime as dt
+        import urllib.parse
+        from web.publisher import headshots
+        img = lambda f: {"type": "uri", "value": "http://commons.wikimedia.org/wiki/Special:FilePath/" + urllib.parse.quote(f)}
+        lit = lambda v: {"type": "literal", "value": v}
+        item = lambda q: {"type": "uri", "value": "http://www.wikidata.org/entity/" + q}
+        calls = []
+
+        def get(url):
+            calls.append(url)
+            if url.startswith(headshots.WIKIDATA):
+                query = urllib.parse.unquote(url)
+                rows = []
+                if "P536" in query:
+                    rows = [{"item": item("Q1"), "id": lit("S0AG"), "image": img("Wide shot.jpg")},
+                            {"item": item("Q1"), "id": lit("S0AG"), "image": img("Sinner (cropped).jpg")},
+                            {"item": item("Q2"), "id": lit("D0CO"), "image": img("Twin a.jpg")},   # one code, two items
+                            {"item": item("Q3"), "id": lit("D0CO"), "image": img("Twin b.jpg")},
+                            {"item": item("Q4"), "id": lit("N0NE")}]                               # no image
+                elif "P597" in query:
+                    rows = [{"item": item("Q5"), "id": lit("900"), "image": img("Gauff.jpg")}]
+                return 200, json.dumps({"results": {"bindings": rows}}).encode()
+            info = lambda name, w, h, extra: {"imageinfo": [{
+                "thumburl": f"https://upload.wikimedia.org/thumb/{name}/250px.jpg?utm_source=x", "width": w, "height": h,
+                "descriptionurl": f"https://commons.wikimedia.org/wiki/File:{name}", "extmetadata": extra}]}
+            licensed = {"Artist": {"value": '<p><a href="//x">Jane &amp; Co</a>\n</p><ul><li>derivative work: Kim</li></ul>'}, "LicenseShortName": {"value": "CC BY-SA 4.0"},
+                        "LicenseUrl": {"value": "https://creativecommons.org/licenses/by-sa/4.0"}}
+            pages = {"1": dict(title="File:Wide shot.jpg", **info("Wide", 900, 600, licensed)),
+                     "2": dict(title="File:Sinner (cropped).jpg", **info("Sinner", 600, 900, licensed)),
+                     "3": dict(title="File:Gauff.jpg", **info("Gauff", 600, 800, {"Artist": {"value": "Unlicensed"}}))}
+            return 200, json.dumps({"query": {"pages": pages}}).encode()
+
+        now = dt.datetime(2026, 11, 9, tzinfo=dt.timezone.utc)
+        ids = {("ATP", 1): "s0ag", ("ATP", 2): "d0co", ("ATP", 3): "n0ne", ("WTA", 4): 900}
+        with tempfile.TemporaryDirectory() as tmp:
+            cache = Path(tmp) / "commons.json"
+            found = headshots.commons(ids, now, get=get, cache_path=cache, pause=0)
+            self.assertEqual(set(found), {("ATP", 1)})       # ambiguous code, no image, and an unlicensed file: none
+            self.assertEqual(found[("ATP", 1)]["url"], "https://upload.wikimedia.org/thumb/Sinner/250px.jpg")  # portrait wins
+            self.assertEqual(found[("ATP", 1)]["credit"], {"author": "Jane & Co; derivative work: Kim", "license": "CC BY-SA 4.0",
+                                                          "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+                                                          "source": "https://commons.wikimedia.org/wiki/File:Sinner"})
+            n = len(calls)
+            self.assertEqual(headshots.commons(ids, now + dt.timedelta(days=1), get=get, cache_path=cache, pause=0), found)
+            self.assertEqual(len(calls), n)                  # answered from the cache within a week

@@ -153,6 +153,33 @@ def espn_photos(assembly):
     return {key: PHOTO.format(id=next(iter(ids))) for key, ids in found.items() if len(ids) == 1}
 
 
+def tour_headshots(sources, profiles, now):
+    """Photos for the listed players, best source first: the official ATP or WTA headshot, else a Wikimedia Commons
+    photo found through the same tour id (see headshots.py for the identity rules). Returns ({key: url},
+    {key: credit}); only Commons photos carry a credit."""
+    import csv
+    from web.publisher import headshots
+    listed = set(profiles)
+    atp = {k: code for k, code in headshots.atp_codes(sources.tml_rows, sources.tml_links).items() if k in listed}
+    with open(ROOT / "data" / "wta" / "wta_players.csv", encoding="utf-8", newline="") as f:
+        people = headshots.wta_people(sources.tml_rows, sources.tml_links, csv.DictReader(f))
+    for (tour, pid), p in profiles.items():
+        if tour == "WTA":
+            people.setdefault(pid, {"names": set(), "dob": None, "country": None})["names"].add(p["name"])
+    wanted = [pid for tour, pid in listed if tour == "WTA"]
+    wta = headshots.match_wta(wanted, people, headshots.wta_ranked(now=now))
+    print(f"official headshots: {len(atp)} ATP codes, {len(wta)} of {len(wanted)} WTA players matched")
+    official = headshots.official(atp, wta, now)
+    free = headshots.commons({**atp, **wta}, now)
+    photos = {k: v["url"] for k, v in free.items()}
+    credits = {k: v["credit"] for k, v in free.items()}
+    for key, url in official.items():                       # an official headshot outranks a Commons photo
+        photos[key] = url
+        credits.pop(key, None)
+    print(f"photos: {len(official)} official, {len(set(free) - set(official))} from Wikimedia Commons")
+    return photos, credits
+
+
 def thin(points, limit=SERIES_POINTS):
     """At most `limit` points, evenly spaced, always keeping the first and last."""
     if len(points) <= limit:
@@ -232,7 +259,7 @@ def build(matches, sources, now, photos=None, retired=None):
         before = [r for d, r in trend if d <= ninety]
         profiles[key] = {
             "id": pid, "tour": tour, "name": names.get(key, str(pid)), "photo": (photos or {}).get(key),
-            "elo": round(overall["rating"], 1), "rated_matches": overall["played"],
+            "photo_credit": None, "elo": round(overall["rating"], 1), "rated_matches": overall["played"],
             "elo_change_90d": round(overall["rating"] - before[-1], 1) if before else None,
             "surfaces": surfaces, "season": {"year": now.year, **season[key]}, "last_match": iso_day(last[key]),
             "series": [[iso_day(d), round(r, 1)] for d, r in thin(trend)],
@@ -285,9 +312,16 @@ def main():
     except Refused as refused:
         print(f"skipped: {refused}")
         return 0
-    matches, sources, photos = load_history(now)
-    photos = available(photos, now)
-    index, profiles = build(matches, sources, now, photos, load_retired())
+    matches, sources, espn = load_history(now)
+    espn = available(espn, now)
+    index, profiles = build(matches, sources, now, None, load_retired())
+    best, credits = tour_headshots(sources, profiles, now)
+    photos = {**espn, **best}                  # official tour photos, then Wikimedia Commons; ESPN fills the gaps
+    for p in index:
+        p["photo"] = photos.get((p["tour"], p["id"]))
+    for key, p in profiles.items():
+        p["photo"] = photos.get(key)
+        p["photo_credit"] = credits.get(key)
     manifest = write(index, profiles, now)
     print(f"{sum(1 for p in index if p['photo'])} with a verified photo; wrote {manifest['players']} player profiles ({sum(p['tour'] == 'ATP' for p in index)} ATP, "
           f"{sum(p['tour'] == 'WTA' for p in index)} WTA) to web/.data/history/v1/{manifest['snapshot']}")
