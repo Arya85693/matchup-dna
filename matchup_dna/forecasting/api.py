@@ -161,6 +161,28 @@ def models(store):
             for r in store.db.execute("SELECT * FROM model_versions")]
 
 
+STALE_AFTER_HOURS = 18   # two scheduled runs a day: more than 18 hours without one means a run was missed
+
+
+def freshness(last_successful, now=None):
+    """How long ago the job last forecast, settled and downloaded ESPN, and whether that is too long."""
+    import datetime
+    from matchup_dna.forecasting import espn
+    now = now or datetime.datetime.now(datetime.timezone.utc)
+    metas = espn.archived_meta()
+    times = {"forecast": last_successful.get("forecast"), "settle": last_successful.get("settle"),
+             "espn_download": max((m["retrieved_at"] for m in metas), default=None)}
+    found = {}
+    for name, when in times.items():
+        hours = None if when is None else round((now - utc(when)).total_seconds() / 3600, 1)
+        found[name] = {"last": when, "hours_ago": hours}
+    found["espn_responses_last_24h"] = sum(1 for m in metas if (now - utc(m["retrieved_at"])).total_seconds() < 86400)
+    ages = [v["hours_ago"] for k, v in found.items() if isinstance(v, dict)]
+    found["ok"] = all(age is not None and age <= STALE_AFTER_HOURS for age in ages)
+    found["rule"] = f"ok means every job and an ESPN download succeeded in the last {STALE_AFTER_HOURS} hours"
+    return found
+
+
 def status(store):
     runs = store.runs()
     last = defaultdict(lambda: None)
@@ -172,6 +194,7 @@ def status(store):
         decisions[f"{d['model_version']}: {d['decision']}"] += 1
     settled = store.settled()
     return {
+        "freshness": freshness(last),
         "mode": store.mode, "last_successful": dict(last),
         "failed_runs": [r["run_id"] for r in runs if r["status"] != "ok"],
         "predictions": len(store.predictions()), "matches": store.db.execute("SELECT COUNT(*) FROM matches").fetchone()[0],
