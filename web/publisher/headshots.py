@@ -34,7 +34,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 CACHE = ROOT / "data" / "raw" / "headshots" / "official.json"
 ARCHIVE = ROOT / "data" / "raw" / "headshots"
-USER_AGENT = ("MatchupDNA-research/1.0 (https://github.com/arya85693/matchup-dna; player headshots for a "
+USER_AGENT = ("MatchupDNA-research/1.0 (https://matchup-dna.vercel.app; player headshots for a "
               "non-commercial tennis research site)")
 COMMONS_CACHE = ROOT / "data" / "raw" / "headshots" / "commons.json"
 WIKIDATA = "https://query.wikidata.org/sparql?format=json&query="

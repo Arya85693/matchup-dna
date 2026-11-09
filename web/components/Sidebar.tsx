@@ -57,9 +57,9 @@ export function Sidebar({ last, staleAfter, ok }: { last: string | null; staleAf
         </nav>
         <div className="mt-auto grid gap-1">
           <Freshness last={last} staleAfter={staleAfter} ok={ok} />
-          <a href="https://github.com/arya85693/matchup-dna" className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[12px] text-muted hover:bg-card-hover hover:text-text">
-            <IconStatus /> Source code
-          </a>
+          <p className="flex items-center gap-2.5 px-2.5 py-2 text-[12px] text-muted">
+            <IconStatus /> Source Code (Available upon Request)
+          </p>
         </div>
       </aside>
 
