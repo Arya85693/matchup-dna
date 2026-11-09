@@ -1,35 +1,21 @@
 /**
- * Reads the published snapshot. Today the source is the local folder the publisher writes (web/.data/snapshot, or
- * SNAPSHOT_DIR); at 7G the same functions read the hosted copy. Every file is checked against the manifest's sha256
- * and the contract before use. Nothing here computes a forecast.
+ * Reads the published snapshot: the hosted copy in Cloudflare R2 when the site is deployed, else the local folders the
+ * publisher writes (see lib/storage.ts). Every file is checked against the manifest's sha256 and the contract before
+ * use. Nothing here computes a forecast.
  */
 import { createHash } from "node:crypto";
-import { readFile } from "node:fs/promises";
-import path from "node:path";
 import type { z } from "zod";
 import {
   ArchiveSchema, HistoryIndexSchema, HistoryManifestSchema, HistoryPlayerSchema, LedgerSchema, ManifestSchema, PlayersSchema, MatchIndexSchema, MatchPageSchema, ModelsSchema, StatusSchema, TrackRecordSchema,
   type Archive, type HistoryIndex, type HistoryPlayer, type Ledger, type Manifest, type Players, type MatchIndex, type MatchPage, type Models, type Status, type TrackRecord,
 } from "./contract";
-
-const ROOT = process.env.SNAPSHOT_DIR ?? path.join(process.cwd(), ".data", "snapshot");
-const HISTORY_ROOT = process.env.HISTORY_DIR ?? path.join(process.cwd(), ".data", "history");
+import { readText } from "./storage";
 
 export type Loaded<T> = { ok: true; data: T } | { ok: false; reason: "not_found" | "unavailable"; detail: string };
 
-async function readText(relative: string, root: string = ROOT): Promise<string | null> {
-  try {
-    // Local-folder source for development; replaced by the hosted snapshot at 7G, so it is kept out of build tracing.
-    return await readFile(path.join(/*turbopackIgnore: true*/ root, relative), "utf8");
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
-    throw error;
-  }
-}
-
 export async function getManifest(): Promise<Loaded<Manifest>> {
   try {
-    const text = await readText("v1/manifest.json");
+    const text = await readText("snapshot", "v1/manifest.json");
     if (text === null) return { ok: false, reason: "unavailable", detail: "No snapshot has been published yet." };
     const parsed = ManifestSchema.safeParse(JSON.parse(text));
     if (!parsed.success) return { ok: false, reason: "unavailable", detail: "The snapshot manifest is not valid." };
@@ -45,7 +31,7 @@ async function getFile<S extends z.ZodType>(schema: S, name: string): Promise<Lo
   const expected = manifest.data.files[name];
   if (!expected) return { ok: false, reason: "not_found", detail: `${name} is not in the snapshot.` };
   try {
-    const text = await readText(`v1/${manifest.data.snapshot}/${name}`);
+    const text = await readText("snapshot", `v1/${manifest.data.snapshot}/${name}`);
     if (text === null) return { ok: false, reason: "unavailable", detail: `${name} is listed but missing.` };
     const digest = createHash("sha256").update(text, "utf8").digest("hex");
     if (digest !== expected) return { ok: false, reason: "unavailable", detail: `${name} does not match its hash.` };
@@ -72,16 +58,16 @@ export async function getMatch(uid: string): Promise<Loaded<MatchPage>> {
   return getFile(MatchPageSchema, `matches/${uid}.json`);
 }
 
-/** Player histories (web/.data/history, written by `python -m web.publisher.players`), checked like the snapshot. */
-async function getHistoryFile<S extends z.ZodType>(schema: S, name: string, root: string = HISTORY_ROOT): Promise<Loaded<z.infer<S>>> {
+/** Player histories (written by `python -m web.publisher.players`), checked like the snapshot. */
+async function getHistoryFile<S extends z.ZodType>(schema: S, name: string): Promise<Loaded<z.infer<S>>> {
   try {
-    const text = await readText("v1/manifest.json", root);
+    const text = await readText("history", "v1/manifest.json");
     if (text === null) return { ok: false, reason: "unavailable", detail: "Player histories have not been published yet." };
     const manifest = HistoryManifestSchema.safeParse(JSON.parse(text));
     if (!manifest.success) return { ok: false, reason: "unavailable", detail: "The player manifest is not valid." };
     const expected = manifest.data.files[name];
     if (!expected) return { ok: false, reason: "not_found", detail: "No such player." };
-    const body = await readText(`v1/${manifest.data.snapshot}/${name}`, root);
+    const body = await readText("history", `v1/${manifest.data.snapshot}/${name}`);
     if (body === null) return { ok: false, reason: "unavailable", detail: `${name} is missing.` };
     if (createHash("sha256").update(body, "utf8").digest("hex") !== expected) {
       return { ok: false, reason: "unavailable", detail: `${name} does not match its hash.` };
