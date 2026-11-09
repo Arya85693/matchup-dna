@@ -14,6 +14,8 @@ export function Verification({ page }: { page: MatchPage }) {
   const start = page.match.start;
   const beforeStart = versions.every(({ v }) => !start || v.issued_at < start);
   const frozen = versions.every(({ v }) => v.integrity.code_matches_protocol);
+  const pilot = versions.some(({ v }) => v.pilot);
+  const ledger = pilot ? "pilot ledger" : "ledger";
   return (
     <details className="group min-w-0 rounded-xl border border-border bg-card">
       <summary className="flex cursor-pointer list-none flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4 text-[13px]">
@@ -21,8 +23,8 @@ export function Verification({ page }: { page: MatchPage }) {
         {versions.length === 0 ? <span className="text-dim">No forecast to verify</span> : (
           <>
             <Check ok={beforeStart}>{beforeStart ? "Stored before the scheduled start" : "Check issue times"}</Check>
-            <Check ok={frozen}>{frozen ? "Code matches the frozen protocol" : "Code differs from the frozen protocol"}</Check>
-            <span className="mono text-dim">{versions.map(({ v }) => `#${v.integrity.ledger_position}`).join(", ")} in the ledger</span>
+            <Check ok={frozen}>{frozen ? "Code matches the frozen protocol" : pilot ? "Pilot run, before the protocol was frozen" : "Code differs from the frozen protocol"}</Check>
+            <span className="mono text-dim">{versions.map(({ v }) => `#${v.integrity.ledger_position}`).join(", ")} in the {ledger}</span>
           </>
         )}
         <span className="ml-auto text-[12px] text-muted"><span className="group-open:hidden">Show records</span><span className="hidden group-open:inline">Hide records</span></span>
@@ -34,8 +36,8 @@ export function Verification({ page }: { page: MatchPage }) {
             <dt className="text-dim">Prediction id</dt><dd className="mono break-all">{v.prediction_id}</dd>
             <dt className="text-dim">Inputs (SHA-256)</dt><dd className="mono break-all text-muted">{v.integrity.input_sha256}</dd>
             <dt className="text-dim">Model artifact</dt><dd className="mono break-all text-muted">{v.integrity.model_sha256}</dd>
-            <dt className="text-dim">Code</dt><dd className="mono break-all text-muted">{v.integrity.code_sha256}</dd>
-            <dt className="text-dim">Ledger</dt><dd className="mono break-all text-muted">position {v.integrity.ledger_position}, chain hash {v.integrity.record_hash}</dd>
+            <dt className="text-dim">Code</dt><dd className="mono break-all text-muted">{v.integrity.code_sha256 ?? (v.pilot ? "pilot run (uncommitted code, before the protocol freeze)" : "not recorded")}</dd>
+            <dt className="text-dim">{v.pilot ? "Pilot ledger" : "Ledger"}</dt><dd className="mono break-all text-muted">position {v.integrity.ledger_position}, chain hash {v.integrity.record_hash}</dd>
             {v.supersedes && <><dt className="text-dim">Supersedes</dt><dd className="mono break-all text-muted">{v.supersedes}</dd></>}
           </dl>
         ))}

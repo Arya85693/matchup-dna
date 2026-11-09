@@ -11,11 +11,17 @@ protocol would not. Fields are allowlisted: run ids, provider ids, file paths an
     models_view(store)              model versions and what each uses
     status_view(store, now)         freshness, counts and the integrity check
     ledger_recent(store)            the latest entries of the hash-chained forecast ledger
+
+Pilot exceptions (web/content/pilot_exceptions.json): a pilot forecast the project owner chose to show on a match's
+Results row and match page. It is read unchanged from the published pilot ledger, must have been issued before the
+match started, for the same two players, by a model version the store knows, and is marked `pilot`. It never enters
+`snap.predictions`, so the counted set, track record, archive and player views cannot include it.
 """
 import datetime
 import json
 import math
 from collections import defaultdict
+from pathlib import Path
 
 from matchup_dna.forecasting import api, prospective
 from matchup_dna.forecasting.records import iso, utc
@@ -27,6 +33,8 @@ RESULT_DAYS = 7               # results stay on the Match Center for a week
 STARTED_GRACE_HOURS = 3       # as api.upcoming: after this, an unsettled match is "result pending"
 EDITION_DAYS = 21             # an unsettled match from an edition older than this is not "upcoming"
 LEDGER_RECENT = 200
+ROOT = Path(__file__).resolve().parents[2]
+PILOT_EXCEPTIONS = ROOT / "web" / "content" / "pilot_exceptions.json"
 
 PLAYER_INPUTS = {             # public name: stored row field (without the a_/b_ prefix)
     "elo": "elo", "surface_elo": "surface_elo_blended", "elo_matches": "elo_matches",
@@ -77,6 +85,39 @@ def counted(store, protocol):
             and v["content"]["model_sha256"] in models}
 
 
+def load_pilots(matches, records, kinds, path=PILOT_EXCEPTIONS, root=ROOT):
+    """{(match_uid, model_version): [pilot row]} for the approved exceptions that pass every check; a failing one is
+    skipped with a message, never shown."""
+    if not Path(path).exists():
+        return {}
+    found = {}
+    for ex in json.loads(Path(path).read_text(encoding="utf-8"))["matches"]:
+        uid, wanted = ex["match_uid"], ex["prediction_id"]
+        line = None
+        for text in (Path(root) / ex["ledger"]).read_text(encoding="utf-8").splitlines():
+            entry = json.loads(text) if text.strip() else None
+            if entry and entry["prediction_id"] == wanted:
+                line = entry
+        match, record = matches.get(uid), records.get(uid) or {}
+        content = (line or {}).get("content", {})
+        start = record.get("event_time")
+        problem = (None if line else "not in its ledger") or (None if match else "unknown match") or (
+            None if {content.get("player_a"), content.get("player_b")} == {match["player_low"], match["player_high"]}
+            else "different players") or (None if content.get("model_version") in kinds else "unknown model version") or (
+            None if start and content.get("issued_at", "9") < start else "not issued before the match started")
+        if problem:
+            print(f"pilot exception {wanted[:12]} for {uid} skipped: {problem}")
+            continue
+        found[(uid, content["model_version"])] = [{
+            "prediction_id": wanted, "match_uid": uid, "model_version": content["model_version"],
+            "player_a": content["player_a"], "player_b": content["player_b"], "p_a": content["p_a"],
+            "issued_at": content["issued_at"], "scheduled_start": content.get("scheduled_start"),
+            "supersedes": content.get("supersedes"), "input_sha256": content["input_sha256"],
+            "record_hash": line["record_hash"], "seq": line["seq"], "content_json": json.dumps(content), "pilot": True,
+        }]
+    return found
+
+
 class _Snapshot:
     """Everything the views read, loaded once from the store."""
 
@@ -101,12 +142,18 @@ class _Snapshot:
         self.settled = store.settled()
         self.counted = {(k[0], k[1]): v["prediction_id"] for k, v in counted(store, protocol).items()}
         self.seq_of = {row["prediction_id"]: row["seq"] for rows in self.predictions.values() for row in rows}
+        self.pilots = load_pilots(self.matches, self.records, self.kinds)
+
+    def rows(self, uid, version):
+        """The match's stored forecasts for a model; for an approved pilot exception (and only when the store has
+        none), its pilot forecast. Counting, the archive and the track record read self.predictions instead."""
+        return self.predictions.get((uid, version)) or self.pilots.get((uid, version), [])
 
     # -- players and orientation
     def order(self, uid):
         """[player_a, player_b] of the match's first forecast (A is chosen from the match id, never the result), or
         None if no forecast exists."""
-        rows = [r for version in self.kinds for r in self.predictions.get((uid, version), [])]
+        rows = [r for version in self.kinds for r in self.rows(uid, version)]
         if not rows:
             return None
         first = min(rows, key=lambda r: r["seq"])
@@ -116,12 +163,20 @@ class _Snapshot:
         order = self.order(uid)
         rows = sorted((r for version in self.kinds for r in self.predictions.get((uid, version), [])),
                       key=lambda r: r["seq"])
+        if not rows and order:                                 # a pilot exception: the observed players, in its order
+            seen = self._observed(uid)
+            if {p["id"] for p in seen} == set(order):
+                return sorted(seen, key=lambda p: order.index(p["id"]))
         if rows:
             content = json.loads(rows[-1]["content_json"])["inputs"]["players"]
             by_id = {content[s]["player_id"]: content[s] for s in ("a", "b")}
             return [{"id": pid, "name": by_id[pid]["name"], "rank": by_id[pid].get("rank"),
                      "rank_as_of": _date(by_id[pid]["rank_as_of"]) if by_id[pid].get("rank_as_of") else None,
                      "seed": by_id[pid].get("seed"), "identity": by_id[pid].get("identity")} for pid in order]
+        return self._observed(uid)
+
+    def _observed(self, uid):
+        """The two players as the latest source record names them, with canonical ids where identity is known."""
         record = self.records.get(uid) or {}
         match = self.matches[uid]
         found = []
@@ -182,7 +237,7 @@ class _Snapshot:
     # -- forecasts
     def forecast(self, uid, kind):
         version = self.version_of.get(kind)
-        rows = self.predictions.get((uid, version), [])
+        rows = self.rows(uid, version)
         if rows:
             order = self.order(uid)
             head_id = self.counted.get((uid, version))
@@ -192,6 +247,8 @@ class _Snapshot:
             view = {"available": True, "model_version": version, "prediction_id": head["prediction_id"],
                     "issued_at": head["issued_at"], "p": p, "counted": head_id == head["prediction_id"],
                     "revision": None}
+            if head.get("pilot"):
+                view["pilot"] = True
             if latest["prediction_id"] != head["prediction_id"]:
                 view["revision"] = {"prediction_id": latest["prediction_id"], "issued_at": latest["issued_at"],
                                     "p": self.aligned(latest, order)[0]}
@@ -275,6 +332,7 @@ def _version_view(snap, row, order, kind):
                       "code_sha256": content.get("code_sha256"),
                       "code_matches_protocol": content.get("code_sha256") == snap.protocol["code_sha256"],
                       "record_hash": row["record_hash"], "ledger_position": row["seq"]},
+        **({"pilot": True} if row.get("pilot") else {}),
     }
 
 
@@ -284,8 +342,7 @@ def match_page(snap, uid, now):
     versions = {}
     for kind in KINDS:
         version = snap.version_of.get(kind)
-        rows = snap.predictions.get((uid, version), [])
-        versions[kind] = [_version_view(snap, row, order, kind) for row in rows]
+        versions[kind] = [_version_view(snap, row, order, kind) for row in snap.rows(uid, version)]
     outcomes = [{"source": o["source"], "status": o["status"], "score": o["score"],
                  "winner_index": order.index(o["winner_id"]) if order and o["winner_id"] in order else None,
                  "retrieved_at": o["retrieved_at"]} for o in snap.store.outcomes(uid)]

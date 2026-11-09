@@ -27,6 +27,8 @@ const AvailableForecast = z.object({
   p: Pair,
   counted: z.boolean(),
   revision: z.object({ prediction_id: z.string(), issued_at: UtcTime, p: Pair }).nullable(),
+  /** A pilot forecast shown by the owner's exception (web/content/pilot_exceptions.json); never counted. */
+  pilot: z.literal(true).optional(),
 });
 
 // strict(): an unavailable forecast that carried a number would fail here.
@@ -95,6 +97,7 @@ export const VersionSchema = z.object({
     record_hash: z.string(),
     ledger_position: z.number().int(),
   }),
+  pilot: z.literal(true).optional(),
 });
 
 export const MatchPageSchema = z.object({

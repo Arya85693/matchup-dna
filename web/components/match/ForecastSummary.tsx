@@ -98,7 +98,13 @@ export function ForecastSummary({ page, kind, onKind }: { page: MatchPage; kind:
             <>
               <span className="mono text-dim">{f.model_version}</span>
               <span>Issued <span className="fig"><LocalTime iso={f.issued_at} style="datetime" /></span></span>
-              {f.counted ? <Badge tone="accent">Scored forecast</Badge> : <Badge>Not counted</Badge>}
+              {f.counted ? <Badge tone="accent">Scored forecast</Badge> : <Badge>{f.pilot ? "Pilot forecast, not counted" : "Not counted"}</Badge>}
+              {f.pilot && (
+                <span className="basis-full text-[12px] text-dim">
+                  Issued before play by the pilot run, before the forecasting protocol was frozen. Shown here, but not
+                  part of the official record or any score.
+                </span>
+              )}
               {f.revision && <span className="fig">Revised to {pct(f.revision.p[0])}% / {pct(f.revision.p[1])}% at <LocalTime iso={f.revision.issued_at} style="datetime" /> (not scored)</span>}
             </>
           )}

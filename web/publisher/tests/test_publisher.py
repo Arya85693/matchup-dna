@@ -4,7 +4,9 @@ opens data/store/live.sqlite.
     python -m unittest discover -s web/publisher/tests -t .
 """
 import ast
+import contextlib
 import datetime
+import io
 import hashlib
 import json
 import sqlite3
@@ -203,6 +205,47 @@ class SnapshotTests(unittest.TestCase):
             text = (self.out / "v1" / manifest["snapshot"] / name).read_text(encoding="utf-8")
             for secret in ("run_id", "content_json", "provider_match_id", "identity_method", str(ROOT), ".sqlite"):
                 self.assertNotIn(secret, text, f"{secret} in {name}")
+
+
+class PilotExceptionTests(unittest.TestCase):
+    def _files(self, tmp, issued="2026-11-08T19:23:32Z", players=(1, 2)):
+        content = {"player_a": players[0], "player_b": players[1], "p_a": 0.52, "model_version": "ts-v1",
+                   "issued_at": issued, "scheduled_start": "2026-11-08T21:30:00Z", "supersedes": None,
+                   "input_sha256": "ab" * 32, "model_sha256": "cd" * 32}
+        ledger = Path(tmp) / "pilot.jsonl"
+        ledger.write_text(json.dumps({"prediction_id": "pid1", "seq": 1, "record_hash": "ef" * 32, "content": content}) + "\n")
+        exceptions = Path(tmp) / "exceptions.json"
+        exceptions.write_text(json.dumps({"matches": [{"match_uid": "M-1", "prediction_id": "pid1", "ledger": "pilot.jsonl"}]}))
+        return exceptions
+
+    def test_shown_only_when_every_check_passes(self):
+        matches = {"M-1": {"player_low": 1, "player_high": 2}}
+        records = {"M-1": {"event_time": "2026-11-08T22:05:00Z"}}
+        with tempfile.TemporaryDirectory() as tmp:
+            found = views.load_pilots(matches, records, {"ts-v1": "tournament_start"}, self._files(tmp), tmp)
+            self.assertEqual(list(found), [("M-1", "ts-v1")])
+            self.assertTrue(found[("M-1", "ts-v1")][0]["pilot"])
+            for name, (m, r, kinds, files) in {
+                "issued after the start": (matches, records, {"ts-v1": 1}, {"issued": "2026-11-08T22:10:00Z"}),
+                "different players": (matches, records, {"ts-v1": 1}, {"players": (1, 3)}),
+                "unknown model": (matches, records, {"other": 1}, {}),
+                "unknown match": ({}, records, {"ts-v1": 1}, {}),
+                "no start time": (matches, {}, {"ts-v1": 1}, {}),
+            }.items():
+                with self.subTest(name), contextlib.redirect_stdout(io.StringIO()):
+                    self.assertEqual(views.load_pilots(m, r, kinds, self._files(tmp, **files), tmp), {})
+
+    def test_never_counted_archived_or_in_player_views(self):
+        snap = views._Snapshot.__new__(views._Snapshot)
+        snap.predictions, snap.pilots = {}, {("M-1", "ts-v1"): [{"prediction_id": "pid1"}]}
+        self.assertEqual(snap.rows("M-1", "ts-v1"), [{"prediction_id": "pid1"}])
+        snap.predictions = {("M-1", "ts-v1"): [{"prediction_id": "real"}]}
+        self.assertEqual(snap.rows("M-1", "ts-v1"), [{"prediction_id": "real"}])   # a stored forecast always wins
+        source = Path(views.__file__).read_text(encoding="utf-8")
+        for view in ("def counted", "def archive", "def players_view", "def track_record"):
+            body = source.split(view, 1)[1].split("\ndef ", 1)[0]
+            self.assertNotIn("pilot", body.replace("pilot_exceptions", ""), view)
+            self.assertNotIn(".rows(", body, view)
 
 
 class PruneTests(unittest.TestCase):

@@ -1,0 +1,12 @@
+{
+  "about": "Pilot forecasts the project owner chose to show on the site's Results list and match pages, although they are not part of the official record. Each was issued before its match started, by the pilot run of 8 November 2026 (code not yet committed, before the P1 protocol was frozen), and is read unchanged from the published pilot ledger. They are never counted in the track record, the archive or any score, and the live store is not changed.",
+  "approved": "2026-11-09, by the project owner, for this match only",
+  "matches": [
+    {
+      "match_uid": "M-d0380f95ee5cbb78f2e6b41f",
+      "prediction_id": "653eeadd9a8a15bcf1e3959f7e8cb0eb0ac5297aa3360d8c0673123b8c116473",
+      "ledger": "forecasts/pilot_2026-11-08_ledger.jsonl",
+      "match": "Coco Gauff v Jessica Pegula, WTA Finals"
+    }
+  ]
+}
