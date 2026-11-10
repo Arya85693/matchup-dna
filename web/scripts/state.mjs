@@ -32,6 +32,9 @@ const ROOT = path.resolve(WEB, "..");
 const BACKUPS = 60;
 const SLOTS = new Set(["live", "shadow"]);
 const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
+// On Windows, Windows' own tar (bsdtar). Git Bash's GNU tar, first on the PATH on GitHub's Windows machines, reads
+// "C:\..." as a remote host called C.
+const TAR = process.platform === "win32" ? path.join(process.env.SystemRoot ?? "C:\\Windows", "System32", "tar.exe") : "tar";
 
 export function bucket(env = process.env) {
   const { R2_ACCOUNT_ID: account, R2_STATE_BUCKET: name = "matchup-dna-state",
@@ -97,7 +100,7 @@ async function main([command, ...args]) {
     const [name, ...paths] = args;
     if (!name || !paths.length) throw new Error("pack <name> <path> [...]");
     const archive = path.join(tmpdir(), `state-${name}-${process.pid}.tar.gz`);
-    execFileSync("tar", ["-czf", archive, "--exclude", "*.etag", ...paths], { cwd: ROOT, stdio: "inherit" });
+    execFileSync(TAR, ["-czf", archive, "--exclude", "*.etag", ...paths], { cwd: ROOT, stdio: "inherit" });
     const bytes = readFileSync(archive);
     rmSync(archive);
     await b.put(`archives/${name}.tar.gz`, bytes);
@@ -108,7 +111,7 @@ async function main([command, ...args]) {
     if (!found) throw new Error(`archive ${name} not found`);
     const archive = path.join(tmpdir(), `state-${name}-${process.pid}.tar.gz`);
     writeFileSync(archive, found.bytes);
-    execFileSync("tar", ["-xzf", archive], { cwd: ROOT, stdio: "inherit" });
+    execFileSync(TAR, ["-xzf", archive], { cwd: ROOT, stdio: "inherit" });
     rmSync(archive);
     console.log(`unpacked ${name}: ${(found.bytes.length / 1e6).toFixed(1)} MB`);
   } else if (command === "pull-store") {
