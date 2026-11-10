@@ -1,5 +1,9 @@
 # Phase 8 dry run: replay past days into a separate replay store (never a forecast record), so its inputs can be
 # compared byte for byte with the same replay on the laptop. Started by hand from the Actions tab.
+#
+# Finding, 9 November 2026: on ubuntu-latest, 76 of 82 replayed forecasts differed from the laptop's in the last
+# digits (inputs up to ~1e-12, probabilities up to 1e-15), because Linux and Windows maths libraries round
+# differently. The choice of runner below tests whether GitHub's Windows machines match the laptop exactly.
 name: Rehearse
 on:
   workflow_dispatch:
@@ -7,17 +11,26 @@ on:
       days:
         description: Days to replay (YYYY-MM-DD, space-separated)
         default: "2026-10-22 2026-10-29"
+      runner:
+        description: GitHub machine to replay on
+        type: choice
+        options: [windows-latest, ubuntu-latest]
+        default: windows-latest
 permissions:
   contents: read
+defaults:
+  run:
+    shell: bash
 jobs:
   rehearse:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner }}
     timeout-minutes: 60
     env:
       R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
       R2_STATE_ACCESS_KEY_ID: ${{ secrets.R2_STATE_ACCESS_KEY_ID }}
       R2_STATE_SECRET_ACCESS_KEY: ${{ secrets.R2_STATE_SECRET_ACCESS_KEY }}
       DAYS: ${{ inputs.days }}
+      PYTHONUNBUFFERED: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/prepare
@@ -28,4 +41,4 @@ jobs:
       - name: Keep the replay store for comparison
         run: |
           store=$(ls -t results/phase6/rehearsal/replay_*.sqlite | head -1)
-          node web/scripts/state.mjs put "checks/rehearsal/github-${{ github.run_id }}.sqlite" "$store"
+          node web/scripts/state.mjs put "checks/rehearsal/github-${{ inputs.runner }}-${{ github.run_id }}.sqlite" "$store"
