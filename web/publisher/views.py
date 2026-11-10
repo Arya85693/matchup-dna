@@ -430,7 +430,10 @@ def track_record(snap, now):
                      "scheduled_up_to": window["scheduled_up_to"],
                      "final_evaluation_not_before": window["final_evaluation_not_before"],
                      "counted_forecast": protocol["counted_forecast"], "counted_matches": protocol["counted_matches"],
-                     "reporting_rule": protocol["reporting_rule"], "code_sha256": protocol["code_sha256"]},
+                     "reporting_rule": protocol["reporting_rule"], "code_sha256": protocol["code_sha256"],
+                     "amendments": [{"amendment": a["amendment"], "created_at": a["created_at"],
+                                     "code_sha256": a["code_sha256"], "changed_files": a["changed_files"]}
+                                    for a in prospective.amendments(protocol)]},
         "counts": {"issued": {k: issued.get(k, 0) for k in KINDS},
                    "counted": {k: sum(1 for key in chosen if snap.kinds[key[1]] == k) for k in KINDS},
                    "scored": {k: len(by_kind.get(k, [])) for k in KINDS},

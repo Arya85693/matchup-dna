@@ -169,6 +169,13 @@ export const TrackRecordSchema = z.object({
     counted_matches: z.string(),
     reporting_rule: z.string(),
     code_sha256: z.string(),
+    // Committed amendments to the protocol's code (P1 amendment 1, 10 November 2026). Optional: older snapshots lack it.
+    amendments: z.array(z.object({
+      amendment: z.number().int(),
+      created_at: UtcTime,
+      code_sha256: z.string(),
+      changed_files: z.array(z.string()),
+    })).optional(),
   }),
   counts: z.object({
     issued: z.record(z.string(), z.number().int()),

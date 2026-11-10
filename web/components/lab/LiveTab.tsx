@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import type { ArchiveEntry, TrackRecord } from "@/lib/contract";
 import { favourite, pct, utcDate } from "@/lib/format";
 import { LocalTime } from "../LocalTime";
-import { f4, Finding, FigureStrip, pc, SectionHead, Segmented } from "./parts";
+import { f4, Finding, FigureStrip, pc, SectionHead, Segmented, sgn4 } from "./parts";
 
 const NEUTRAL = "#c9ced6";
 type Stage = "Scored" | "Eligible" | "Recorded";
@@ -21,17 +21,21 @@ function num(m: object, key: string): number | null {
 }
 
 export function LiveTab({ record, entries }: { record: TrackRecord | null; entries: ArchiveEntry[] }) {
+  const [model, setModel] = useState<Model>("tournament_start");
   if (!record) return <p className="py-10 text-muted">The live record could not be loaded.</p>;
   const c = record.counts;
   const sum = (o: Record<string, number>) => Object.values(o).reduce((a, b) => a + b, 0);
   const recorded = sum(c.issued), eligible = sum(c.counted), scored = sum(c.scored);
   const ts = record.tournament_start.all;
+  const scoredTs = c.scored.tournament_start ?? 0, scoredRa = c.scored.round_aware ?? 0;
 
   return (
     <div className="grid gap-12">
       <Finding kicker="Prospective record P1" evidence="interim"
         title={scored === 0 ? "Recording forecasts. None scored yet." : `${scored} forecasts scored so far.`}
         aside={<Pipeline recorded={recorded} eligible={eligible} scored={scored} excluded={c.excluded} />}>
+        {scored > 0 && <>{forecastCount(scoredTs)} from the tournament-start model and {forecastCount(scoredRa)} from the
+          round-aware model, which forecasts only a player&apos;s later-round matches; a match can count once for each. </>}
         Since {utcDate(record.protocol.issued_from)}, every forecast is locked before its match and scored once a completed
         result arrives. This is the only test the model could not have been tuned on. Figures stay interim until the single
         final evaluation on or after {utcDate(record.protocol.final_evaluation_not_before)}; they decide nothing.
@@ -43,26 +47,74 @@ export function LiveTab({ record, entries }: { record: TrackRecord | null; entri
       </section>
 
       <section className="grid gap-5 border-t border-border pt-10">
-        <SectionHead title="Scores so far">Log loss with a 95% interval, Brier score and how often the favourite won, on scored matches only.</SectionHead>
-        {ts.n === 0 ? (
-          <p className="text-[13px] text-dim">No completed match has a counted forecast yet. No score is shown until one does.</p>
-        ) : (
-          <FigureStrip items={[
-            { label: "Log loss", value: f4(num(ts, "log_loss") ?? 0), note: num(ts, "log_loss_low") !== null ? `95%: ${f4(num(ts, "log_loss_low")!)} to ${f4(num(ts, "log_loss_high")!)}` : `${ts.n} matches` },
-            { label: "Brier", value: f4(num(ts, "brier") ?? 0) },
-            { label: "Favourite won", value: pc(num(ts, "accuracy") ?? 0) },
-            { label: "Matches", value: ts.n },
-          ]} />
-        )}
+        <SectionHead title="Scores so far"
+          action={<Segmented label="Model" value={model} onChange={setModel}
+                             options={[["tournament_start", "Tournament start"], ["round_aware", "Round-aware"]]} />}>
+          {model === "tournament_start"
+            ? "The tournament-start model, the main Phase 4 model: log loss with a 95% interval, Brier score and how often the favourite won, on every scored match."
+            : "Round-aware forecasts only later-round matches, so it is compared with tournament start on the same matches. Below zero favours round-aware."}
+        </SectionHead>
+        {model === "tournament_start" ? <TournamentStartScores ts={ts} /> : <RoundAwareScores record={record} />}
       </section>
 
       <section className="grid gap-5 border-t border-border pt-10">
         <Ledger entries={entries} />
         <p className="text-[12px] text-dim">
-          Counting rule: {record.protocol.counted_forecast}. Code fingerprint <span className="mono text-muted">{record.protocol.code_sha256.slice(0, 12)}</span>.
+          Counting rule: {record.protocol.counted_forecast}. Code fingerprint <span className="mono text-muted">{record.protocol.code_sha256.slice(0, 12)}</span>
+          {(record.protocol.amendments ?? []).map((a) => (
+            <span key={a.amendment}>, and <span className="mono text-muted">{a.code_sha256.slice(0, 12)}</span> under
+              amendment {a.amendment} ({utcDate(a.created_at)})</span>
+          ))}.
         </p>
       </section>
     </div>
+  );
+}
+
+type Model = "tournament_start" | "round_aware";
+
+const forecastCount = (n: number) => `${n} ${n === 1 ? "forecast" : "forecasts"}`;
+const matchCount = (n: number) => `${n} ${n === 1 ? "match" : "matches"}`;
+
+function TournamentStartScores({ ts }: { ts: TrackRecord["tournament_start"]["all"] }) {
+  if (ts.n === 0) {
+    return <p className="text-[13px] text-dim">No completed match has a counted forecast yet. No score is shown until one does.</p>;
+  }
+  return (
+    <FigureStrip items={[
+      { label: "Log loss", value: f4(num(ts, "log_loss") ?? 0), note: num(ts, "log_loss_low") !== null ? `95%: ${f4(num(ts, "log_loss_low")!)} to ${f4(num(ts, "log_loss_high")!)}` : matchCount(ts.n) },
+      { label: "Brier", value: f4(num(ts, "brier") ?? 0) },
+      { label: "Favourite won", value: pc(num(ts, "accuracy") ?? 0) },
+      { label: "Matches", value: ts.n },
+    ]} />
+  );
+}
+
+/** Round-aware against tournament start on the identical later-round matches (the protocol's primary B). The figures
+ *  appear only once the paired difference has a 95% interval (scored matches from at least two weeks); before that,
+ *  one or two matches would make either model look far better or worse than it is. */
+function RoundAwareScores({ record }: { record: TrackRecord }) {
+  const pair = record.round_aware_minus_tournament_start;
+  const gap = num(pair, "gap"), low = num(pair, "low"), high = num(pair, "high");
+  if (pair.n === 0) {
+    return <p className="text-[13px] text-dim">No later-round match with forecasts from both models has finished yet. No comparison is shown until one does.</p>;
+  }
+  if (gap === null || low === null || high === null) {
+    return (
+      <p className="text-[13px] text-dim">
+        {matchCount(pair.n)} with forecasts from both models {pair.n === 1 ? "has" : "have"} finished so far: too few to
+        compare the two models. The comparison appears once scored matches span at least two weeks, when the difference
+        has a 95% interval.
+      </p>
+    );
+  }
+  return (
+    <FigureStrip items={[
+      { label: "Difference", value: sgn4(gap), note: `95%: ${sgn4(low)} to ${sgn4(high)}` },
+      { label: "Round-aware log loss", value: f4(num(record.round_aware.all, "log_loss") ?? 0) },
+      { label: "Tournament start", value: f4(num(record.tournament_start_on_same_matches, "log_loss") ?? 0), note: "Log loss, same matches" },
+      { label: "Matches", value: pair.n, note: `${num(pair, "weeks") ?? 0} weeks` },
+    ]} />
   );
 }
 
