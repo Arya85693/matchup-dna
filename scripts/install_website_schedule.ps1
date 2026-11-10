@@ -39,12 +39,19 @@ $Settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -MultipleInstances 
 $Start = [datetime]::ParseExact($FirstPublish, "HH:mm", $null)
 $Times = 0..(24 / $EveryHours - 1) | ForEach-Object { $Start.AddHours($_ * $EveryHours).ToString("HH:mm") }
 $Triggers = $Times | ForEach-Object { New-ScheduledTaskTrigger -Daily -At $_ }
-$Publish = New-ScheduledTaskAction -Execute $Script -Argument "`"$Python`" publish" -WorkingDirectory $Repo
+# No window: a visible console can be closed, or catch a Ctrl+C typed for another app, which kills the step (seen on
+# 9 November). run_website_hidden.ps1 runs run_website.cmd from a hidden PowerShell, with input from NUL.
+$Launcher = Join-Path $Repo "scripts\run_website_hidden.ps1"
+function Hidden($step) {
+    New-ScheduledTaskAction -Execute "powershell.exe" -WorkingDirectory $Repo `
+        -Argument "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$Launcher`" -Python `"$Python`" -Step $step"
+}
+$Publish = Hidden "publish"
 Register-ScheduledTask -TaskName "MatchupDNA website publish" -Action $Publish -Trigger $Triggers -Settings $Settings `
     -Description "Matchup DNA: publish the website snapshot from the forecast store, read-only ($Repo)" | Out-Null
 Write-Output "Registered 'MatchupDNA website publish' at $($Times -join ', ') with $Python"
 
-$Players = New-ScheduledTaskAction -Execute $Script -Argument "`"$Python`" players" -WorkingDirectory $Repo
+$Players = Hidden "players"
 Register-ScheduledTask -TaskName "MatchupDNA website players" -Action $Players `
     -Trigger (New-ScheduledTaskTrigger -Daily -At $PlayersAt) -Settings $Settings `
     -Description "Matchup DNA: export player ratings, head-to-heads and photos for the website ($Repo)" | Out-Null
