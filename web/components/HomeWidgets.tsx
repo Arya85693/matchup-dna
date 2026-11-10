@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import type { HistoryListing, MatchSummary } from "@/lib/contract";
-import { favourite, pct, playerSlug, roundLabel } from "@/lib/format";
+import { favourite, NOT_RECORDED_TEXT, notRecorded, pct, playerSlug, roundLabel } from "@/lib/format";
 import { Spark } from "./EloChart";
 import { LocalTime } from "./LocalTime";
 import { Badge, ProbBar, SurfaceDot } from "./ui";
@@ -31,7 +31,7 @@ export function FeaturedCarousel({ matches }: { matches: MatchSummary[] }) {
             {f.available && <span className={`num text-[28px] ${fav === k ? "font-semibold text-accent" : "text-muted"}`}>{pct(f.p[k as 0 | 1])}%</span>}
           </div>
         ))}
-        {f.available ? <ProbBar p={f.p} height={8} /> : <p className="rounded-md border border-dashed border-border-strong px-3 py-2.5 text-[12px] text-muted">{f.reason}</p>}
+        {f.available ? <ProbBar p={f.p} height={8} /> : <p className="rounded-md border border-dashed border-border-strong px-3 py-2.5 text-[12px] text-muted">{notRecorded(f.reason_code) ? NOT_RECORDED_TEXT : f.reason}</p>}
       </div>
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
         <div role="group" aria-label="Model" className="flex gap-1 rounded-md border border-border bg-bg p-0.5">

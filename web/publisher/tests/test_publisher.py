@@ -271,21 +271,6 @@ class CloudGateTests(unittest.TestCase):
                                         now)[0])
 
 
-class MissedMatchTests(unittest.TestCase):
-    def test_matches_missed_by_both_models_are_not_listed(self):
-        snap = views._Snapshot.__new__(views._Snapshot)
-        answers = {}
-        snap.forecast = lambda uid, kind: answers[(uid, kind)]
-        late = {"available": False, "decision": "too_late"}
-        waiting = {"available": False, "decision": "deferred"}
-        issued = {"available": True}
-        for uid, (ts, ra) in {"M-late": (late, late), "M-waiting": (waiting, waiting), "M-one": (issued, late)}.items():
-            answers[(uid, "tournament_start")], answers[(uid, "round_aware")] = ts, ra
-        self.assertTrue(snap.missed("M-late"))
-        self.assertFalse(snap.missed("M-waiting"))       # still waiting for a start time: listed, with its note
-        self.assertFalse(snap.missed("M-one"))           # forecast by one model: listed
-
-
 class MatchStateTests(unittest.TestCase):
     def test_result_pending_from_the_start_until_settled(self):
         snap = views._Snapshot.__new__(views._Snapshot)

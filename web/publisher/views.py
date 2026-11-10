@@ -271,20 +271,8 @@ class _Snapshot:
             "result": self.result(uid, [p["id"] for p in players]),
         }
 
-    def missed(self, uid):
-        """No forecast from either model because the match was first seen too close to its start, under way or already
-        played (the owner's decision, 10 November 2026: such matches are not listed on the Match Center). Their match
-        pages, decisions and the archive are unchanged."""
-        for kind in KINDS:
-            f = self.forecast(uid, kind)
-            if f["available"] or not (f.get("decision") or "").startswith("too_late"):
-                return False
-        return True
-
     def listed(self, uid, now):
         """Whether a match belongs on the Match Center at `now`."""
-        if self.missed(uid):
-            return False
         match = self.matches[uid]
         start = self.start(uid)
         reference = start or _edition_start(match["tourney_date"])
