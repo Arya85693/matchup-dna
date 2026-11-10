@@ -220,11 +220,13 @@ class AmendmentTests(unittest.TestCase):
 
     def test_the_freeze_commit_reproduces_the_real_protocol_fingerprint(self):
         """The 'before' side of amendment 1: committed files plus the untracked profile settings give the frozen
-        fingerprint exactly (skipped where the repository or the settings file is not available)."""
+        fingerprint exactly (skipped without the full git history or the settings file: a shallow checkout, like the
+        Tests workflow's, holds only the latest commit, so the freeze commit is not there to read)."""
         real = prospective.ROOT / "experiments" / "phase6_prospective_protocol.json"
         settings = prospective.ROOT / "results" / "phase4" / "profile_settings.json"
-        if prospective.git("rev-parse", "HEAD")[0] != 0 or not settings.exists():
-            self.skipTest("needs the git repository and results/phase4/profile_settings.json")
+        code, shallow = prospective.git("rev-parse", "--is-shallow-repository")
+        if code != 0 or shallow.strip() != b"false" or not settings.exists():
+            self.skipTest("needs the full git history and results/phase4/profile_settings.json")
         with mock.patch.object(prospective, "PROTOCOL_PATH", real):
             protocol = json.loads(real.read_text(encoding="utf-8"))
             hashes = prospective.frozen_file_hashes(protocol)
