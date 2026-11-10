@@ -1,18 +1,15 @@
-# The forecasting job (Phase 8): 07:00 and 19:00 US Eastern. GitHub schedules are UTC and best-effort, so each slot
-# has two triggers an hour apart (daylight saving) and the gate runs the slot once.
+# The forecasting job (Phase 8): every 30 minutes, the full job — new forecasts for every eligible match, results for
+# finished ones, the ledger, and the site. Running often is what makes every match listed at least 30 minutes before
+# its start get a forecast; a forecast already stored is never changed, and a re-run with identical inputs records
+# "unchanged". (Twice a day, a match first listed after one run and starting before the next was missed.)
 #
 # The repository variable STATE_SLOT chooses the store: "shadow" (default; a separate copy, never the official record,
 # nothing uploaded to the site, no ledger commit) or "live" (the official store, set at the switch-over).
 name: Forecast
 on:
   schedule:
-    - cron: "5 11,12,23,0 * * *"
+    - cron: "5,35 * * * *"
   workflow_dispatch:
-    inputs:
-      force:
-        description: Run even if this slot has already run
-        type: boolean
-        default: false
 permissions:
   contents: write
 concurrency:
@@ -24,7 +21,7 @@ defaults:
 jobs:
   forecast:
     runs-on: windows-latest   # same maths library as the laptop: inputs identical to the last digit (8D)
-    timeout-minutes: 45
+    timeout-minutes: 30
     env:
       SLOT: ${{ vars.STATE_SLOT == 'live' && 'live' || 'shadow' }}
       STORE: data/store/${{ vars.STATE_SLOT == 'live' && 'live' || 'shadow' }}.sqlite
@@ -44,26 +41,18 @@ jobs:
         run: node web/scripts/state.mjs pull-store "$SLOT"
       - name: Preflight (hash chain, probabilities, code fingerprint)
         run: python scripts/cloud/gate.py preflight --store "$STORE"
-      - name: Is this slot due?
-        id: gate
-        run: |
-          if [ "${{ inputs.force }}" = "true" ]; then echo "due=true" >> "$GITHUB_OUTPUT"; echo "forced"; else
-            python scripts/cloud/gate.py forecast-due --store "$STORE"; fi
       - name: Forecast, settle, ledger
-        if: steps.gate.outputs.due == 'true'
         run: python -m matchup_dna.forecasting daily --store "$STORE"
       - name: Save the store and the ESPN archive
-        if: steps.gate.outputs.due == 'true'
         run: |
           node web/scripts/state.mjs push-store "$SLOT"
           node web/scripts/state.mjs pack raw data/raw
       - name: Publish
-        if: steps.gate.outputs.due == 'true'
         run: |
           python -m web.publisher.publish --store "$STORE"
           if [ "$SLOT" = "live" ]; then node web/scripts/upload-snapshot.mjs snapshot; else echo "shadow: not uploaded"; fi
       - name: Commit the ledger
-        if: steps.gate.outputs.due == 'true' && env.SLOT == 'live'
+        if: env.SLOT == 'live'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

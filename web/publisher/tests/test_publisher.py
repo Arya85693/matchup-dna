@@ -234,6 +234,25 @@ class CloudGateTests(unittest.TestCase):
         self.assertEqual(g.latest_slot(self.at("2026-11-10 00:20")), self.at("2026-11-10 00:00"))
         self.assertEqual(g.latest_slot(self.at("2026-11-10 11:59")), self.at("2026-11-10 00:00"))
 
+    def test_preflight_tolerates_processor_rounding_only(self):
+        from unittest import mock
+        g = self.gate
+        store = mock.Mock(mode="live")
+        findings = {
+            "rounding": ["94cff5deeace: recomputed 0.6499868570461047, stored 0.6499868570461048"],
+            "changed": ["94cff5deeace: recomputed 0.6499, stored 0.6500"],
+            "chain": ["chain broken at seq 5"],
+        }
+        for case, found in findings.items():
+            with self.subTest(case), mock.patch("matchup_dna.forecasting.api.verify_store", return_value=found), \
+                    mock.patch("web.publisher.readonly.open_readonly", return_value=store):
+                problems, notes = g.preflight("unused.sqlite")
+                if case == "rounding":
+                    self.assertEqual(problems, [])
+                    self.assertEqual(len(notes), 1)
+                else:
+                    self.assertEqual(problems, found)                 # a real difference or a broken chain stops the run
+
     def test_forecast_slot_due_once(self):
         g = self.gate
 
@@ -250,6 +269,21 @@ class CloudGateTests(unittest.TestCase):
         self.assertFalse(g.forecast_due(Store([]), self.at("2026-11-10 16:00"))[0])              # 11:00 Eastern: no slot
         self.assertFalse(g.forecast_due(Store([("settle", "2026-11-10T12:05:00Z"), ("forecast", "2026-11-10T12:01:00Z")]),
                                         now)[0])
+
+
+class MissedMatchTests(unittest.TestCase):
+    def test_matches_missed_by_both_models_are_not_listed(self):
+        snap = views._Snapshot.__new__(views._Snapshot)
+        answers = {}
+        snap.forecast = lambda uid, kind: answers[(uid, kind)]
+        late = {"available": False, "decision": "too_late"}
+        waiting = {"available": False, "decision": "deferred"}
+        issued = {"available": True}
+        for uid, (ts, ra) in {"M-late": (late, late), "M-waiting": (waiting, waiting), "M-one": (issued, late)}.items():
+            answers[(uid, "tournament_start")], answers[(uid, "round_aware")] = ts, ra
+        self.assertTrue(snap.missed("M-late"))
+        self.assertFalse(snap.missed("M-waiting"))       # still waiting for a start time: listed, with its note
+        self.assertFalse(snap.missed("M-one"))           # forecast by one model: listed
 
 
 class MatchStateTests(unittest.TestCase):
