@@ -7,7 +7,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "next typegen && tsc --noEmit",
     "test": "node --test --experimental-strip-types --no-warnings lib/*.test.ts scripts/*.test.mjs",
     "upload": "node scripts/upload-snapshot.mjs",
     "e2e": "playwright test"
