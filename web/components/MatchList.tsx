@@ -45,16 +45,27 @@ export function MatchRow({ m }: { m: MatchSummary }) {
           <div key={i} className="flex min-w-0 items-center gap-2">
             <span className={`size-1.5 shrink-0 rounded-full ${lead(i) ? "bg-accent" : "bg-transparent"}`} aria-hidden="true" />
             <span className={`truncate text-[14px] ${lead(i) ? "font-medium text-text" : "text-text/75"}`}>{n}</span>
-            {winner === i && <span className="text-[11px] text-pos">won</span>}
+            {winner === i && <span className="text-[11px] text-pos">{m.result?.status === "walkover" ? "advanced (walkover)" : "won"}</span>}
           </div>
         ))}
       </div>
 
       <div className="col-span-3 grid gap-1.5 sm:col-span-1 sm:col-start-3 sm:row-start-1">
-        {settled && m.result?.score ? (
+        {m.result?.status === "cancelled" ? (
+          <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1 text-[12px]">
+            <Badge>Cancelled</Badge>
+            <span className="basis-full text-right text-[11px] text-dim">{m.result.note ?? "Not played"}</span>
+          </div>
+        ) : m.result?.status === "walkover" ? (
+          <div className="flex items-center justify-end gap-3 text-[12px]">
+            <Badge>Walkover</Badge>
+            <span className="text-[11px] text-dim">Not played; not scored</span>
+          </div>
+        ) : settled && m.result?.score ? (
           <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1 text-[12px]">
             <span className="fig text-muted">{m.result.score}</span>
-            {ts.available && winner !== null && (fav === winner ? <Badge tone="pos">Favourite won</Badge> : <Badge tone="neg">Upset</Badge>)}
+            {m.result.status === "retired" && <Badge>Retired</Badge>}
+            {ts.available && winner !== null && m.result.status === "completed" && (fav === winner ? <Badge tone="pos">Favourite won</Badge> : <Badge tone="neg">Upset</Badge>)}
             {!ts.available && notRecorded(ts.reason_code) && <span className="basis-full text-right text-[11px] text-dim">{NOT_RECORDED_SHORT}</span>}
           </div>
         ) : ts.available ? (

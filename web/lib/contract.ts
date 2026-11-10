@@ -66,7 +66,11 @@ export const MatchSummarySchema = z.object({
   players: z.tuple([PlayerSchema, PlayerSchema]),
   forecasts: z.object({ tournament_start: ForecastSchema, round_aware: ForecastSchema }),
   result: z
-    .object({ status: z.string(), winner_index: z.number().int().nullable(), score: z.string().nullable() })
+    .object({
+      status: z.string(), winner_index: z.number().int().nullable(), score: z.string().nullable(),
+      /** Set when a recorded result was for different players (a withdrawal and replacement): not played. */
+      note: z.string().optional(),
+    })
     .nullable(),
 });
 

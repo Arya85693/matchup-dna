@@ -271,10 +271,50 @@ class CloudGateTests(unittest.TestCase):
                                         now)[0])
 
 
+class ReplacedPlayerTests(unittest.TestCase):
+    """A result recorded under a match number the provider later reused for different players is not shown."""
+
+    def snapshot(self, later_away_id, later_away_name):
+        db = sqlite3.connect(":memory:")
+        db.row_factory = sqlite3.Row
+        db.executescript(
+            "CREATE TABLE source_records (record_id INTEGER PRIMARY KEY, provider TEXT, tour TEXT, provider_match_id TEXT,"
+            " retrieved_at TEXT, payload_json TEXT);"
+            "CREATE TABLE identity_observations (provider TEXT, tour TEXT, provider_player_id TEXT, player_id INTEGER,"
+            " status TEXT, first_seen_at TEXT);")
+        for espn, pid in (("1", 100), ("2", 200), ("3", 300)):
+            db.execute("INSERT INTO identity_observations VALUES ('espn', 'ATP', ?, ?, 'verified', '2026-11-01')", (espn, pid))
+        first = {"provider": "espn", "home_id": "2", "home_name": "Shevchenko", "away_id": "1", "away_name": "Van Assche"}
+        later = dict(first, away_id=later_away_id, away_name=later_away_name, status="completed")
+        db.execute("INSERT INTO source_records VALUES (1, 'espn', 'ATP', '186526', '2026-11-08T20:00:00Z', ?)", (json.dumps(first),))
+        db.execute("INSERT INTO source_records VALUES (2, 'espn', 'ATP', '186526', '2026-11-10T13:20:00Z', ?)", (json.dumps(later),))
+        snap = views._Snapshot.__new__(views._Snapshot)
+        snap.store = type("S", (), {"db": db})()
+        snap.matches = {"M-1": {"tour": "ATP", "player_low": 100, "player_high": 200}}
+        snap.records = {"M-1": first}
+        snap.settled = {"M-1": {"state": "settled", "status": "completed", "winner_id": 200, "rows": [
+            {"source": "espn", "provider_match_id": "186526", "retrieved_at": "2026-11-10T13:20:00Z", "score": "6-1 6-3"}]}}
+        return snap
+
+    def test_replaced_player_means_not_played(self):
+        snap = self.snapshot("3", "Mannarino")
+        self.assertEqual(snap.replaced("M-1"), "Not played: Van Assche was replaced by Mannarino")
+        self.assertEqual(snap.result("M-1", [100, 200]),
+                         {"status": "cancelled", "winner_index": None, "score": None,
+                          "note": "Not played: Van Assche was replaced by Mannarino"})
+        self.assertEqual(snap.state("M-1", datetime.datetime(2026, 11, 10, tzinfo=datetime.timezone.utc)), "cancelled")
+
+    def test_same_players_keep_their_result(self):
+        snap = self.snapshot("1", "Van Assche")
+        self.assertIsNone(snap.replaced("M-1"))
+        self.assertEqual(snap.result("M-1", [100, 200])["winner_index"], 1)
+
+
 class MatchStateTests(unittest.TestCase):
     def test_result_pending_from_the_start_until_settled(self):
         snap = views._Snapshot.__new__(views._Snapshot)
         snap.settled = {"M-done": {"state": "settled", "status": "completed"}}
+        snap.matches = {}
         snap.records = {uid: {"event_time": "2026-11-09T12:00:00Z", **extra} for uid, extra in {
             "M-later": {}, "M-started": {}, "M-live": {"status": "in_progress"}, "M-done": {"status": "completed"},
             "M-rain": {"raw_status": "STATUS_SUSPENDED"}}.items()}

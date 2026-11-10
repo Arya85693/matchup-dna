@@ -58,7 +58,7 @@ export function ForecastSummary({ page, kind, onKind }: { page: MatchPage; kind:
                   <p className="mt-1 flex flex-wrap gap-x-2 text-[12px] text-dim">
                     {m.players[i]!.seed !== null && <span>Seed {m.players[i]!.seed}</span>}
                     {m.players[i]!.identity === "new_player" && <span>New to the records</span>}
-                    {winner === i && <span className="text-pos">Won</span>}
+                    {winner === i && <span className="text-pos">{m.result?.status === "walkover" ? "Advanced (walkover)" : m.result?.status === "retired" ? "Won (opponent retired)" : "Won"}</span>}
                     {fav === i && <span className="text-accent">Favourite</span>}
                   </p>
                 </div>
@@ -74,7 +74,9 @@ export function ForecastSummary({ page, kind, onKind }: { page: MatchPage; kind:
                 : <><span className="text-text">No {MODEL[kind].label.toLowerCase()} forecast.</span> {f.reason}</>}
             </div>
           )}
-          {m.result?.score && <p className="fig text-[13px] text-muted">Final score {m.result.score}</p>}
+          {m.result?.status === "cancelled" ? <p className="text-[13px] text-muted">{m.result.note ?? "Not played"}. No result is recorded and nothing is scored.</p>
+            : m.result?.status === "walkover" ? <p className="text-[13px] text-muted">Walkover: the match was not played, so it is not scored.</p>
+            : m.result?.score && <p className="fig text-[13px] text-muted">Final score {m.result.score}{m.result.status === "retired" ? " (retired)" : ""}</p>}
         </div>
 
         {/* Change between the two stored forecasts */}

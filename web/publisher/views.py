@@ -204,7 +204,9 @@ class _Snapshot:
     def state(self, uid, now):
         settlement = self.settled.get(uid)
         if settlement:
-            return "result_conflict" if settlement["state"] == "conflict" else settlement["status"]
+            if settlement["state"] == "conflict":
+                return "result_conflict"
+            return "cancelled" if self.replaced(uid) else settlement["status"]
         record = self.records.get(uid) or {}
         raw = (record.get("raw_status") or "").upper()
         if "POSTPONED" in raw:
@@ -221,10 +223,49 @@ class _Snapshot:
             return "result_pending"
         return "scheduled" if start else "time_tbc"
 
+    def replaced(self, uid):
+        """A note if the match's result came from a provider record naming different players, else None.
+
+        Providers can reuse a match number when a player withdraws and is replaced (10 November 2026: ESPN's 186526
+        was Van Assche v Shevchenko, then Mannarino v Shevchenko, and the result of the second was attached to the
+        first). The forecasting code attaches results by match number and is frozen under P1, so the site checks the
+        players itself and shows such a match as not played, with no winner."""
+        settlement = self.settled.get(uid)
+        match = self.matches.get(uid)
+        if not settlement or settlement["state"] == "conflict" or match is None:
+            return None
+        ours = {match["player_low"], match["player_high"]}
+        for row in settlement["rows"]:
+            record = self.store.db.execute(
+                "SELECT payload_json FROM source_records WHERE provider = ? AND tour = ? AND provider_match_id = ? "
+                "AND retrieved_at <= ? ORDER BY retrieved_at DESC, record_id DESC LIMIT 1",
+                (row["source"], match["tour"], str(row.get("provider_match_id")), row["retrieved_at"])).fetchone()
+            if record is None:
+                continue
+            payload = json.loads(record["payload_json"])
+            sides = {}
+            for side in ("home", "away"):
+                seen = self.store.db.execute(
+                    "SELECT player_id FROM identity_observations WHERE provider = ? AND tour = ? AND provider_player_id = ? "
+                    "ORDER BY first_seen_at DESC LIMIT 1", (row["source"], match["tour"], str(payload.get(f"{side}_id")))).fetchone()
+                sides[side] = (seen["player_id"] if seen else None, payload.get(f"{side}_name"))
+            theirs = {pid for pid, _ in sides.values()}
+            if theirs != ours:
+                names = {p["id"]: p["name"] for p in self._observed(uid)}
+                gone = [names.get(pid) or str(pid) for pid in ours - theirs]
+                came = [name for pid, name in sides.values() if pid not in ours]
+                if gone and came:
+                    return f"Not played: {gone[0]} was replaced by {came[0]}"
+                return "Not played: the players changed before the match"
+        return None
+
     def result(self, uid, order_ids):
         settlement = self.settled.get(uid)
         if not settlement:
             return None
+        note = self.replaced(uid)
+        if note:
+            return {"status": "cancelled", "winner_index": None, "score": None, "note": note}
         if settlement["state"] == "conflict":
             return {"status": "conflict", "winner_index": None, "score": None}
         winner = settlement["winner_id"]
