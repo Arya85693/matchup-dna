@@ -10,9 +10,12 @@ permissions:
 concurrency:
   group: store-${{ vars.STATE_SLOT || 'shadow' }}
   cancel-in-progress: false
+defaults:
+  run:
+    shell: bash   # the steps are bash; Windows machines provide it through Git
 jobs:
   results:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest   # same maths library as the laptop: inputs identical to the last digit (8D)
     timeout-minutes: 30
     env:
       SLOT: ${{ vars.STATE_SLOT == 'live' && 'live' || 'shadow' }}
@@ -25,7 +28,7 @@ jobs:
       R2_UPLOAD_SECRET_ACCESS_KEY: ${{ secrets.R2_UPLOAD_SECRET_ACCESS_KEY }}
       PYTHONUNBUFFERED: "1"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/prepare
       - name: Store
         run: node web/scripts/state.mjs pull-store "$SLOT"

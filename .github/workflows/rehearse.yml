@@ -32,7 +32,7 @@ jobs:
       DAYS: ${{ inputs.days }}
       PYTHONUNBUFFERED: "1"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/prepare
       - name: Replay
         run: |

@@ -3,11 +3,11 @@ description: Python and Node as on the laptop, the pinned packages, and the priv
 runs:
   using: composite
   steps:
-    - uses: actions/setup-python@v5
+    - uses: actions/setup-python@v6
       with:
         python-version: "3.13.7"
         cache: pip
-    - uses: actions/setup-node@v4
+    - uses: actions/setup-node@v5
       with:
         node-version: "22"
         cache: npm
