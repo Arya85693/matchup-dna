@@ -207,6 +207,51 @@ class SnapshotTests(unittest.TestCase):
                 self.assertNotIn(secret, text, f"{secret} in {name}")
 
 
+class CloudGateTests(unittest.TestCase):
+    """scripts/cloud/gate.py: when GitHub Actions runs have work to do (Phase 8)."""
+
+    @classmethod
+    def setUpClass(cls):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("gate", ROOT / "scripts" / "cloud" / "gate.py")
+        cls.gate = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cls.gate)
+
+    def at(self, text):
+        return datetime.datetime.strptime(text, "%Y-%m-%d %H:%M").replace(tzinfo=datetime.timezone.utc)
+
+    def test_eastern_time_and_daylight_saving(self):
+        g = self.gate
+        self.assertEqual(g.eastern_offset(self.at("2026-07-01 12:00")), datetime.timedelta(hours=-4))
+        self.assertEqual(g.eastern_offset(self.at("2026-12-01 12:00")), datetime.timedelta(hours=-5))
+        self.assertEqual(g.eastern_offset(self.at("2026-03-08 06:59")), datetime.timedelta(hours=-5))   # 01:59 EST
+        self.assertEqual(g.eastern_offset(self.at("2026-03-08 07:00")), datetime.timedelta(hours=-4))   # 03:00 EDT
+        self.assertEqual(g.eastern_offset(self.at("2026-11-01 05:59")), datetime.timedelta(hours=-4))
+        self.assertEqual(g.eastern_offset(self.at("2026-11-01 06:00")), datetime.timedelta(hours=-5))
+        # 07:00 Eastern is 12:00 UTC in winter and 11:00 UTC in summer; 19:00 Eastern is 00:00 / 23:00 UTC.
+        self.assertEqual(g.latest_slot(self.at("2026-11-10 12:30")), self.at("2026-11-10 12:00"))
+        self.assertEqual(g.latest_slot(self.at("2026-07-10 11:30")), self.at("2026-07-10 11:00"))
+        self.assertEqual(g.latest_slot(self.at("2026-11-10 00:20")), self.at("2026-11-10 00:00"))
+        self.assertEqual(g.latest_slot(self.at("2026-11-10 11:59")), self.at("2026-11-10 00:00"))
+
+    def test_forecast_slot_due_once(self):
+        g = self.gate
+
+        class Store:
+            def __init__(self, rows):
+                self.db = sqlite3.connect(":memory:")
+                self.db.row_factory = sqlite3.Row
+                self.db.execute("CREATE TABLE runs (kind TEXT, started_at TEXT, status TEXT)")
+                self.db.executemany("INSERT INTO runs VALUES (?, ?, 'ok')", rows)
+
+        now = self.at("2026-11-10 12:40")                               # 07:40 Eastern
+        self.assertTrue(g.forecast_due(Store([("forecast", "2026-11-10T00:03:00Z")]), now)[0])
+        self.assertFalse(g.forecast_due(Store([("forecast", "2026-11-10T12:05:00Z")]), now)[0])   # already ran
+        self.assertFalse(g.forecast_due(Store([]), self.at("2026-11-10 16:00"))[0])              # 11:00 Eastern: no slot
+        self.assertFalse(g.forecast_due(Store([("settle", "2026-11-10T12:05:00Z"), ("forecast", "2026-11-10T12:01:00Z")]),
+                                        now)[0])
+
+
 class MatchStateTests(unittest.TestCase):
     def test_result_pending_from_the_start_until_settled(self):
         snap = views._Snapshot.__new__(views._Snapshot)

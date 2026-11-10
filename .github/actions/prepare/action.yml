@@ -1,0 +1,24 @@
+name: Prepare
+description: Python and Node as on the laptop, the pinned packages, and the private data from the state bucket.
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.13.7"
+        cache: pip
+    - uses: actions/setup-node@v4
+      with:
+        node-version: "22"
+        cache: npm
+        cache-dependency-path: web/package-lock.json
+    - name: Packages
+      shell: bash
+      run: |
+        python -m pip install --quiet -r requirements.txt
+        npm ci --prefix web --no-audit --no-fund
+    - name: Data from the private state bucket
+      shell: bash
+      run: |
+        node web/scripts/state.mjs unpack static
+        node web/scripts/state.mjs unpack raw

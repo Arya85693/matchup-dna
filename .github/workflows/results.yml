@@ -1,0 +1,50 @@
+# Results (Phase 8): every 30 minutes, settle finished matches when one is due, then publish. Never forecasts.
+# Same store choice as forecast.yml (repository variable STATE_SLOT: shadow by default, live after the switch-over).
+name: Results
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: store-${{ vars.STATE_SLOT || 'shadow' }}
+  cancel-in-progress: false
+jobs:
+  results:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      SLOT: ${{ vars.STATE_SLOT == 'live' && 'live' || 'shadow' }}
+      STORE: data/store/${{ vars.STATE_SLOT == 'live' && 'live' || 'shadow' }}.sqlite
+      R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+      R2_STATE_ACCESS_KEY_ID: ${{ secrets.R2_STATE_ACCESS_KEY_ID }}
+      R2_STATE_SECRET_ACCESS_KEY: ${{ secrets.R2_STATE_SECRET_ACCESS_KEY }}
+      R2_BUCKET: matchup-dna-site
+      R2_UPLOAD_ACCESS_KEY_ID: ${{ secrets.R2_UPLOAD_ACCESS_KEY_ID }}
+      R2_UPLOAD_SECRET_ACCESS_KEY: ${{ secrets.R2_UPLOAD_SECRET_ACCESS_KEY }}
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/prepare
+      - name: Store
+        run: node web/scripts/state.mjs pull-store "$SLOT"
+      - name: Is a result due?
+        id: gate
+        run: python scripts/cloud/gate.py results-due --store "$STORE"
+      - name: Preflight (hash chain, probabilities, code fingerprint)
+        if: steps.gate.outputs.due == 'true'
+        run: python scripts/cloud/gate.py preflight --store "$STORE"
+      - name: Settle
+        if: steps.gate.outputs.due == 'true'
+        run: python -m matchup_dna.forecasting settle --store "$STORE"
+      - name: Save the store and the ESPN archive
+        if: steps.gate.outputs.due == 'true'
+        run: |
+          node web/scripts/state.mjs push-store "$SLOT"
+          node web/scripts/state.mjs pack raw data/raw
+      - name: Publish
+        if: steps.gate.outputs.due == 'true'
+        run: |
+          python -m web.publisher.publish --store "$STORE"
+          if [ "$SLOT" = "live" ]; then node web/scripts/upload-snapshot.mjs snapshot; else echo "shadow: not uploaded"; fi

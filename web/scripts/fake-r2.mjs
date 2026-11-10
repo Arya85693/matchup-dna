@@ -4,6 +4,7 @@
  *
  *     node web/scripts/fake-r2.mjs 4599      serve on a port until stopped
  */
+import { createHash } from "node:crypto";
 import { createServer } from "node:http";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
@@ -24,8 +25,17 @@ export function fakeR2() {
     }
     const id = `${bucket}/${key}`;
     if (req.method === "PUT") {
-      objects.set(id, { body: Buffer.concat(chunks), type: req.headers["content-type"], cache: req.headers["cache-control"] });
-      res.writeHead(200).end();
+      const existing = objects.get(id);
+      if ((req.headers["if-none-match"] === "*" && existing) ||
+          (req.headers["if-match"] && (!existing || existing.etag !== req.headers["if-match"]))) {
+        res.writeHead(412).end("<Error><Code>PreconditionFailed</Code></Error>");
+        return;
+      }
+      const body = Buffer.concat(chunks);
+      const etag = `"${createHash("md5").update(body).update(String(Date.now() + Math.random())).digest("hex")}"`;
+      objects.set(id, { body, etag, type: req.headers["content-type"], cache: req.headers["cache-control"],
+                        sha256: req.headers["x-amz-meta-sha256"] });
+      res.writeHead(200, { ETag: etag }).end();
     } else if (req.method === "DELETE") {
       objects.delete(id);
       res.writeHead(204).end();
@@ -43,7 +53,8 @@ export function fakeR2() {
     } else if (req.method === "GET") {
       const hit = objects.get(id);
       if (!hit) res.writeHead(404).end("<Error><Code>NoSuchKey</Code></Error>");
-      else res.writeHead(200, { "Content-Type": hit.type }).end(hit.body);
+      else res.writeHead(200, { "Content-Type": hit.type ?? "application/octet-stream", ETag: hit.etag,
+                                ...(hit.sha256 ? { "x-amz-meta-sha256": hit.sha256 } : {}) }).end(hit.body);
     } else {
       res.writeHead(405).end();
     }

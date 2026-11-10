@@ -1,0 +1,32 @@
+# Every test on GitHub's Linux machine: the project's tests, the publisher's and the website's (Phase 8).
+name: Tests
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["forecasts/ledger.jsonl"]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+      R2_STATE_ACCESS_KEY_ID: ${{ secrets.R2_STATE_ACCESS_KEY_ID }}
+      R2_STATE_SECRET_ACCESS_KEY: ${{ secrets.R2_STATE_SECRET_ACCESS_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/prepare
+      - name: Project tests
+        run: python -m unittest discover -s tests
+      - name: Publisher tests
+        run: python -m unittest web.publisher.tests.test_publisher
+      - name: Website tests and types
+        working-directory: web
+        run: |
+          npm test
+          npm run typecheck

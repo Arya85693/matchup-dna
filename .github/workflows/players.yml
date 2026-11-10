@@ -1,0 +1,36 @@
+# Player ratings, head-to-heads and photos (Phase 8): once a day, 07:50 Eastern in winter (08:50 in summer). Reads the
+# store only. Runs for the live store only; in shadow mode there is nothing to publish.
+name: Players
+on:
+  schedule:
+    - cron: "50 12 * * *"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: store-${{ vars.STATE_SLOT || 'shadow' }}
+  cancel-in-progress: false
+jobs:
+  players:
+    if: vars.STATE_SLOT == 'live'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+      R2_STATE_ACCESS_KEY_ID: ${{ secrets.R2_STATE_ACCESS_KEY_ID }}
+      R2_STATE_SECRET_ACCESS_KEY: ${{ secrets.R2_STATE_SECRET_ACCESS_KEY }}
+      R2_BUCKET: matchup-dna-site
+      R2_UPLOAD_ACCESS_KEY_ID: ${{ secrets.R2_UPLOAD_ACCESS_KEY_ID }}
+      R2_UPLOAD_SECRET_ACCESS_KEY: ${{ secrets.R2_UPLOAD_SECRET_ACCESS_KEY }}
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/prepare
+      - name: Store
+        run: node web/scripts/state.mjs pull-store live
+      - name: Player export and upload
+        run: |
+          python -m web.publisher.players
+          node web/scripts/upload-snapshot.mjs history
+      - name: Save the photo cache
+        run: node web/scripts/state.mjs pack raw data/raw
