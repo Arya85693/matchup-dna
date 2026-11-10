@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import type { MatchPage, Version } from "@/lib/contract";
+import { notRecorded } from "@/lib/format";
 import { ContributionChart } from "./match/ContributionChart";
 import { ForecastSummary, MODEL, type Kind } from "./match/ForecastSummary";
 import { ForecastTimeline } from "./match/ForecastTimeline";
@@ -30,6 +31,23 @@ export function MatchIntelligence({ page }: { page: MatchPage }) {
   const names = [m.players[0].name ?? "To be decided", m.players[1].name ?? "To be decided"] as const;
   const version = headline(page.versions[kind]);
   const fallback = headline(page.versions.tournament_start);
+  // A match with no recorded forecast from either model: nothing to analyse, so only the players, the score and the
+  // verification records are shown (owner's decision, 10 November 2026).
+  const nothing = !m.forecasts.tournament_start.available && !m.forecasts.round_aware.available
+    && notRecorded(m.forecasts.tournament_start.reason_code);
+
+  if (nothing) {
+    return (
+      <div className="grid gap-6 [&>*]:min-w-0">
+        <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-[13px] text-muted">
+          <Link href="/matches" className="hover:text-text">Matches</Link><span className="text-dim">/</span>
+          <span className="truncate text-text">{m.edition.name}</span>
+        </nav>
+        <ForecastSummary page={page} kind={kind} onKind={setKind} />
+        <Verification page={page} />
+      </div>
+    );
+  }
 
   return (
     <div className="grid gap-6 [&>*]:min-w-0">

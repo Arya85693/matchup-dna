@@ -20,7 +20,7 @@ export function Verification({ page }: { page: MatchPage }) {
     <details className="group min-w-0 rounded-xl border border-border bg-card">
       <summary className="flex cursor-pointer list-none flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4 text-[13px]">
         <span className="font-medium">Verification</span>
-        {versions.length === 0 ? <span className="text-dim">No forecast to verify</span> : (
+        {versions.length === 0 ? <span className="text-dim">Result records</span> : (
           <>
             <Check ok={beforeStart}>{beforeStart ? "Stored before the scheduled start" : "Check issue times"}</Check>
             <Check ok={frozen}>{frozen ? "Code matches the frozen protocol" : pilot ? "Pilot run, before the protocol was frozen" : "Code differs from the frozen protocol"}</Check>

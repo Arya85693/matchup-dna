@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { MatchPage } from "@/lib/contract";
-import { familyName, favourite, NOT_RECORDED_TEXT, notRecorded, pct, roundLabel, STATE_LABELS } from "@/lib/format";
+import { familyName, favourite, notRecorded, pct, roundLabel, STATE_LABELS } from "@/lib/format";
 import { LocalTime } from "../LocalTime";
 import { Badge, SurfaceDot } from "../ui";
 import { ProbabilitySplit, Pct, TierBadge } from "./parts";
@@ -42,7 +42,7 @@ export function ForecastSummary({ page, kind, onKind }: { page: MatchPage; kind:
               <button key={k} role="tab" aria-selected={kind === k} onClick={() => onKind(k)}
                       className={`grid gap-0.5 rounded-md px-3 py-2 text-left transition-colors ${kind === k ? "bg-card-hover" : "hover:bg-card"}`}>
                 <span className={`text-[13px] ${kind === k ? "font-medium text-text" : "text-muted"}`}>{MODEL[k].label}</span>
-                <span className="text-[11px] text-dim">{ff.available ? <>{MODEL[k].short} · issued <LocalTime iso={ff.issued_at} /></> : "Not issued for this match"}</span>
+                <span className="text-[11px] text-dim">{ff.available ? <>{MODEL[k].short} · issued <LocalTime iso={ff.issued_at} /></> : notRecorded(ff.reason_code) ? MODEL[k].short : "Not issued for this match"}</span>
               </button>
             );
           })}
@@ -62,14 +62,15 @@ export function ForecastSummary({ page, kind, onKind }: { page: MatchPage; kind:
                     {fav === i && <span className="text-accent">Favourite</span>}
                   </p>
                 </div>
-                {f.available ? <Pct value={f.p[i as 0 | 1]} fav={fav === i} size="xl" /> : <span className="fig text-[40px] leading-none text-border-strong sm:text-[48px]" aria-hidden="true">–</span>}
+                {f.available ? <Pct value={f.p[i as 0 | 1]} fav={fav === i} size="xl" />
+                  : notRecorded(f.reason_code) ? null
+                  : <span className="fig text-[40px] leading-none text-border-strong sm:text-[48px]" aria-hidden="true">–</span>}
               </div>
             ))}
           </div>
-          {f.available ? <ProbabilitySplit p={f.p} height={12} /> : (
+          {f.available ? <ProbabilitySplit p={f.p} height={12} /> : notRecorded(f.reason_code) ? null : (
             <div className="rounded-lg border border-dashed border-border-strong px-4 py-3 text-[13px] text-muted">
-              {notRecorded(f.reason_code) ? NOT_RECORDED_TEXT
-                : <><span className="text-text">No {MODEL[kind].label.toLowerCase()} forecast.</span> {f.reason}</>}
+              <span className="text-text">No {MODEL[kind].label.toLowerCase()} forecast.</span> {f.reason}
             </div>
           )}
           {m.result?.score && <p className="fig text-[13px] text-muted">Final score {m.result.score}</p>}
