@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import type { MatchSummary } from "@/lib/contract";
-import { dayKey, familyName, favourite, notRecorded, roundLabel, STATE_LABELS } from "@/lib/format";
+import { dayKey, familyName, favourite, NOT_RECORDED_SHORT, notRecorded, roundLabel, STATE_LABELS } from "@/lib/format";
 import { groupByEdition } from "@/lib/matches";
 import { LocalTime } from "./LocalTime";
 import { ProbabilitySplit, Pct, TierBadge, tierOf } from "./match/parts";
@@ -52,9 +52,10 @@ export function MatchRow({ m }: { m: MatchSummary }) {
 
       <div className="col-span-3 grid gap-1.5 sm:col-span-1 sm:col-start-3 sm:row-start-1">
         {settled && m.result?.score ? (
-          <div className="flex items-center justify-end gap-3 text-[12px]">
+          <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1 text-[12px]">
             <span className="fig text-muted">{m.result.score}</span>
             {ts.available && winner !== null && (fav === winner ? <Badge tone="pos">Favourite won</Badge> : <Badge tone="neg">Upset</Badge>)}
+            {!ts.available && notRecorded(ts.reason_code) && <span className="basis-full text-right text-[11px] text-dim">{NOT_RECORDED_SHORT}</span>}
           </div>
         ) : ts.available ? (
           <>
@@ -65,8 +66,9 @@ export function MatchRow({ m }: { m: MatchSummary }) {
             <ProbabilitySplit p={ts.p} height={6} />
           </>
         ) : (
-          notRecorded(ts.reason_code) ? <span aria-hidden="true" />
-            : <span className="text-right text-[12px] text-dim">{SHORT_REASON[ts.reason_code] ?? "No forecast"}</span>
+          <span className="text-right text-[12px] text-dim">
+            {notRecorded(ts.reason_code) ? NOT_RECORDED_SHORT : SHORT_REASON[ts.reason_code] ?? "No forecast"}
+          </span>
         )}
         {!settled && (m.forecasts.round_aware.available || (m.state !== "scheduled" && m.state !== "time_tbc")) && (
           <div className="flex justify-end gap-1.5">

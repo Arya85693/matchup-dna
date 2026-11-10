@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { MatchPage } from "@/lib/contract";
-import { familyName, favourite, notRecorded, pct, roundLabel, STATE_LABELS } from "@/lib/format";
+import { familyName, favourite, NOT_RECORDED_TEXT, notRecorded, pct, roundLabel, STATE_LABELS } from "@/lib/format";
 import { LocalTime } from "../LocalTime";
 import { Badge, SurfaceDot } from "../ui";
 import { ProbabilitySplit, Pct, TierBadge } from "./parts";
@@ -68,9 +68,10 @@ export function ForecastSummary({ page, kind, onKind }: { page: MatchPage; kind:
               </div>
             ))}
           </div>
-          {f.available ? <ProbabilitySplit p={f.p} height={12} /> : notRecorded(f.reason_code) ? null : (
+          {f.available ? <ProbabilitySplit p={f.p} height={12} /> : (
             <div className="rounded-lg border border-dashed border-border-strong px-4 py-3 text-[13px] text-muted">
-              <span className="text-text">No {MODEL[kind].label.toLowerCase()} forecast.</span> {f.reason}
+              {notRecorded(f.reason_code) ? NOT_RECORDED_TEXT
+                : <><span className="text-text">No {MODEL[kind].label.toLowerCase()} forecast.</span> {f.reason}</>}
             </div>
           )}
           {m.result?.score && <p className="fig text-[13px] text-muted">Final score {m.result.score}</p>}

@@ -41,6 +41,12 @@ jobs:
         run: node web/scripts/state.mjs pull-store "$SLOT"
       - name: Preflight (hash chain, probabilities, code fingerprint)
         run: python scripts/cloud/gate.py preflight --store "$STORE"
+      - name: Shadow runs keep their own ledger
+        if: env.SLOT != 'live'
+        # The checked-out forecasts/ledger.jsonl is the official ledger; a shadow store's chain is a different history,
+        # so the ledger's prefix check (correctly) refuses it. In shadow mode the job writes a fresh ledger from the
+        # shadow store, which is never committed.
+        run: rm -f forecasts/ledger.jsonl
       - name: Forecast, settle, ledger
         run: python -m matchup_dna.forecasting daily --store "$STORE"
       - name: Save the store and the ESPN archive

@@ -14,12 +14,14 @@ export const LEVELS: Record<string, Record<string, string>> = {
 };
 
 /** A player's address: ATP and WTA ids are separate pools, so the tour is part of it (e.g. atp-206173, wta--12345). */
-/** A match the models never forecast because it was first seen too close to its start, under way or played. The site
- * shows these neutrally (owner's decision, 10 November 2026); the decision log keeps the exact reason. */
+/** A match the models never forecast because it was first listed too close to its start, under way or played. The
+ * site shows one plain explanation for these (owner's decision, 10 November 2026); the decision log keeps the detail. */
 export function notRecorded(reasonCode: string | undefined): boolean {
   return (reasonCode ?? "").startsWith("too_late");
 }
-export const NOT_RECORDED_TEXT = "No pre-match forecast was recorded for this match.";
+export const NOT_RECORDED_TEXT = "No forecast: this match was first listed less than 30 minutes before its start, and "
+  + "forecasts are only issued at least 30 minutes before play.";
+export const NOT_RECORDED_SHORT = "No forecast: listed too close to the start";
 
 export function playerSlug(tour: string, id: number): string {
   return `${tour.toLowerCase()}-${id}`;
