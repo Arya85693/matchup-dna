@@ -71,16 +71,17 @@ def _edition_start(yyyymmdd):
     return datetime.datetime(int(s[:4]), int(s[4:6]), int(s[6:8]), tzinfo=datetime.timezone.utc)
 
 
-def counted(store, protocol):
+def counted(store, protocol, accepted=None):
     """{(match_uid, model_version): prediction row} counted under the P1 protocol, exactly as prospective.evaluate
     selects them: the first stored forecast in the window at least 30 minutes before the start, scheduled up to the
-    window's end, issued by the protocol's code and models."""
+    window's end, issued by the protocol's code (or a committed amendment's) and models."""
+    accepted = set(prospective.accepted_code(protocol)) if accepted is None else accepted
     window = protocol["window"]
     chosen = prospective.counted_predictions(store, window["issued_from"], None, "first")
     end = utc(window["scheduled_up_to"])
     models = {m["artifact_sha256"] for m in protocol["models"].values()}
     return {k: v for k, v in chosen.items()
-            if utc(v["scheduled_start"]) <= end and v["content"].get("code_sha256") == protocol["code_sha256"]
+            if utc(v["scheduled_start"]) <= end and v["content"].get("code_sha256") in accepted
             and v["content"]["model_sha256"] in models}
 
 
@@ -122,7 +123,8 @@ class _Snapshot:
 
     def __init__(self, store, protocol):
         self.store, self.protocol = store, protocol
-        self.kinds = {r["model_version"]: r["kind"] for r in store.db.execute("SELECT * FROM model_versions")}
+        self.accepted_code = set(prospective.accepted_code(protocol))
+        self.kinds ={r["model_version"]: r["kind"] for r in store.db.execute("SELECT * FROM model_versions")}
         self.version_of = {kind: version for version, kind in self.kinds.items()}
         self.matches = {r["match_uid"]: dict(r) for r in store.db.execute(
             "SELECT m.*, e.name AS edition_name, e.level, e.surface, e.tourney_date FROM matches m "
@@ -139,7 +141,8 @@ class _Snapshot:
         for d in store.db.execute("SELECT * FROM eligibility_decisions ORDER BY decided_at, run_id"):
             self.decisions[(d["match_uid"], d["model_version"])].append(dict(d))
         self.settled = store.settled()
-        self.counted = {(k[0], k[1]): v["prediction_id"] for k, v in counted(store, protocol).items()}
+        self.counted = {(k[0], k[1]): v["prediction_id"]
+                        for k, v in counted(store, protocol, self.accepted_code).items()}
         self.seq_of = {row["prediction_id"]: row["seq"] for rows in self.predictions.values() for row in rows}
         self.pilots = load_pilots(self.matches, self.records, self.kinds)
 
@@ -379,7 +382,7 @@ def _version_view(snap, row, order, kind):
                               if inputs["players"][side_of[pid]].get("rank_as_of") else None for pid in order],
         "integrity": {"input_sha256": row["input_sha256"], "model_sha256": content["model_sha256"],
                       "code_sha256": content.get("code_sha256"),
-                      "code_matches_protocol": content.get("code_sha256") == snap.protocol["code_sha256"],
+                      "code_matches_protocol": content.get("code_sha256") in snap.accepted_code,
                       "record_hash": row["record_hash"], "ledger_position": row["seq"]},
         **({"pilot": True} if row.get("pilot") else {}),
     }
@@ -525,7 +528,7 @@ def archive(snap, now):
                 "contributions": sorted(([k, sign * v] for k, v in inputs["contributions"].items()), key=lambda kv: -abs(kv[1])),
                 "integrity": {"input_sha256": row["input_sha256"], "model_sha256": content["model_sha256"],
                               "code_sha256": content.get("code_sha256"),
-                              "code_matches_protocol": content.get("code_sha256") == snap.protocol["code_sha256"]},
+                              "code_matches_protocol": content.get("code_sha256") in snap.accepted_code},
             })
     entries.sort(key=lambda e: (e["issued_at"], e["ledger_position"]), reverse=True)
     return _clean({"schema_version": SCHEMA_VERSION, "generated_at": iso(now), "entries": entries})

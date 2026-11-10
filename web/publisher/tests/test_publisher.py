@@ -435,7 +435,9 @@ class IsolationTests(unittest.TestCase):
             self.assertNotIn(banned, imported)
 
     def test_protected_code_still_matches_the_p1_protocol(self):
-        self.assertEqual(prospective.code_sha256(), prospective.load_protocol()["code_sha256"])
+        """The protected code is the protocol's, or a committed amendment's (so this fails until an amendment and the
+        code it describes are committed together)."""
+        self.assertIn(prospective.code_sha256(), prospective.accepted_code(prospective.load_protocol()))
 
 
 class PlayersExportTests(unittest.TestCase):

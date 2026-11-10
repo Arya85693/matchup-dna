@@ -145,5 +145,91 @@ class ProtocolGuardTests(unittest.TestCase):
         self.assertIn("excluded: issued by code other than the protocol's: 1", text)
 
 
+class AmendmentTests(unittest.TestCase):
+    """The code rule's committed amendment: one chain from the frozen code, counted only once committed unchanged."""
+    PROTOCOL = {"frozen_at": "2026-11-09T07:00:00Z", "code_sha256": "code", "code_files": ["a.py", "b.py"],
+                "models": {"tournament_start": {"artifact_sha256": sha256_text(ARTIFACT)}},
+                "window": {"issued_from": "2026-11-09T07:00:00Z", "scheduled_up_to": prospective.WINDOW_END,
+                           "final_evaluation_not_before": prospective.EARLIEST_FINAL}}
+
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+        self.protocol_path = Path(self.directory.name) / "phase6_prospective_protocol.json"
+        self.protocol_path.write_text(json.dumps(self.PROTOCOL), encoding="utf-8")
+        patch = mock.patch.object(prospective, "PROTOCOL_PATH", self.protocol_path)
+        patch.start()
+        self.addCleanup(patch.stop)
+
+    def write(self, number, previous, code, **changes):
+        contents = {"amendment": number, "amends_sha256": prospective.file_sha256(self.protocol_path.read_bytes()),
+                    "previous_code_sha256": previous, "code_sha256": code, "created_at": "2026-11-10T18:00:00Z",
+                    "changed_files": ["a.py"], **changes}
+        prospective.amendment_path(number).write_text(json.dumps(contents), encoding="utf-8")
+
+    def test_amendments_form_one_chain_and_count_only_when_committed(self):
+        yes = lambda path: True       # noqa: E731
+        self.assertEqual(prospective.accepted_code(self.PROTOCOL, yes), ["code"])
+        self.write(1, "code", "code-1")
+        self.write(2, "code-1", "code-2")
+        self.assertEqual(prospective.accepted_code(self.PROTOCOL, yes), ["code", "code-1", "code-2"])
+        not_two = lambda path: not path.name.endswith("_2.json")     # noqa: E731
+        self.assertEqual(prospective.accepted_code(self.PROTOCOL, not_two), ["code", "code-1"])
+        self.assertEqual(prospective.accepted_code(self.PROTOCOL, lambda path: False), ["code"])
+        self.write(2, "code", "code-2")                       # a branch from the frozen code, not the chain
+        self.assertEqual(prospective.accepted_code(self.PROTOCOL, yes), ["code", "code-1"])
+        self.write(1, "code", "code-1", amends_sha256="another protocol")
+        self.assertEqual(prospective.accepted_code(self.PROTOCOL, yes), ["code"])
+
+    def test_forecasts_from_amended_code_count_and_other_code_still_does_not(self):
+        self.write(1, "code", "code-1")
+        frozen = prediction("M-1", 0.6, "2026-11-09T08:00:00Z")
+        amended = dict(prediction("M-2", 0.6, "2026-11-10T19:00:00Z", start="2026-11-11T12:00:00Z"), code_sha256="code-1")
+        other = dict(prediction("M-3", 0.6, "2026-11-10T19:00:00Z", start="2026-11-11T12:00:00Z"), code_sha256="else")
+        store = store_with([frozen, amended, other], [(f"M-{n}", "completed", 1) for n in (1, 2, 3)])
+        with mock.patch.object(prospective, "load_protocol", return_value=self.PROTOCOL), \
+                mock.patch.object(prospective, "committed", return_value=True):
+            text = "\n".join(prospective.evaluate(store, now="2026-11-12T00:00:00Z"))
+        self.assertIn("tournament_start (all counted): n 2 ", text)
+        self.assertIn("excluded: issued by code other than the protocol's: 1", text)
+        self.assertIn("Amendment 1 (2026-11-10T18:00:00Z): code code-1", text)
+
+    def test_amend_lists_the_changed_files_and_never_overwrites(self):
+        details = {key: f"{key} text" for key in prospective.AMENDMENT_DETAILS}
+        protocol = dict(self.PROTOCOL, code_sha256=prospective.combine({"a.py": "1", "b.py": "2"}, ["a.py", "b.py"]))
+        with mock.patch.object(prospective, "CODE_FILES", ("a.py", "b.py")), \
+                mock.patch.object(prospective, "ROOT", Path(self.directory.name)), \
+                mock.patch.object(prospective, "load_protocol", return_value=protocol), \
+                mock.patch.object(prospective, "frozen_file_hashes", return_value={"a.py": "1", "b.py": "2"}), \
+                mock.patch("builtins.print"):
+            with mock.patch.object(prospective, "code_file_hashes", return_value={"a.py": "1", "b.py": "2"}):
+                with self.assertRaises(SystemExit):                    # nothing changed
+                    prospective.amend(details)
+            with mock.patch.object(prospective, "code_file_hashes", return_value={"a.py": "1", "b.py": "3"}):
+                with self.assertRaises(SystemExit):                    # a statement is missing
+                    prospective.amend(dict(details, eligibility_unchanged=""))
+                written = prospective.amend(details, now=datetime.datetime(2026, 11, 10, 18, 0, tzinfo=UTC))
+                self.assertEqual((written["amendment"], written["changed_files"]), (1, ["b.py"]))
+                self.assertEqual(written["previous_code_sha256"], protocol["code_sha256"])
+                self.assertEqual(written["code_sha256"],
+                                 prospective.combine({"a.py": "1", "b.py": "3"}, ["a.py", "b.py"]))
+                before = prospective.amendment_path(1).read_text(encoding="utf-8")
+                with self.assertRaises(SystemExit):                    # not committed yet: never overwritten
+                    prospective.amend(details)
+                self.assertEqual(prospective.amendment_path(1).read_text(encoding="utf-8"), before)
+
+    def test_the_freeze_commit_reproduces_the_real_protocol_fingerprint(self):
+        """The 'before' side of amendment 1: committed files plus the untracked profile settings give the frozen
+        fingerprint exactly (skipped where the repository or the settings file is not available)."""
+        real = prospective.ROOT / "experiments" / "phase6_prospective_protocol.json"
+        settings = prospective.ROOT / "results" / "phase4" / "profile_settings.json"
+        if prospective.git("rev-parse", "HEAD")[0] != 0 or not settings.exists():
+            self.skipTest("needs the git repository and results/phase4/profile_settings.json")
+        with mock.patch.object(prospective, "PROTOCOL_PATH", real):
+            protocol = json.loads(real.read_text(encoding="utf-8"))
+            hashes = prospective.frozen_file_hashes(protocol)
+        self.assertEqual(prospective.combine(hashes, protocol["code_files"]), protocol["code_sha256"])
+
+
 if __name__ == "__main__":
     unittest.main()

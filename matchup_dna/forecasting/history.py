@@ -105,6 +105,8 @@ class Assembly:
     records: list = field(default_factory=list)          # provider MatchRecords this assembly read, for the store
     alias_tourney_ids: dict = field(default_factory=dict)  # (provider, edition key) -> history tourney ids
     resolvers: dict = field(default_factory=dict)        # provider -> resolve(tour, provider id, name) -> identity
+    ongoing_editions: set = field(default_factory=set)   # (tour, tourney_id) of editions without a final, for
+                                                         # still_playing() again once a provider adds results
 
 
 def window(rows_tml, rows_td, excluded, start):
@@ -246,7 +248,7 @@ def assemble(sources, start=PROVIDER_START, tml_rows=None, td_rows=None):
     return Assembly(combined, fixtures, tml_edition_of, identities, resolver, report, review,
                     still_playing(combined, ongoing),
                     records=tennisdata_records(rows_td, sources.retrieved_at, main_draw_from=start),
-                    alias_tourney_ids=alias_ids, resolvers={TD_PROVIDER: people.resolve})
+                    alias_tourney_ids=alias_ids, resolvers={TD_PROVIDER: people.resolve}, ongoing_editions=ongoing)
 
 
 # ---------------------------------------------------------------- identities of fixture players

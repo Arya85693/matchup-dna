@@ -654,9 +654,12 @@ def integrate(assembly, sources, records, evidence_since=20250101, aliases=None)
 
     assembly.matches = assembly.matches + additions
     assert_unique(assembly.matches)   # stops the run if an addition still duplicates a history match
+    # Who may still be playing, worked out again over the history WITH the results ESPN just added, and replacing the
+    # earlier answer: TML's ongoing file can stop mid-event (Paris 2026 stopped at R16), and the answer from TML alone
+    # kept players who had since lost, or whose final had been played, "still in the draw" (amendment 1 to P1).
     ongoing = {(f["tour"], f["tourney_id"]) for f in fixtures if f["status"] in ("pending", "started")}
-    for (tour, player), entries in still_playing(assembly.matches, ongoing).items():
-        assembly.still_playing.setdefault((tour, player), []).extend(entries)
+    assembly.ongoing_editions = set(assembly.ongoing_editions) | ongoing
+    assembly.still_playing = still_playing(assembly.matches, assembly.ongoing_editions)
     assembly.fixtures = fixtures
     assembly.records = list(assembly.records) + list(records)
     assembly.resolvers[PROVIDER] = people.resolve

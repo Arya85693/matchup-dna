@@ -14,6 +14,7 @@
     python -m matchup_dna.forecasting export-ledger          write forecasts/ledger.jsonl (append-only check)
     python -m matchup_dna.forecasting rehearse [--days ...]  replay past days into a replay store, compare with research
     python -m matchup_dna.forecasting protocol freeze        write the prospective protocol (once)
+    python -m matchup_dna.forecasting protocol amend --details FILE   write the next protocol amendment (code change)
     python -m matchup_dna.forecasting evaluate --monitor     interim monitor (decides nothing)
     python -m matchup_dna.forecasting evaluate --final       the one P1 evaluation, after the window closes
     python -m matchup_dna.forecasting api upcoming           print the website's upcoming-forecasts payload
@@ -51,6 +52,7 @@ def main(argv=None):
     parser.add_argument("--days", nargs="*")
     parser.add_argument("--monitor", action="store_true")
     parser.add_argument("--final", action="store_true")
+    parser.add_argument("--details", help="protocol amend: JSON file with the amendment's reason, fix and statements")
     parser.add_argument("--name")
     parser.add_argument("--url")
     parser.add_argument("--header")
@@ -105,6 +107,13 @@ def main(argv=None):
     elif args.command == "protocol" and args.sub == "freeze":
         from matchup_dna.forecasting import prospective
         prospective.freeze()
+    elif args.command == "protocol" and args.sub == "amend":
+        from pathlib import Path
+        from matchup_dna.forecasting import prospective
+        if not args.details:
+            raise SystemExit("protocol amend needs --details FILE (a JSON object with "
+                             f"{', '.join(prospective.AMENDMENT_DETAILS)})")
+        prospective.amend(json.loads(Path(args.details).read_text(encoding="utf-8")))
     elif args.command == "evaluate":
         from matchup_dna.forecasting import prospective
         print("\n".join(prospective.evaluate(open_store(args.store, "live"), final=args.final)))

@@ -2,6 +2,7 @@
 
     python scripts/cloud/gate.py preflight     --store PATH   the store's hash chain and every stored probability
                                                              verify, and the code matches the P1 protocol's fingerprint
+                                                             (or a committed amendment's)
     python scripts/cloud/gate.py forecast-due  --store PATH   a 07:00 or 19:00 US Eastern slot has begun (within the last
                                                              3 hours) and no forecasting run has started since
     python scripts/cloud/gate.py results-due   --store PATH   a match started between 45 minutes and 6 hours ago and has
@@ -108,8 +109,8 @@ def preflight(store_path):
     from matchup_dna.forecasting.api import verify_store
     from web.publisher.readonly import open_readonly
     problems, notes = [], []
-    if prospective.code_sha256() != prospective.load_protocol()["code_sha256"]:
-        problems.append("the code does not match the P1 protocol's fingerprint")
+    if prospective.code_sha256() not in prospective.accepted_code(prospective.load_protocol()):
+        problems.append("the code does not match the P1 protocol's fingerprint (or a committed amendment's)")
     store = open_readonly(store_path)
     try:
         if store.mode != "live":

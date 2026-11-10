@@ -1,6 +1,8 @@
 """Prospective evaluation of the stored forecasts, under a protocol frozen before any prospective outcome exists.
 
     python -m matchup_dna.forecasting protocol freeze     writes experiments/phase6_prospective_protocol.json, once
+    python -m matchup_dna.forecasting protocol amend --details FILE
+                                                          writes the next amendment for a code change (see amend)
     python -m matchup_dna.forecasting evaluate --monitor  the running monitor (labelled interim; decides nothing)
     python -m matchup_dna.forecasting evaluate --final    the one primary evaluation, after the window has closed
 
@@ -51,14 +53,152 @@ BINS = 10
 SEED = 20261108
 
 
-def code_sha256(root=ROOT, files=CODE_FILES):
-    """One hash over the inference path's files (their bytes, with line endings normalized), in a fixed order."""
+def file_sha256(data):
+    """A file's hash with line endings normalized, so a Windows and a Linux checkout agree."""
+    return hashlib.sha256(data.replace(b"\r\n", b"\n")).hexdigest()
+
+
+def code_file_hashes(root=ROOT, files=CODE_FILES):
+    """{file: hash, or "missing"} for the inference path's files as they are on disk."""
+    return {name: file_sha256((Path(root) / name).read_bytes()) if (Path(root) / name).exists() else "missing"
+            for name in files}
+
+
+def combine(hashes, files=CODE_FILES):
+    """The one fingerprint over per-file hashes, in the fixed order of `files`."""
     digest = hashlib.sha256()
     for name in files:
-        path = Path(root) / name
-        part = hashlib.sha256(path.read_bytes().replace(b"\r\n", b"\n")).hexdigest() if path.exists() else "missing"
-        digest.update(name.encode() + b"\0" + part.encode() + b"\n")
+        digest.update(name.encode() + b"\0" + hashes[name].encode() + b"\n")
     return digest.hexdigest()
+
+
+def code_sha256(root=ROOT, files=CODE_FILES):
+    """One hash over the inference path's files (their bytes, with line endings normalized), in a fixed order."""
+    return combine(code_file_hashes(root, files), files)
+
+
+# ---------------------------------------------------------------- amendments
+#
+# The protocol's code rule: "a code change during the window needs a committed amendment that lists the changed files
+# and states that features, models and eligibility are unchanged, else forecasts from the changed code are reported
+# separately". An amendment is experiments/phase6_prospective_amendment_<n>.json, written once by `protocol amend`.
+
+AMENDMENT_NAME = "phase6_prospective_amendment_{}.json"
+
+
+def amendment_path(number):
+    return PROTOCOL_PATH.parent / AMENDMENT_NAME.format(number)
+
+
+def git(*args):
+    """(exit code, stdout bytes) of a git command in the repository, or (None, b"") if git cannot run."""
+    import subprocess
+    try:
+        done = subprocess.run(["git", "-C", str(ROOT), *args], capture_output=True)
+    except OSError:
+        return None, b""
+    return done.returncode, done.stdout
+
+
+def committed(path):
+    """True if `path` is in git and unchanged from the last commit."""
+    try:
+        relative = Path(path).resolve().relative_to(ROOT.resolve()).as_posix()
+    except ValueError:
+        return False
+    return (git("ls-files", "--error-unmatch", "--", relative)[0] == 0
+            and git("diff", "--quiet", "HEAD", "--", relative)[0] == 0)
+
+
+def amendments(protocol, is_committed=None):
+    """The amendments that count, in order. Amendment n counts only if amendments 1 to n-1 count, and it names the
+    protocol file by its hash, replaces the code that the protocol (or amendment n-1) fixed, and is committed
+    unchanged: one chain from the frozen code, never a branch."""
+    is_committed = is_committed or committed
+    found, previous, number = [], protocol["code_sha256"], 1
+    protocol_sha = file_sha256(PROTOCOL_PATH.read_bytes()) if PROTOCOL_PATH.exists() else None
+    while amendment_path(number).exists():
+        path = amendment_path(number)
+        contents = json.loads(path.read_text(encoding="utf-8"))
+        if (contents.get("amendment") != number or contents.get("amends_sha256") != protocol_sha
+                or contents.get("previous_code_sha256") != previous or not is_committed(path)):
+            break
+        found.append(contents)
+        previous, number = contents["code_sha256"], number + 1
+    return found
+
+
+def accepted_code(protocol, is_committed=None):
+    """The code fingerprints a counted forecast may carry: the protocol's, then each counting amendment's."""
+    return [protocol["code_sha256"]] + [a["code_sha256"] for a in amendments(protocol, is_committed)]
+
+
+def frozen_file_hashes(protocol):
+    """{file: hash} of the code the protocol froze: each tracked file as committed with the protocol, and an untracked
+    one (results/phase4/profile_settings.json is not in git) as on disk now. Refuses unless together they reproduce the
+    protocol's fingerprint, so a changed untracked file is caught too."""
+    code, out = git("log", "--diff-filter=A", "--format=%H", "-1", "--",
+                    PROTOCOL_PATH.relative_to(ROOT).as_posix())
+    if code != 0 or not out.strip():
+        raise SystemExit("The commit that added the protocol was not found in git.")
+    commit = out.decode().strip()
+    hashes = {}
+    for name in protocol["code_files"]:
+        code, data = git("show", f"{commit}:{name}")
+        if code == 0:
+            hashes[name] = file_sha256(data)
+        else:
+            path = ROOT / name
+            hashes[name] = file_sha256(path.read_bytes()) if path.exists() else "missing"
+    if combine(hashes, protocol["code_files"]) != protocol["code_sha256"]:
+        raise SystemExit(f"The protocol's commit {commit[:7]} does not reproduce its code fingerprint.")
+    return hashes
+
+
+AMENDMENT_DETAILS = ("reason", "fix", "features_unchanged", "models_unchanged", "eligibility_unchanged",
+                     "outcomes_used")
+
+
+def amend(details, now=None):
+    """Writes the next amendment: the code now on disk replaces the code the protocol (or the last amendment) fixed.
+    `details` is the human part (AMENDMENT_DETAILS: the reason, the fix, why features, models and eligibility are
+    unchanged, and whether any P1 outcome was used); this adds the hashes and the changed files. Refuses to overwrite,
+    to amend on top of an amendment that does not count yet (commit it first), or when no protocol file changed."""
+    protocol = load_protocol()
+    if list(CODE_FILES) != protocol["code_files"]:
+        raise SystemExit("The list of code files differs from the protocol's; this command does not amend that.")
+    missing = [key for key in AMENDMENT_DETAILS if not details.get(key)]
+    if missing:
+        raise SystemExit(f"The amendment details lack: {', '.join(missing)}.")
+    chain = amendments(protocol)
+    number = len(chain) + 1
+    path = amendment_path(number)
+    if path.exists():
+        raise SystemExit(f"{path.name} exists but does not count yet (not committed, or not on the chain); "
+                         "commit it or remove it first. An amendment is never overwritten.")
+    before = chain[-1]["code_files_sha256"] if chain else frozen_file_hashes(protocol)
+    previous = chain[-1]["code_sha256"] if chain else protocol["code_sha256"]
+    after = code_file_hashes(ROOT, CODE_FILES)
+    if combine(after, CODE_FILES) == previous:
+        raise SystemExit("The code is the code already fixed by the protocol or the last amendment: nothing to amend.")
+    contents = {
+        "amendment": number,
+        "amends": PROTOCOL_PATH.relative_to(ROOT).as_posix(),
+        "amends_sha256": file_sha256(PROTOCOL_PATH.read_bytes()),
+        "created_at": iso(now or datetime.datetime.now(UTC)),
+        "previous_code_sha256": previous,
+        "code_sha256": combine(after, CODE_FILES),
+        "changed_files": [name for name in CODE_FILES if before[name] != after[name]],
+        **{key: details[key] for key in AMENDMENT_DETAILS},
+        "counting": "forecasts carrying the previous fingerprint or this one count under the protocol's unchanged "
+                    "rules (first stored forecast, the same window, matches and metrics); stored forecasts are never "
+                    "changed. The amendment counts only once it is committed unchanged",
+        "code_files_sha256": after,
+    }
+    path.write_text(json.dumps(contents, indent=2) + "\n", encoding="utf-8")
+    print(f"Written to {path} (code {previous[:12]} -> {contents['code_sha256'][:12]}; changed: "
+          f"{', '.join(contents['changed_files'])}). Commit it together with the code.")
+    return contents
 
 
 # ---------------------------------------------------------------- which forecasts and matches count
@@ -378,7 +518,8 @@ def evaluate(store, final=False, now=None):
     chosen = counted_predictions(store, protocol["window"]["issued_from"], None, "first")
     chosen = {k: v for k, v in chosen.items()
               if utc(v["scheduled_start"]) <= utc(protocol["window"]["scheduled_up_to"])}
-    wrong_code = {k for k, v in chosen.items() if v["content"].get("code_sha256") != protocol["code_sha256"]}
+    accepted = accepted_code(protocol)
+    wrong_code = {k for k, v in chosen.items() if v["content"].get("code_sha256") not in accepted}
     wrong_model = {k for k, v in chosen.items()
                    if v["content"]["model_sha256"] not in {m["artifact_sha256"] for m in protocol["models"].values()}}
     for key in wrong_code | wrong_model:
@@ -390,7 +531,10 @@ def evaluate(store, final=False, now=None):
     for r in rows:
         found[r["model_kind"]].append(r)
     label = "FINAL P1 EVALUATION (run once)" if final else "INTERIM MONITOR (not the P1 result; decides nothing)"
-    lines = [label, f"Protocol {PROTOCOL_PATH.name} frozen {protocol['frozen_at']}; run {iso(now)}", ""]
+    lines = [label, f"Protocol {PROTOCOL_PATH.name} frozen {protocol['frozen_at']}; run {iso(now)}"]
+    lines += [f"Amendment {a['amendment']} ({a['created_at']}): code {a['code_sha256'][:12]} also counts; changed "
+              f"{', '.join(a['changed_files'])}" for a in amendments(protocol)]
+    lines.append("")
     lines += report(dict(found), excluded)
     latest, _ = outcome_rows(store, {k: v for k, v in counted_predictions(
         store, protocol["window"]["issued_from"], None, "latest").items() if k in chosen})

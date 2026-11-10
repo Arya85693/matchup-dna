@@ -183,6 +183,30 @@ class IntegrateTests(unittest.TestCase):
         assembly = self.integrate(UMAG_HISTORY + [played])
         self.assertEqual(assembly.fixtures[0]["status"], "already_played")
 
+    def test_who_is_still_playing_is_worked_out_again_with_the_results_espn_adds(self):
+        """Amendment 1 to P1 (Paris 2026): TML's ongoing file stopped after the first round, so from TML alone Sinner
+        and Merida were both still in the draw. ESPN has Merida's later loss, and then the final: the answer from TML
+        alone must not survive either."""
+        from matchup_dna.forecasting.history import still_playing
+        later = [competition(1, "Round 1", "2026-07-13T10:00Z", competitor(1, "Jannik Sinner", "home", True, (6, 6)),
+                             competitor(2, "Alexander Zverev", "away", False, (3, 3))),
+                 competition(2, "Round 1", "2026-07-13T12:00Z", competitor(3, "Ziga Sesko", "home", False, (3, 3)),
+                             competitor(4, "Daniel Merida Aguilar", "away", True, (6, 6))),
+                 competition(10, "Round 2", "2026-07-15T12:00Z", competitor(1, "Jannik Sinner", "home", True, (6, 6)),
+                             competitor(4, "Daniel Merida Aguilar", "away", False, (2, 2))),
+                 competition(6, "Quarterfinal", "2026-07-18T04:00Z", competitor(8, "TBD", "home"),
+                             competitor(9, "TBD", "away"), status="STATUS_SCHEDULED")]
+        final = competition(11, "Final", "2026-07-20T12:00Z", competitor(1, "Jannik Sinner", "home", True, (6, 6)),
+                            competitor(2, "Alexander Zverev", "away", False, (4, 4)))
+        ongoing = {("ATP", "TML-2026-439")}
+        for competitions, expected in ((later, {("ATP", 206173)}), (later + [final], set())):
+            assembly, sources = assembly_with(list(UMAG_HISTORY))
+            assembly.ongoing_editions = set(ongoing)
+            assembly.still_playing = still_playing(assembly.matches, ongoing)
+            self.assertEqual(set(assembly.still_playing), {("ATP", 206173), ("ATP", 210017)})   # TML alone
+            espn.integrate(assembly, sources, espn.parse(payload(competitions), RETRIEVED))
+            self.assertEqual(set(assembly.still_playing), expected)
+
     def test_tennisdata_challenger_rows_supply_ranks_for_crosswalked_players_before_the_day_only(self):
         from test_heldout import td_row
         names, sackmann = sackmann_people()

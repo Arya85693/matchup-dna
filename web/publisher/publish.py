@@ -111,7 +111,7 @@ def publish(store_path=LIVE_STORE, out=DEFAULT_OUT, now=None, allow_replay=False
         manifest = {"schema_version": views.SCHEMA_VERSION, "publisher_version": PUBLISHER_VERSION,
                     "generated_at": iso(now), "snapshot": stamp, "files": hashes,
                     "ledger": {"count": count, "head": head},
-                    "code_matches_protocol": prospective.code_sha256() == protocol["code_sha256"]}
+                    "code_matches_protocol": prospective.code_sha256() in prospective.accepted_code(protocol)}
         contract.check_any(manifest)
         staging = Path(out) / "v1" / "manifest.json.tmp"
         _dump(staging, manifest)
