@@ -254,9 +254,19 @@ class _Snapshot:
                 names = {p["id"]: p["name"] for p in self._observed(uid)}
                 gone = [names.get(pid) or str(pid) for pid in ours - theirs]
                 came = [name for pid, name in sides.values() if pid not in ours]
-                if gone and came:
-                    return f"Not played: {gone[0]} was replaced by {came[0]}"
-                return "Not played: the players changed before the match"
+                note = (f"Not played: {gone[0]} was replaced by {came[0]}." if gone and came
+                        else "Not played: the players changed before the match.")
+                # What happened in the match that was played instead: the recorded winner and score.
+                score = row.get("score") or payload.get("score")
+                side_of = {pid: side for side, (pid, _) in sides.items()}
+                winner_side = side_of.get(settlement.get("winner_id")) or payload.get("winner_side")
+                if winner_side in sides and score:
+                    winner = sides[winner_side][1]
+                    loser = sides["away" if winner_side == "home" else "home"][1]
+                    if came and loser == came[0]:
+                        loser = loser.split()[-1]
+                    note += f" {winner} beat {loser} {score}."
+                return note
         return None
 
     def result(self, uid, order_ids):

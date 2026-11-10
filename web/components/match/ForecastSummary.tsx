@@ -74,7 +74,7 @@ export function ForecastSummary({ page, kind, onKind }: { page: MatchPage; kind:
                 : <><span className="text-text">No {MODEL[kind].label.toLowerCase()} forecast.</span> {f.reason}</>}
             </div>
           )}
-          {m.result?.status === "cancelled" ? <p className="text-[13px] text-muted">{m.result.note ?? "Not played"}. No result is recorded and nothing is scored.</p>
+          {m.result?.status === "cancelled" ? <p className="text-[13px] text-muted">{m.result.note ?? "Not played."} Nothing is scored for this pairing.</p>
             : m.result?.status === "walkover" ? <p className="text-[13px] text-muted">Walkover: the match was not played, so it is not scored.</p>
             : m.result?.score && <p className="fig text-[13px] text-muted">Final score {m.result.score}{m.result.status === "retired" ? " (retired)" : ""}</p>}
         </div>

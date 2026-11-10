@@ -285,7 +285,7 @@ class ReplacedPlayerTests(unittest.TestCase):
         for espn, pid in (("1", 100), ("2", 200), ("3", 300)):
             db.execute("INSERT INTO identity_observations VALUES ('espn', 'ATP', ?, ?, 'verified', '2026-11-01')", (espn, pid))
         first = {"provider": "espn", "home_id": "2", "home_name": "Shevchenko", "away_id": "1", "away_name": "Van Assche"}
-        later = dict(first, away_id=later_away_id, away_name=later_away_name, status="completed")
+        later = dict(first, away_id=later_away_id, away_name=later_away_name, status="scheduled")   # as stored
         db.execute("INSERT INTO source_records VALUES (1, 'espn', 'ATP', '186526', '2026-11-08T20:00:00Z', ?)", (json.dumps(first),))
         db.execute("INSERT INTO source_records VALUES (2, 'espn', 'ATP', '186526', '2026-11-10T13:20:00Z', ?)", (json.dumps(later),))
         snap = views._Snapshot.__new__(views._Snapshot)
@@ -297,11 +297,11 @@ class ReplacedPlayerTests(unittest.TestCase):
         return snap
 
     def test_replaced_player_means_not_played(self):
-        snap = self.snapshot("3", "Mannarino")
-        self.assertEqual(snap.replaced("M-1"), "Not played: Van Assche was replaced by Mannarino")
+        snap = self.snapshot("3", "Adrian Mannarino")
+        note = "Not played: Van Assche was replaced by Adrian Mannarino. Shevchenko beat Mannarino 6-1 6-3."
+        self.assertEqual(snap.replaced("M-1"), note)
         self.assertEqual(snap.result("M-1", [100, 200]),
-                         {"status": "cancelled", "winner_index": None, "score": None,
-                          "note": "Not played: Van Assche was replaced by Mannarino"})
+                         {"status": "cancelled", "winner_index": None, "score": None, "note": note})
         self.assertEqual(snap.state("M-1", datetime.datetime(2026, 11, 10, tzinfo=datetime.timezone.utc)), "cancelled")
 
     def test_same_players_keep_their_result(self):
