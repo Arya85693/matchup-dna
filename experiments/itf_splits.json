@@ -11,16 +11,16 @@
     {
       "name": "development",
       "first": 20210101,
-      "last": 20231231
+      "last": 20250630
     },
     {
       "name": "validation",
-      "first": 20240101,
-      "last": 20241231
+      "first": 20250701,
+      "last": 20251231
     },
     {
       "name": "held_out",
-      "first": 20250101,
+      "first": 20260101,
       "last": null
     }
   ],
@@ -49,98 +49,102 @@
         "100"
       ]
     },
-    "rounds": "main draw only (no round starting with Q)"
+    "rounds": "main draw only (qualifying rounds Q1, Q2, ... left out; QF is a quarterfinal)"
   },
-  "seal": "rows dated 2025-01-01 or later are dropped from every file until experiments/itf_frozen_protocol.json is committed and names this file's SHA-256",
+  "seal": "rows dated 20260101 or later are dropped from every file until experiments/itf_frozen_protocol.json is committed and names this file's SHA-256",
   "seen_before": [
-    "Phases 4-6 saw main-tour outcomes from 2025-2026 (not ITF).",
+    "Phases 3-6 saw main-tour outcomes from 2026 (not ITF).",
     "Phase 5 compared the model with the market on a few hundred WTA W35/W50 matches from 2024-2026 in aggregate (its 'ITF-level' group).",
     "Phases 0 and 5 summarised ITF betting odds (coverage and margins only).",
-    "Before this record: per-year row counts by level and round, and how many rows carry serve statistics and ranks. No ITF winner, score or statistic was looked at."
+    "Of 2026 ITF rows, before and since this record: counts by level and round, and how many carry serve statistics and ranks. No 2026 ITF winner, score or statistic was looked at.",
+    "The I1 audit (revisions 1-2) read ITF rows dated before 2025 only."
   ],
   "counts": {
     "ATP": {
       "burn_in": {
-        "matches": 377392,
+        "matches": 433357,
         "editions": 14010,
         "levels": {
-          "15": 3086,
-          "25": 941,
-          "S": 373365
+          "15": 3509,
+          "25": 1077,
+          "S": 428771
         }
       },
       "development": {
-        "matches": 39865,
-        "editions": 1481,
+        "matches": 72824,
+        "editions": 2366,
         "levels": {
-          "15": 24573,
-          "25": 15292
+          "15": 44888,
+          "25": 27936
         }
       },
       "validation": {
-        "matches": 16101,
-        "editions": 598,
+        "matches": 9270,
+        "editions": 306,
         "levels": {
-          "15": 9709,
-          "25": 6392
+          "15": 5743,
+          "25": 3527
         }
       },
       "held_out": {
-        "matches": 21568,
-        "editions": 817,
+        "matches": 6894,
+        "editions": 224,
         "levels": {
-          "15": 13631,
-          "25": 7937
+          "15": 4362,
+          "25": 2532
         }
       }
     },
     "WTA": {
       "burn_in": {
-        "matches": 270457,
+        "matches": 310641,
         "editions": 10059,
         "levels": {
-          "10": 132476,
-          "100": 4909,
-          "15": 28750,
-          "25": 74950,
-          "50": 19115,
-          "60": 3561,
-          "75": 5778,
-          "80": 918
+          "10": 152232,
+          "100": 5641,
+          "15": 33002,
+          "25": 86042,
+          "50": 21947,
+          "60": 4089,
+          "75": 6634,
+          "80": 1054
         }
       },
       "development": {
-        "matches": 40339,
-        "editions": 1468,
+        "matches": 73673,
+        "editions": 2350,
         "levels": {
-          "100": 1150,
-          "15": 17613,
-          "25": 14333,
-          "40": 1511,
-          "60": 5138,
-          "80": 594
+          "100": 2406,
+          "15": 32145,
+          "25": 16378,
+          "35": 8092,
+          "40": 1723,
+          "50": 3065,
+          "60": 5865,
+          "75": 3317,
+          "80": 682
         }
       },
       "validation": {
-        "matches": 16463,
-        "editions": 600,
+        "matches": 9265,
+        "editions": 304,
         "levels": {
-          "100": 675,
-          "15": 6801,
-          "35": 5059,
-          "50": 1954,
-          "75": 1974
+          "100": 350,
+          "15": 4799,
+          "35": 2597,
+          "50": 790,
+          "75": 729
         }
       },
       "held_out": {
-        "matches": 21933,
-        "editions": 820,
+        "matches": 7224,
+        "editions": 234,
         "levels": {
-          "100": 874,
-          "15": 10555,
-          "35": 6157,
-          "50": 2011,
-          "75": 2336
+          "100": 337,
+          "15": 3179,
+          "35": 2147,
+          "50": 664,
+          "75": 897
         }
       }
     }
@@ -445,5 +449,42 @@
     "wta/wta_rankings_80s.csv": "6cb5c12f917f919a76c9cffb2c5472443c07277a18862191d87dda4eb2b07f77",
     "wta/wta_rankings_90s.csv": "2afe58906eb497e2cbe1419cc4a60f2697d150079992d1c4e908f797fbfbbd83",
     "wta/wta_rankings_current.csv": "1736ac6c3bfc0394d36941c838ce37da7cdf236bf1c96787a259250880c4724f"
-  }
+  },
+  "revision": 3,
+  "corrections": [
+    {
+      "revision": 2,
+      "at": "2026-11-11T03:43:07Z",
+      "replaces_sha256": "4174ef3bcf27e7f3f392ccf654a5e36ceb7b528f0ae3aa3f9dbc1b8c281fc397",
+      "reason": "Revision 1 (commit ba547e6) treated every round starting with Q as qualifying, so all ITF quarterfinals ('QF') were left out of scope and of the counts. Qualifying is now Q followed by digits. Split dates, the seal and the input files are unchanged; no ITF outcome had been looked at and no model work had started."
+    },
+    {
+      "revision": 3,
+      "at": "2026-11-11T03:51:43Z",
+      "replaces_sha256": "fc5d6d6694d5af5e8e2b86d18720b40803b4c9dc854c33e4983027d3d25083a4",
+      "reason": "The user moved the dates (10 November 2026) so that serve features can be tested: ITF rows carry serve statistics only from January 2025, which revisions 1-2 held out entirely. Development now runs to 30 June 2025, validation is the second half of 2025, and the held-out test is 2026 (to the data's end, 1 June 2026). No 2025 or 2026 ITF winner, score or statistic had been looked at; the I1 audit had read rows dated before 2025 only.",
+      "replaced_splits": [
+        {
+          "name": "burn_in",
+          "first": null,
+          "last": 20201231
+        },
+        {
+          "name": "development",
+          "first": 20210101,
+          "last": 20231231
+        },
+        {
+          "name": "validation",
+          "first": 20240101,
+          "last": 20241231
+        },
+        {
+          "name": "held_out",
+          "first": 20250101,
+          "last": null
+        }
+      ]
+    }
+  ]
 }
