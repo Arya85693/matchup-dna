@@ -1,18 +1,16 @@
 # Matchup DNA — ITF Extension: Model Report (Stages I2–I3)
 
 **Date:** 10 November 2026  
-**Status:** development and validation are done, and the held-out test has not run. This report stops at gate 2: the user approves the choices below before the protocol is frozen.  
+**Status:** complete. The protocol was frozen at 2026-11-11T04:34:31Z (`experiments/itf_frozen_protocol.json`, committed in d4ef8c8), and the held-out test ran once afterwards (section 6).  
 **Question:** Can a model forecast ITF matches well, and do serve statistics help?  
-**Answer, so far:** yes on both counts, on the validation half-year.
+**Answer:** yes on both counts, on matches nothing had seen.
 
-The chosen model, **M2**, scores a log loss of 0.5305 on July–December 2025 (18,535 matches, accuracy 73.2%). It beats:
-- ranking alone, by 0.055;
-- all-level Elo alone, by 0.013;
-- the production main-tour model applied unchanged, by 0.093.
+On January–June 2026 (13,537 rated matches), the chosen model, **M2**, scores a log loss of 0.5505 with 71.4% accuracy. It beats:
+- ranking alone, by 0.042;
+- all-level Elo alone, by 0.012;
+- the production main-tour model applied unchanged, by 0.085.
 
-Adding serve and return profiles improves on the same model without them by 0.0020, with a 95% interval of 0.0016 to 0.0025.
-
-The one-time test on January–June 2026 (14,118 matches) decides whether this holds.
+Serve and return profiles improve on the same model without them by 0.0011, with a 95% interval of 0.0006 to 0.0017. Every interval excludes zero. The improvements hold for both tours and in every tier.
 
 ## 1. What was built
 
@@ -134,20 +132,94 @@ Coefficients per unit, fitted on development:
 
 Applied unchanged, the main-tour model is worse than ranking alone (0.6240 against 0.5852), and it is overconfident (calibration error 0.069). It sees ITF players through main-tour history, which almost none of them have. So most players sit at a 1500 rating, and its large coefficient on "no serve history" pushes forecasts around without information. This is the audit's finding, measured: ITF needs its own ratings and its own fit.
 
-## 5. What happens next (the gates)
+## 5. The freeze (gates 2 and 3)
 
-**Gate 2 (now): approve these choices.**
-- Decaying-K Elo across every level.
-- M2.
-- L2 = 0 for both tours.
-- The final fit: every model refitted on development and validation, meaning all ITF matches before 2026.
+**Gate 2.** The user approved the choices above and committed the code (abf8a18):
+- decaying-K Elo across every level;
+- M2;
+- L2 = 0 for both tours;
+- the final fit: every model refitted on development and validation, meaning all ITF matches before 2026.
 
-Then:
-1. The user commits the code. `python -m matchup_dna.itf_experiment freeze` writes `experiments/itf_frozen_protocol.json`, which records the choices, the SHA-256 of every code file, and the split record's fingerprint. Freeze refuses if the code isn't committed.
-2. The user commits the protocol. That lifts the seal: `itf_splits.unsealed()` checks the protocol is committed and names this split record.
-3. **Gate 3:** `python -m matchup_dna.itf_experiment holdout --confirm` scores January–June 2026, once. It refuses to run twice, or if any code file differs from the protocol.
+`freeze` then wrote `experiments/itf_frozen_protocol.json` at 2026-11-11T04:34:31Z. It records:
+- those choices;
+- the SHA-256 of all 18 code and model files the test depends on;
+- the source commit;
+- the fingerprints of the split record and of the development and validation results.
 
-The held-out result will be added to this report as section 6, whatever it shows.
+**Gate 3.** The user committed the protocol (d4ef8c8), which lifted the seal. `holdout --confirm` then ran once. It rebuilt the rows with 2026 included and refitted each model on all matches before 2026: 78,299 men's and 79,460 women's rows. It then scored the held-out half-year. It refuses to run again.
+
+## 6. The held-out test: January–June 2026
+
+13,537 rated matches (6,590 men's, 6,947 women's) from 458 editions. The other 581 scored matches in the split were retirements or walkovers, which aren't rated. 94.8% of these matches have serve history for both players.
+
+| Model | Log loss | Brier | Accuracy | Calibration error |
+|---|---:|---:|---:|---:|
+| B0, rank only | 0.5921 | 0.2032 | 68.4% | 0.017 |
+| B1, all-level Elo only | 0.5629 | 0.1911 | 70.4% | 0.011 |
+| B2, production main-tour model, unchanged | 0.6351 | 0.2223 | 66.9% | 0.066 |
+| M1, without serve | 0.5517 | 0.1866 | 71.3% | 0.011 |
+| **M2, chosen** | **0.5505** | **0.1862** | **71.4%** | **0.012** |
+
+**Paired comparisons** (bootstrap over the 458 editions):
+
+| Comparison | Difference | 95% interval |
+|---|---:|---|
+| **M2 − B0** (rank only) | **−0.0416** | −0.0472 to −0.0362 |
+| **M2 − B1** (Elo only) | **−0.0124** | −0.0150 to −0.0099 |
+| **M2 − B2** (production model) | **−0.0846** | −0.0917 to −0.0773 |
+| M2 − M1 (serve features) | −0.0011 | −0.0017 to −0.0006 |
+
+**By tour:**
+
+| | B0 | B1 | B2 | M1 | M2 | M2 accuracy |
+|---|---:|---:|---:|---:|---:|---:|
+| Men (6,590) | 0.5789 | 0.5700 | 0.6267 | 0.5508 | 0.5495 | 71.7% |
+| Women (6,947) | 0.6046 | 0.5562 | 0.6431 | 0.5525 | 0.5514 | 71.1% |
+
+**By tier** (log loss):
+
+| | Matches | B0 | B1 | B2 | M1 | M2 |
+|---|---:|---:|---:|---:|---:|---:|
+| M15 | 4,163 | 0.5934 | 0.5878 | 0.6359 | 0.5648 | 0.5635 |
+| M25 | 2,427 | 0.5541 | 0.5394 | 0.6108 | 0.5267 | 0.5257 |
+| W15 | 3,065 | 0.6076 | 0.5504 | 0.6482 | 0.5488 | 0.5475 |
+| W35 | 2,050 | 0.5909 | 0.5455 | 0.6315 | 0.5407 | 0.5400 |
+| W50 | 638 | 0.6079 | 0.5626 | 0.6570 | 0.5552 | 0.5551 |
+| W75 | 867 | 0.6098 | 0.5752 | 0.6398 | 0.5690 | 0.5674 |
+| W100 | 327 | 0.6429 | 0.6137 | 0.6496 | 0.6128 | 0.6102 |
+
+M2 has the lowest log loss in every tier, including W100, where validation had it slightly behind Elo alone.
+
+**Calibration (M2):**
+
+| Forecast bin | Matches | Forecast | Observed |
+|---|---:|---:|---:|
+| 0.0–0.1 | 831 | 6.2% | 7.5% |
+| 0.1–0.2 | 1,335 | 15.0% | 15.4% |
+| 0.2–0.3 | 1,450 | 25.0% | 23.4% |
+| 0.3–0.4 | 1,523 | 35.2% | 35.5% |
+| 0.4–0.5 | 1,608 | 45.0% | 45.8% |
+| 0.5–0.6 | 1,639 | 55.1% | 54.4% |
+| 0.6–0.7 | 1,539 | 65.1% | 62.6% |
+| 0.7–0.8 | 1,441 | 75.0% | 73.4% |
+| 0.8–0.9 | 1,325 | 84.9% | 82.6% |
+| 0.9–1.0 | 846 | 93.8% | 93.5% |
+
+Most bins agree within 1–2 points. Strong favourites (60–90%) won about 2 points less often than forecast, so the model is slightly overconfident there in 2026, which it wasn't in 2025.
+
+### Reading the result
+
+- **The conclusions hold on unseen matches.** The ordering is the same as on validation, and every pre-declared comparison has an interval that excludes zero.
+- **Every model scores worse in 2026 than in 2025**, including the simple baselines: Elo alone goes from 0.5438 to 0.5629. So January–June 2026 is a harder period, not a sign that M2 overfitted. The gaps between models are about the same size as before. M2's lead over Elo alone, for example, is 0.0124 against 0.0133 on validation.
+- **The serve gain shrank** from 0.0020 to 0.0011, but it is still clearly above zero. It's small: about a tenth of what the all-level ratings add over ranking.
+- **The production main-tour model is again the worst,** behind ranking alone. ITF forecasts need the ITF model.
+- **Limits.** This is one half-year of one data snapshot. The slight overconfidence in 2026 is worth watching in any live use.
+
+**Files:** `results/itf/holdout.json` holds the summary and `results/itf/holdout_predictions.csv` the per-match forecasts for every model. Both are in `results/`, which is not in git. The protocol's fingerprint is recorded in the summary.
+
+## 7. What comes next
+
+The model is finished and tested. Live ITF forecasts (stages I4–I6) need a live source of ITF fixtures and results, and none is available yet (see the I1 report, section 3). Until then, the website can show this model and its test result as research, without live ITF forecasts.
 
 ## Reproducing
 
@@ -158,7 +230,7 @@ python -m matchup_dna.itf_experiment develop     # results/itf/development.json
 python -m unittest discover -s tests -p "test_itf_*.py"
 ```
 
-`validate` has run, and it refuses to run again. Its output is `results/itf/validation.json`, with per-match forecasts in `validation_predictions.csv`. `results/` is not in git.
+`validate` and `holdout` have run, and both refuse to run again. Their outputs are `results/itf/validation.json` and `holdout.json`, with per-match forecasts in `validation_predictions.csv` and `holdout_predictions.csv`. `results/` is not in git.
 
 ## In ordinary language
 
@@ -168,4 +240,4 @@ On top of that rating it uses ranking, recent form, rest, and, since 2025, how w
 
 The serve and return numbers help only a little, but reliably. The main-tour model, by contrast, does badly on ITF matches, because it doesn't know these players.
 
-The real test, on the first half of 2026, is still locked. It runs once, after you approve.
+The real test was the first half of 2026, which stayed locked until every choice was frozen and committed. On those 13,537 matches the model picked the winner 71% of the time. It beat ranking alone, Elo alone and the main-tour model by clear margins, for men and women and at every level of event. Its percentages stayed close to reality, though strong favourites won a little less often than it said.
