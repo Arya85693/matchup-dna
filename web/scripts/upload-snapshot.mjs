@@ -4,6 +4,7 @@
  *
  *     node web/scripts/upload-snapshot.mjs snapshot     after `python -m web.publisher.publish`
  *     node web/scripts/upload-snapshot.mjs history      after `python -m web.publisher.players`
+ *     node web/scripts/upload-snapshot.mjs itf-history  after `python -m web.publisher.itf_players`
  *
  * Run by scripts/run_website.cmd after each scheduled publish. Keys come from web/.env.upload (never committed):
  * R2_ACCOUNT_ID, R2_BUCKET, R2_UPLOAD_ACCESS_KEY_ID, R2_UPLOAD_SECRET_ACCESS_KEY. Without them it does nothing and
@@ -25,7 +26,7 @@ import { AwsClient } from "aws4fetch";
 
 const WEB = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const STAMP = /^\d{8}T\d{6}Z$/;
-export const KEEP = { snapshot: 24, history: 3 };
+export const KEEP = { snapshot: 24, history: 3, "itf-history": 3 };
 const PARALLEL = 8;
 const TIMEOUT_MS = 60_000;
 
@@ -92,9 +93,9 @@ async function pool(items, work) {
   }));
 }
 
-/** Uploads the local snapshot of `area` ("snapshot" or "history"); returns a one-line summary. */
+/** Uploads the local snapshot of `area` ("snapshot", "history" or "itf-history"); returns a one-line summary. */
 export async function upload(area, { env = process.env, root = path.join(WEB, ".data", area), log = console.log } = {}) {
-  if (!(area in KEEP)) throw new Error(`unknown area "${area}": use snapshot or history`);
+  if (!(area in KEEP)) throw new Error(`unknown area "${area}": use snapshot, history or itf-history`);
   const store = storage(env);
   if (!store) return "upload skipped: hosting is not configured (web/.env.upload)";
   const manifestText = await readFile(path.join(root, "v1", "manifest.json"), "utf8");

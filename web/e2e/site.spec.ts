@@ -315,12 +315,32 @@ test("ITF: forecasts, the boards and the archive are labelled by circuit", async
   await page.goto("/itf");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("ITF World Tennis Tour");
   await expect(page.getByText(/ITF (Men|Women) · [MW]\d+/).first()).toBeVisible();
+  const problems = watch(page);
+  await page.locator("main a[href^='/matches/I-']").first().click();              // an ITF match page, as on the main tour
+  await expect(page.getByRole("region", { name: "Forecast", exact: true })).toBeVisible();
+  expect(problems).toEqual([]);
   await page.goto("/players");
   await page.getByRole("button", { name: "ITF", exact: true }).click();
-  await expect(page.getByRole("columnheader", { name: "ITF rating" })).toBeVisible();
-  await page.getByRole("button", { name: "Women", exact: true }).click();
-  await expect(page.getByRole("columnheader", { name: "WTA rank" })).toBeVisible();
+  await expect(page).toHaveURL(/circuit=itf/);
+  await page.getByRole("button", { name: /^ITF Women/ }).click();
+  await expect(page.getByPlaceholder(/Search \d+ ITF Women players/)).toBeVisible();
   await page.goto("/archive");
   await page.getByRole("button", { name: "ITF", exact: true }).click();
   await expect(page.getByRole("button", { name: "ITF Women", exact: true })).toBeVisible();
+});
+
+test("ITF players: the same table, profiles and compare as the main tour", async ({ page }) => {
+  await page.goto("/players?circuit=itf");                     // the address opens the ITF tab
+  await expect(page.getByRole("button", { name: /^ITF Men/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^ATP/ })).toBeHidden();   // the main-tour board is the hidden one
+  const first = page.locator('table a[href^="/players/itf/atp-"]').first();
+  const href = await first.getAttribute("href");
+  expect(href).toMatch(/^\/players\/itf\/atp--?\d+$/);
+  await first.click();
+  await expect(page).toHaveURL(new RegExp(`${href}$`));
+  await expect(page.getByText(/ITF Men · Elo #\d+/)).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("link", { name: "Players" })).toHaveAttribute("href", "/players?circuit=itf");
+  await page.getByRole("link", { name: "Compare with another player" }).click();
+  await expect(page).toHaveURL(/\/players\/itf\/compare\?tour=ATP&a=/);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Compare ITF players");
 });

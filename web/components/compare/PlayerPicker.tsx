@@ -6,8 +6,9 @@ import { PlayerPhoto } from "../PlayerPhoto";
 export type PickOption = { id: number; name: string; tour: "ATP" | "WTA"; photo: string | null; elo_rank: number };
 
 /** Search any player by name (combobox pattern: type, arrow keys to move, Enter to choose, Esc to close). */
-export function PlayerPicker({ options, value, onPick, label, exclude }: {
+export function PlayerPicker({ options, value, onPick, label, exclude, tourName = (t) => t }: {
   options: PickOption[]; value: PickOption | null; onPick: (id: number) => void; label: string; exclude?: number | null;
+  tourName?: (tour: PickOption["tour"]) => string;
 }) {
   const id = useId();
   const input = useRef<HTMLInputElement>(null);
@@ -50,7 +51,7 @@ export function PlayerPicker({ options, value, onPick, label, exclude }: {
                 className={`flex cursor-pointer items-center gap-2.5 px-3 py-2 text-[13px] ${i === active ? "bg-card-hover" : ""}`}>
               <PlayerPhoto name={o.name} src={o.photo} size={24} />
               <span className="min-w-0 flex-1 truncate">{o.name}</span>
-              <span className="fig text-[11px] text-dim">{o.tour} · Elo #{o.elo_rank}</span>
+              <span className="fig text-[11px] text-dim">{tourName(o.tour)} · Elo #{o.elo_rank}</span>
             </li>
           ))}
         </ul>

@@ -50,7 +50,7 @@ export const MatchStateSchema = z.enum([
 ]);
 
 export const MatchSummarySchema = z.object({
-  uid: z.string().regex(/^M-[0-9a-f]+$/),
+  uid: z.string().regex(/^[MI]-[0-9a-f]+$/),     // M- main tour, I- ITF
   tour: z.enum(["ATP", "WTA"]),
   round: z.string(),
   best_of: z.number().int().nullable(),

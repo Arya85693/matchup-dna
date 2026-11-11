@@ -8,8 +8,10 @@ import { SurfaceDot } from "../ui";
 const SURFACES = ["Hard", "Clay", "Grass"] as const;
 const SHOWN = 6;
 
-/** Career meetings between two players on the same tour, from A's side (B's record mirrors it). */
-export function HeadToHead({ a, b }: { a: HistoryPlayer; b: HistoryPlayer }) {
+/** Career meetings between two players on the same tour, from A's side (B's record mirrors it). `allLevels`: the ITF
+ * board's history counts matches at every level, not only tour-level ones. */
+export function HeadToHead({ a, b, allLevels = false }: { a: HistoryPlayer; b: HistoryPlayer; allLevels?: boolean }) {
+  const level = allLevels ? "" : "tour-level ";
   const [all, setAll] = useState(false);
   const meetings = a.h2h[String(b.id)] ?? [];
   const aWins = meetings.filter((m) => m.won).length;
@@ -20,7 +22,7 @@ export function HeadToHead({ a, b }: { a: HistoryPlayer; b: HistoryPlayer }) {
       <section aria-label="Head to head" className="rounded-xl border border-border bg-card px-5 py-6 text-center">
         <h2 className="text-[13px] text-muted">Head to head</h2>
         <p className="mt-2 text-[20px] font-semibold">Never played before</p>
-        <p className="mt-1 text-[13px] text-dim">{a.name} and {b.name} have not met in a completed tour-level match.</p>
+        <p className="mt-1 text-[13px] text-dim">{a.name} and {b.name} have not met in a completed {level}match.</p>
       </section>
     );
   }
@@ -79,7 +81,7 @@ export function HeadToHead({ a, b }: { a: HistoryPlayer; b: HistoryPlayer }) {
           </button>
         </div>
       )}
-      <p className="border-t border-border px-5 py-2.5 text-[11px] text-dim">Completed and retired tour-level matches in the match history; walkovers are not counted.</p>
+      <p className="border-t border-border px-5 py-2.5 text-[11px] text-dim">Completed and retired {level}matches in the match history{allLevels ? ", at every level" : ""}; walkovers are not counted.</p>
     </section>
   );
 }

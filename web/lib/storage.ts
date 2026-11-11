@@ -4,8 +4,8 @@
  * - Hosted (Vercel): a private Cloudflare R2 bucket, read with a read-only key, when R2_ACCOUNT_ID, R2_BUCKET,
  *   R2_READ_ACCESS_KEY_ID and R2_READ_SECRET_ACCESS_KEY are set. The laptop uploads each snapshot there
  *   (scripts/upload-snapshot.mjs) after publishing it.
- * - Local (development): the folders the publisher writes, web/.data/snapshot and web/.data/history (or SNAPSHOT_DIR
- *   and HISTORY_DIR).
+ * - Local (development): the folders the publishers write, web/.data/snapshot, web/.data/history and
+ *   web/.data/itf-history (or SNAPSHOT_DIR, HISTORY_DIR and ITF_HISTORY_DIR).
  *
  * Both hold the same layout: <area>/v1/manifest.json naming a snapshot directory v1/<stamp>/ and every file's sha256.
  * Snapshot directories are never changed after they are written, so their files are cached in memory; the manifest is
@@ -16,7 +16,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { AwsClient } from "aws4fetch";
 
-export type Area = "snapshot" | "history";
+export type Area = "snapshot" | "history" | "itf-history";
 
 const MANIFEST_SECONDS = 60;
 const MAX_CACHED_FILES = 400;
@@ -24,6 +24,7 @@ const MAX_CACHED_FILES = 400;
 const LOCAL: Record<Area, string> = {
   snapshot: process.env.SNAPSHOT_DIR ?? path.join(process.cwd(), ".data", "snapshot"),
   history: process.env.HISTORY_DIR ?? path.join(process.cwd(), ".data", "history"),
+  "itf-history": process.env.ITF_HISTORY_DIR ?? path.join(process.cwd(), ".data", "itf-history"),
 };
 
 function remote() {

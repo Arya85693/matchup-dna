@@ -31,14 +31,20 @@ function stats(A: HistoryPlayer, B: HistoryPlayer): Stat[] {
 
 type Tour = "ATP" | "WTA";
 
-export function CompareView({ options: everyone, a, b, tour }: { options: PickOption[]; a: HistoryPlayer | null; b: HistoryPlayer | null; tour: Tour }) {
+const NAMES = { main: { ATP: "ATP", WTA: "WTA" }, itf: { ATP: "ITF Men", WTA: "ITF Women" } } as const;
+
+/** `base` is the board's address ("/players" or "/players/itf"); `circuit` names the tours (ATP, or ITF Men). */
+export function CompareView({ options: everyone, a, b, tour, base = "/players", circuit = "main" }: {
+  options: PickOption[]; a: HistoryPlayer | null; b: HistoryPlayer | null; tour: Tour; base?: string; circuit?: "main" | "itf";
+}) {
+  const names = NAMES[circuit];
   const router = useRouter();
   const options = everyone.filter((o) => o.tour === tour);      // ATP and WTA ratings are separate pools: compare within one tour
   const go = (na: number | null, nb: number | null, t: Tour = tour) => {
     const q = new URLSearchParams({ tour: t });
     if (na !== null) q.set("a", String(na));
     if (nb !== null) q.set("b", String(nb));
-    router.push(`/players/compare?${q}`, { scroll: false });
+    router.push(`${base}/compare?${q}`, { scroll: false });
   };
   const opt = (p: HistoryPlayer | null) => (p ? options.find((o) => o.id === p.id) ?? null : null);
   const sides = [
@@ -50,20 +56,20 @@ export function CompareView({ options: everyone, a, b, tour }: { options: PickOp
     <div className="grid gap-6">
       <div className="flex flex-wrap items-center gap-3">
         <Segmented label="Tour" value={tour} onChange={(t) => { if (t !== tour) go(null, null, t); }}
-                   options={[["ATP", `ATP · ${everyone.filter((o) => o.tour === "ATP").length}`], ["WTA", `WTA · ${everyone.filter((o) => o.tour === "WTA").length}`]]} />
+                   options={[["ATP", `${names.ATP} · ${everyone.filter((o) => o.tour === "ATP").length}`], ["WTA", `${names.WTA} · ${everyone.filter((o) => o.tour === "WTA").length}`]]} />
         <p className="text-[12px] text-dim">Players are compared within one tour.</p>
       </div>
       {/* The two players, facing each other */}
       <section aria-label="Players" className="grid gap-px overflow-hidden rounded-xl border border-border bg-border md:grid-cols-[minmax(0,1fr)_64px_minmax(0,1fr)]">
         {sides.map((s, i) => (
           <div key={i} className={`grid content-start gap-5 bg-card p-5 sm:p-6 ${i === 1 ? "md:order-3" : ""}`}>
-            <PlayerPicker key={tour} options={options} value={opt(s.p)} onPick={s.pick} label={`${s.label} (${tour})`} exclude={(i === 0 ? b : a)?.id ?? null} />
+            <PlayerPicker key={tour} options={options} value={opt(s.p)} onPick={s.pick} label={`${s.label} (${names[tour]})`} exclude={(i === 0 ? b : a)?.id ?? null} tourName={(t) => names[t]} />
             {s.p ? (
               <div className={`flex items-center gap-4 ${i === 1 ? "md:flex-row-reverse md:text-right" : ""}`}>
                 <PlayerPhoto name={s.p.name} src={s.p.photo} size={96} />
                 <div className="min-w-0">
-                  <Link href={`/players/${playerSlug(s.p.tour, s.p.id)}`} className="block truncate text-[22px] font-semibold leading-tight hover:text-accent">{s.p.name}</Link>
-                  <p className="mt-1 text-[12px] text-dim">{s.p.tour} · Elo #{s.p.elo_rank} · last played {s.p.last_match}</p>
+                  <Link href={`${base}/${playerSlug(s.p.tour, s.p.id)}`} className="block truncate text-[22px] font-semibold leading-tight hover:text-accent">{s.p.name}</Link>
+                  <p className="mt-1 text-[12px] text-dim">{names[s.p.tour]} · Elo #{s.p.elo_rank} · last played {s.p.last_match}</p>
                   <p className="fig mt-3 text-[32px] font-medium leading-none text-text">{Math.round(s.p.elo)}<span className="ml-1.5 text-[12px] font-normal text-dim">Elo</span></p>
                   <PhotoCredit credit={s.p.photo_credit} className="mt-2" />
                 </div>
@@ -82,7 +88,7 @@ export function CompareView({ options: everyone, a, b, tour }: { options: PickOp
 
       {a && b ? (
         <>
-          <HeadToHead a={a} b={b} />
+          <HeadToHead a={a} b={b} allLevels={circuit === "itf"} />
           <section aria-label="Statistics" className="rounded-xl border border-border bg-card">
             <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 border-b border-border px-5 py-3 text-[12px]">
               <span className="truncate font-medium">{a.name}</span><span className="text-dim">Statistic</span><span className="truncate text-right font-medium">{b.name}</span>
@@ -126,7 +132,7 @@ export function CompareView({ options: everyone, a, b, tour }: { options: PickOp
         </>
       ) : (
         <div className="rounded-xl border border-dashed border-border-strong px-6 py-12 text-center text-[13px] text-muted">
-          {a || b ? `Choose a second ${tour} player to see them side by side.` : `Choose two ${tour} players to compare their head to head, ratings, surface strengths, season and recent form.`}
+          {a || b ? `Choose a second ${names[tour]} player to see them side by side.` : `Choose two ${names[tour]} players to compare their head to head, ratings, surface strengths, season and recent form.`}
         </div>
       )}
     </div>

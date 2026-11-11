@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import researchJson from "@/content/research/itf.json";
-import { getItf } from "@/lib/snapshot";
+import { getItf, getItfMatches } from "@/lib/snapshot";
 import { ItfSchema, type Itf } from "@/lib/contract";
-import { ItfRecent, ItfUpcoming } from "@/components/ItfLists";
+import { MatchList } from "@/components/MatchList";
 import { Badge, Card, EmptyState, Metric, PageHeader } from "@/components/ui";
 
 export const revalidate = 300;
@@ -55,7 +55,7 @@ function HeldOut({ research }: { research: Research }) {
 }
 
 export default async function ItfPage() {
-  const itf = await getItf();
+  const [itf, matches] = await Promise.all([getItf(), getItfMatches()]);
   const research: Research = itf.ok ? itf.data.research : STATIC_RESEARCH;
   const record = itf.ok ? itf.data.record : null;
   return (
@@ -73,8 +73,8 @@ export default async function ItfPage() {
       )}
       {itf.ok && (
         <>
-          <Card title="Upcoming" className="mt-6" padded={false}><ItfUpcoming rows={itf.data.upcoming} /></Card>
-          <Card title="Recent results" className="mt-6" padded={false}><ItfRecent rows={itf.data.recent} /></Card>
+          <div className="mt-6">{matches.ok ? <MatchList matches={matches.data.matches} circuit="itf" />
+            : <div className="card"><EmptyState title="ITF matches could not be loaded">{matches.detail}</EmptyState></div>}</div>
         </>
       )}
       <Card title="How the model was tested" className="mt-6"><HeldOut research={research} /></Card>

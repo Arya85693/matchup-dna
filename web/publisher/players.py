@@ -195,19 +195,34 @@ def load_retired(path=RETIRED):
     return {(r["tour"], r["id"]): r["name"] for r in json.loads(Path(path).read_text(encoding="utf-8"))["players"]}
 
 
-def build(matches, sources, now, photos=None, retired=None):
+def main_tour_replay(matches):
+    """(predictions, ratings, surface ratings): Phase 2's Elo and surface Elo over the history."""
+    predictions, ratings = run_elo(matches, ELO_K)
+    _, surface_ratings = run_elo(matches, SURFACE_ELO_K)
+    return predictions, ratings, surface_ratings
+
+
+def recently_played(last, active_from):
+    """The default listing rule: a rated match on or after `active_from`."""
+    return [key for key, day in last.items() if day >= active_from]
+
+
+def build(matches, sources, now, photos=None, retired=None, replay=main_tour_replay, listed=None, names=None):
+    """(index, profiles). `replay` gives the ratings (main tour: Phase 2's Elo); `listed(last)` chooses who is listed
+    from each player's last match day (main tour: a rated match in the last ACTIVE_DAYS); `names` overrides the names
+    in the history. The ITF board (itf_players.py) passes its own three."""
     today = int(ymd(now))
     active_from = int(ymd(now - datetime.timedelta(days=ACTIVE_DAYS)))
     series_from = int(ymd(now - datetime.timedelta(days=SERIES_DAYS)))
-    predictions, ratings = run_elo(matches, ELO_K)
-    _, surface_ratings = run_elo(matches, SURFACE_ELO_K)
+    predictions, ratings, surface_ratings = replay(matches)
 
-    names = {}
+    found = {}
     for m in matches:
         for side in ("winner", "loser"):
             key = (m["tour"], m[f"{side}_id"])
             if m.get(f"{side}_name"):
-                names[key] = m[f"{side}_name"]
+                found[key] = m[f"{side}_name"]
+    names = {**found, **(names or {})}
 
     series, recent, last = defaultdict(list), defaultdict(list), {}
     season = defaultdict(lambda: {s: [0, 0] for s in ("All",) + SURFACES})
@@ -230,10 +245,11 @@ def build(matches, sources, now, photos=None, retired=None):
             if len(recent[key]) > RECENT:
                 recent[key].pop(0)
 
-    for key, listed in (retired or {}).items():
-        if key in names and names[key].strip().lower() != listed.strip().lower():
-            raise ValueError(f"retired.json lists {key} as {listed!r}, but the history names them {names[key]!r}")
-    active = [key for key, day in last.items() if day >= active_from and key not in (retired or {})]
+    for key, retired_name in (retired or {}).items():
+        if key in names and names[key].strip().lower() != retired_name.strip().lower():
+            raise ValueError(f"retired.json lists {key} as {retired_name!r}, but the history names them {names[key]!r}")
+    chosen = listed(last) if listed else recently_played(last, active_from)
+    active = [key for key in chosen if key not in (retired or {})]
     active_set = set(active)
     h2h = defaultdict(lambda: defaultdict(list))
     for m in sorted(matches, key=lambda m: (m["tourney_date"], m.get("match_day") or m["tourney_date"])):

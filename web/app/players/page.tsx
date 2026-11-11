@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getHistoryIndex, getItf } from "@/lib/snapshot";
-import { ItfBoard } from "@/components/ItfBoard";
+import { getHistoryIndex, getItfHistoryIndex } from "@/lib/snapshot";
 import { CircuitTabs } from "@/components/CircuitTabs";
 import { LocalTime } from "@/components/LocalTime";
 import { PlayersBrowser } from "@/components/PlayersBrowser";
@@ -11,8 +10,7 @@ export const revalidate = 300;
 export const metadata: Metadata = { title: "Players" };
 
 export default async function PlayersPage() {
-  const [index, itf] = await Promise.all([getHistoryIndex(), getItf()]);
-  const board = itf.ok ? itf.data.board : null;
+  const [index, itf] = await Promise.all([getHistoryIndex(), getItfHistoryIndex()]);
   const latest = index.ok ? index.data.players.reduce((m, p) => (p.last_match > m ? p.last_match : m), "") : null;
   return (
     <>
@@ -21,7 +19,7 @@ export default async function PlayersPage() {
         description="Two boards: main-tour ATP and WTA players, and ITF players. Each is rated its own way, so the two are never mixed."
         actions={index.ok ? (
           <p className="text-right text-[12px] text-dim">
-            Ratings updated <span className="text-muted"><LocalTime iso={index.data.generated_at} style="datetime" /></span>
+            Main-tour ratings updated <span className="text-muted"><LocalTime iso={index.data.generated_at} style="datetime" /></span>
             {latest && <><br />Results through <span className="fig text-muted">{latest}</span></>}
           </p>
         ) : undefined}
@@ -54,21 +52,22 @@ export default async function PlayersPage() {
         </section>
         </>}
         itf={<>
-          {board ? <ItfBoard board={board} />
-            : <div className="card"><EmptyState title="The ITF board is not available yet">It appears after the first live ITF run. The ITF forecasts and test results are on the ITF page.</EmptyState></div>}
+          {itf.ok ? <PlayersBrowser players={itf.data.players} base="/players/itf" circuit="itf" param="itf_tour" />
+            : <div className="card"><EmptyState title="The ITF board is not available yet">{itf.detail} The ITF forecasts and test results are on the ITF page.</EmptyState></div>}
+          {itf.ok && <p className="mt-3 text-[12px] text-dim">ITF ratings updated <LocalTime iso={itf.data.generated_at} style="datetime" />.</p>}
           <section aria-label="About the ITF board" className="mt-10 grid gap-2 border-t border-border pt-6 text-[13px] text-muted lg:grid-cols-[200px_minmax(0,1fr)] lg:gap-8">
             <h2 className="text-[13px] font-medium text-text">A different rating</h2>
             <div className="grid max-w-[78ch] gap-2">
               <p>
-                The ITF rating is the one the ITF model uses: Elo over every level a player has played, from ITF events
-                to the Grand Slams, with ratings that move faster while a player is new. It is not on the same scale as
-                the main-tour board&apos;s Elo, so a player listed on both boards has two different numbers.
+                The ITF board&apos;s Elo is the one the ITF model uses: one rating over every level a player has played, from
+                ITF events to the Grand Slams, that moves faster while a player is new. It is not on the same scale as the
+                main-tour Elo, so a player listed on both boards has two different numbers.
               </p>
               <p>
-                Listed: players with at least five ITF main-draw matches in the last 52 weeks. The rank column is the
-                official ATP or WTA ranking from the latest weekly list, which ranks ITF players too.
+                Listed: the 500 highest-rated men and the 500 highest-rated women with at least five ITF main-draw matches in
+                the last 52 weeks. Season records and head to heads count matches at every level.
               </p>
-              <p className="text-dim">Display only: the board is recomputed after each ITF run and is never a forecast input. <Link href="/itf" className="link">ITF forecasts</Link></p>
+              <p className="text-dim">Display only: recomputed once a day and never a forecast input. <Link href="/itf" className="link">ITF forecasts</Link></p>
             </div>
           </section>
         </>}

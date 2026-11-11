@@ -130,6 +130,15 @@ class SnapshotTests(unittest.TestCase):
             self.assertEqual(sha(self.out / "v1" / manifest["snapshot"] / name), digest, name)
         self.assertTrue(manifest["code_matches_protocol"])
 
+    def test_an_itf_failure_never_stops_the_main_tour_publish(self):
+        from unittest import mock
+        with mock.patch.object(publish, "itf_documents", side_effect=ValueError("broken ITF file")),                 contextlib.redirect_stdout(io.StringIO()) as said:
+            manifest = publish.publish(self.path, self.out, now=AS_OF, allow_replay=True, protocol=test_protocol(),
+                                       itf_store_path=Path(self.directory.name) / "itf.sqlite")
+        self.assertIn("matches/index.json", manifest["files"])
+        self.assertFalse(any(name.startswith("itf") for name in manifest["files"]))
+        self.assertIn("ITF files were left out", said.getvalue())
+
     def test_refuses_replay_store_by_default(self):
         with self.assertRaises(SystemExit):
             publish.publish(self.path, self.out, now=AS_OF, protocol=test_protocol())

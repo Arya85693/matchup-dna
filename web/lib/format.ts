@@ -24,7 +24,7 @@ export const CIRCUITS = {
 export function circuitLabel(tour: string, level: string | null, kind: "main" | "itf" = "main"): string {
   const names = CIRCUITS[tour as "ATP" | "WTA"];
   if (!names) return tour;
-  if (kind === "itf") return names.itf;
+  if (kind === "itf" || /^\d+$/.test(level ?? "")) return names.itf;      // ITF levels are prize money: "15", "35"
   return level === "C" || level === "CH" ? names.challenger : names.main;
 }
 
@@ -37,7 +37,7 @@ export const SHORT_LEVELS: Record<string, Record<string, string>> = {
 /** "ATP · Grand Slam", "WTA · 1000", "ITF Women · W35": the circuit first, then the event level. */
 export function eventLabel(tour: string, level: string | null, kind: "main" | "itf" = "main"): string {
   const circuit = circuitLabel(tour, level, kind);
-  if (kind === "itf") return level ? `${circuit} · ${tour === "ATP" ? "M" : "W"}${level}` : circuit;
+  if (kind === "itf" || /^\d+$/.test(level ?? "")) return level ? `${circuit} · ${tour === "ATP" ? "M" : "W"}${level}` : circuit;
   const named = level ? SHORT_LEVELS[tour]?.[level] : undefined;
   return named ? `${circuit} · ${named}` : circuit;
 }

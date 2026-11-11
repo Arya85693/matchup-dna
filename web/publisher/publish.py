@@ -82,7 +82,15 @@ def build(store, now, protocol):
 
 def itf_document(itf_store_path, now, work):
     """itf.json from a read-only copy of the ITF store, or None when there is no ITF store (or a run is writing)."""
-    from web.publisher import itf_view
+    found = itf_documents(itf_store_path, now, work, matches=False)
+    return None if found is None else found["itf.json"]
+
+
+def itf_documents(itf_store_path, now, work, matches=True):
+    """{path: document}: itf.json and (with `matches`) the ITF match board, match pages and archive
+    (web/publisher/itf_matches.py), from one read-only copy of the ITF store; None when there is no ITF store or an
+    ITF run is writing."""
+    from web.publisher import itf_matches, itf_view
     if not Path(itf_store_path).exists():
         return None
     source = open_readonly(itf_store_path)
@@ -93,11 +101,15 @@ def itf_document(itf_store_path, now, work):
         source.close()
     store = open_readonly(copy_store(itf_store_path, work / "itf.sqlite"))
     try:
-        document = itf_view.build(store, iso(now))
+        documents = {"itf.json": itf_view.build(store, iso(now))}
+        protocol = json.loads(itf_view.ITF_PROTOCOL.read_text(encoding="utf-8")) if itf_view.ITF_PROTOCOL.exists() else None
+        if matches:
+            documents.update(itf_matches.build(store, iso(now), protocol))
     finally:
         store.close()
-    contract.check_any(document)
-    return document
+    for document in documents.values():
+        contract.check_any(document)
+    return documents
 
 
 def publish(store_path=LIVE_STORE, out=DEFAULT_OUT, now=None, allow_replay=False, protocol=None,
@@ -125,9 +137,13 @@ def publish(store_path=LIVE_STORE, out=DEFAULT_OUT, now=None, allow_replay=False
             count = len(store.predictions())
         finally:
             store.close()
-        itf = itf_document(itf_store_path, now, work) if itf_store_path else None
+        try:
+            itf = itf_documents(itf_store_path, now, work) if itf_store_path else None
+        except Exception as error:       # the ITF files never stop the main-tour publish: they are left out this time
+            print(f"warning: the ITF files were left out of this snapshot: {type(error).__name__}: {error}")
+            itf = None
         if itf is not None:
-            files["itf.json"] = itf
+            files.update(itf)
         stamp = now.strftime("%Y%m%dT%H%M%SZ")
         version_dir = Path(out) / "v1" / stamp
         if version_dir.exists():

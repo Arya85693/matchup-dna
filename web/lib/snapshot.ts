@@ -4,7 +4,7 @@
  * use. Nothing here computes a forecast.
  */
 import { createHash } from "node:crypto";
-import type { z } from "zod";
+import { z } from "zod";
 import {
   ArchiveSchema, HistoryIndexSchema, ItfSchema, HistoryManifestSchema, HistoryPlayerSchema, LedgerSchema, ManifestSchema, PlayersSchema, MatchIndexSchema, MatchPageSchema, ModelsSchema, StatusSchema, TrackRecordSchema,
   type Archive, type HistoryIndex, type Itf, type HistoryPlayer, type Ledger, type Manifest, type Players, type MatchIndex, type MatchPage, type Models, type Status, type TrackRecord,
@@ -53,22 +53,39 @@ export const getArchive = (): Promise<Loaded<Archive>> => getFile(ArchiveSchema,
 export const getPlayers = (): Promise<Loaded<Players>> => getFile(PlayersSchema, "players.json");
 export const getLedger = (): Promise<Loaded<Ledger>> => getFile(LedgerSchema, "ledger/recent.json");
 export const getItf = (): Promise<Loaded<Itf>> => getFile(ItfSchema, "itf.json");
+/** ITF matches, match pages and forecasts in the main-tour formats (web/publisher/itf_matches.py). */
+export const getItfMatches = (): Promise<Loaded<MatchIndex>> => getFile(MatchIndexSchema, "itf/matches.json");
+export const getItfArchive = (): Promise<Loaded<Archive>> => getFile(ArchiveSchema, "itf/archive.json");
+const ItfPagesSchema = z.object({ schema_version: z.literal("1"), pages: z.record(z.string(), z.unknown()) });
+
+async function getItfMatch(uid: string): Promise<Loaded<MatchPage>> {
+  const bundle = await getFile(ItfPagesSchema, "itf/match-pages.json");
+  if (!bundle.ok) return bundle;
+  const raw = bundle.data.pages[uid];
+  if (raw === undefined) return { ok: false, reason: "not_found", detail: "Unknown match." };
+  const parsed = MatchPageSchema.safeParse(raw);
+  return parsed.success ? { ok: true, data: parsed.data } : { ok: false, reason: "unavailable", detail: "This match failed validation." };
+}
 
 export async function getMatch(uid: string): Promise<Loaded<MatchPage>> {
+  if (/^I-[0-9a-f]{24}$/.test(uid)) return getItfMatch(uid);
   if (!/^M-[0-9a-f]{24}$/.test(uid)) return { ok: false, reason: "not_found", detail: "Unknown match." };
   return getFile(MatchPageSchema, `matches/${uid}.json`);
 }
 
-/** Player histories (written by `python -m web.publisher.players`), checked like the snapshot. */
-async function getHistoryFile<S extends z.ZodType>(schema: S, name: string): Promise<Loaded<z.infer<S>>> {
+/** Player histories (written by `python -m web.publisher.players`, and for the ITF board by
+ * `python -m web.publisher.itf_players`), checked like the snapshot. */
+type HistoryArea = "history" | "itf-history";
+
+async function getHistoryFile<S extends z.ZodType>(schema: S, name: string, area: HistoryArea = "history"): Promise<Loaded<z.infer<S>>> {
   try {
-    const text = await readText("history", "v1/manifest.json");
+    const text = await readText(area, "v1/manifest.json");
     if (text === null) return { ok: false, reason: "unavailable", detail: "Player histories have not been published yet." };
     const manifest = HistoryManifestSchema.safeParse(JSON.parse(text));
     if (!manifest.success) return { ok: false, reason: "unavailable", detail: "The player manifest is not valid." };
     const expected = manifest.data.files[name];
     if (!expected) return { ok: false, reason: "not_found", detail: "No such player." };
-    const body = await readText("history", `v1/${manifest.data.snapshot}/${name}`);
+    const body = await readText(area, `v1/${manifest.data.snapshot}/${name}`);
     if (body === null) return { ok: false, reason: "unavailable", detail: `${name} is missing.` };
     if (createHash("sha256").update(body, "utf8").digest("hex") !== expected) {
       return { ok: false, reason: "unavailable", detail: `${name} does not match its hash.` };
@@ -80,15 +97,19 @@ async function getHistoryFile<S extends z.ZodType>(schema: S, name: string): Pro
   }
 }
 
-export const getHistoryIndex = (): Promise<Loaded<HistoryIndex>> => getHistoryFile(HistoryIndexSchema, "players/index.json");
-
 /** A player by address, `atp-<id>` or `wta-<id>`. Canonical ids are positive for Sackmann players and negative for
  * players known only from newer providers; ATP and WTA ids are separate pools, so the tour is always part of it. */
-export async function getHistoryPlayer(slug: string): Promise<Loaded<HistoryPlayer>> {
+async function historyPlayer(slug: string, area: HistoryArea): Promise<Loaded<HistoryPlayer>> {
   const m = /^(atp|wta)-(-?\d{1,18})$/.exec(slug);
   if (!m) return { ok: false, reason: "not_found", detail: "No such player." };
-  const loaded = await getHistoryFile(HistoryPlayerSchema, `players/${m[1]}-${m[2]}.json`);
+  const loaded = await getHistoryFile(HistoryPlayerSchema, `players/${m[1]}-${m[2]}.json`, area);
   if (!loaded.ok) return loaded;
   const p = loaded.data.player;
   return p.tour.toLowerCase() === m[1] && String(p.id) === m[2] ? { ok: true, data: p } : { ok: false, reason: "not_found", detail: "No such player." };
 }
+
+export const getHistoryIndex = (): Promise<Loaded<HistoryIndex>> => getHistoryFile(HistoryIndexSchema, "players/index.json");
+export const getHistoryPlayer = (slug: string) => historyPlayer(slug, "history");
+/** The ITF board: the same files and format, rated with the ITF model's Elo. */
+export const getItfHistoryIndex = (): Promise<Loaded<HistoryIndex>> => getHistoryFile(HistoryIndexSchema, "players/index.json", "itf-history");
+export const getItfHistoryPlayer = (slug: string) => historyPlayer(slug, "itf-history");

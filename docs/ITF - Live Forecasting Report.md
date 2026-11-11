@@ -123,10 +123,11 @@ The probabilities were checked by hand. Strong favourites came out at 70–80%, 
 | What | How |
 |---|---|
 | Before P2 exists | The step does nothing |
-| After P2 is committed | About every two hours, pull the ITF store from the state bucket, run, push it back |
+| After P2 is committed | About every hour (`scripts/cloud/itf_due.py`: due when no ITF run started in the last 50 minutes), pull the ITF store from the state bucket, run, push it back. The pace is the workflow's choice and is not part of the frozen P2 code |
 | ITF archive | The Flashscore pages, rankings and board are their own archive (`itfraw`): unpacked at the start of every run, saved after each ITF run. The main-tour archive is never involved |
 | Ledger | The bot also commits `forecasts/itf_ledger.jsonl` |
-| Isolation | Marked to continue on failure, so an ITF problem never stops the main-tour forecasts, the publish or the ledger commit |
+| Isolation | Marked to continue on failure, so an ITF problem never stops the main-tour forecasts, the publish or the ledger commit. The publisher also leaves the ITF files out of a snapshot, with a warning, if building them fails, so the main-tour pages are always published |
+| ITF players | A separate daily workflow (`.github/workflows/itf-players.yml`, 13:20 UTC) builds the ITF board's profiles. It never opens a forecast store and has its own concurrency group, so it never waits for, or holds up, the forecasting job |
 
 The cloud already holds Sackmann's ITF files (the static data archive packs all of `data/atp` and `data/wta`). The backfilled Flashscore and ranking pages exist only on the laptop until they are uploaded as the `itfraw` archive (section 6).
 
@@ -142,9 +143,9 @@ Before, a main-tour event showed only its level ("Grand Slam"), so men's and wom
 | Page | What changed |
 |---|---|
 | ITF (new, `/itf`) | Upcoming forecasts with the Elo-only figure beside each, recent results, the live record (M1 against Elo only), and the frozen test results |
-| Matches | **Main tour \| ITF** switch; the ITF view lists upcoming ITF matches and results |
-| Players | **Main tour \| ITF** boards. The ITF board lists players with at least 5 ITF main-draw matches in 52 weeks: ITF rating, ATP or WTA rank, country, 52-week ITF record. It states that the two ratings are on different scales |
-| Forecast Archive | **Main tour \| ITF**; every ITF forecast with its status (counted, pilot, revision), Elo-only figure, result and chain hash |
+| Matches | **Main tour \| ITF** switch. The ITF view is the main-tour match board itself, with **ITF Men** and **ITF Women** in place of ATP and WTA, and every ITF match has a full match page (section 5.1) |
+| Players | **Main tour \| ITF** boards, the same table on both: sortable Elo, surface Elo, season record, 90-day change and trend, with search and filters. Every ITF player has a profile and can be compared (section 5.1) |
+| Forecast Archive | **Main tour \| ITF**: the main-tour archive itself, with every ITF forecast, its result, whether it was counted, and its chain hash |
 | Model Lab | New **ITF model** tab: live P2 record, held-out and validation results for all five models, gains with intervals, why M1 and not M2, calibration, frozen weights and the model's fingerprint. The Calibration tab adds the ITF held-out series, and a live ITF series once 30 results are scored |
 | Methodology | "Three models", a section on the ITF model, new data sources and limits |
 | Home | A card for the ITF section |
@@ -153,7 +154,31 @@ The publisher builds `itf.json` from a read-only copy of the ITF store, as it do
 
 Forecasts issued before P2 is frozen are shown as a pilot and never scored.
 
-## 6. What remains, in order
+### 5.1 The same pages as the main tour
+
+The ITF tabs use the main-tour components, not a separate design. The ITF pages show initials in place of player photos.
+
+| Page | Built from |
+|---|---|
+| Match board (`/matches`, ITF tab, and `/itf`) | `itf/matches.json`, in the main-tour match index format |
+| Match page (`/matches/I-…`) | `itf/match-pages.json`: every forecast version, its log-odds contributions, the decision timeline, results and integrity hashes. The contributions are rebuilt from each forecast's stored inputs and the frozen `models/itf_m1.json`, and must give back the stored probability to within 1e-9, or the file is not built. ITF has no round-aware model, and the page says so |
+| Forecast Archive (ITF tab) | `itf/archive.json`, in the main-tour archive format |
+| Players (ITF tab), profiles (`/players/itf/atp-…`), Compare (`/players/itf/compare`) | `web/publisher/itf_players.py`, in the main-tour profile format, in a separate `itf-history` area of the site's storage |
+
+**How the ITF profiles are built:**
+- **History:** the history each ITF run reads: Sackmann's files at every level, plus finished Flashscore matches with both players resolved.
+- **Ratings:** the ITF model's Elo, one pool across every level, with K = 250 / (matches + 5)^0.4. Surface Elo is blended half and half with overall Elo, as on the main tour.
+- **Who is listed:** the ITF board's rule. Players need at least five ITF main-draw matches in the last 52 weeks; the 500 highest rated per tour are listed.
+- **Records:** season records and head to heads count matches at every level.
+- **Names:** full names from Sackmann's player files. A player known only from Flashscore is shown as "J.J. Wolf", not "Wolf J.J.".
+
+Like the main-tour board, these profiles are for display only: they are never a forecast input and never change a forecast.
+
+The open tab (Main tour or ITF) is kept in the page address, so links and the back button return to it.
+
+## 6. The steps to go live (all done)
+
+The protocol was frozen on 11 November 2026, and the first live ITF run was at 08:00 UTC that day.
 
 1. **Commit and push** I4–I6.
 2. **Upload the backfilled pages** as the `itfraw` archive (`node web/scripts/state.mjs pack itfraw data/raw/flashscore data/raw/tennisexplorer data/raw/itf`), so the first cloud run has the history since June. It is a separate archive, so a cloud run writing the main-tour archive at the same moment cannot overwrite it.
@@ -171,9 +196,9 @@ Forecasts issued before P2 is frozen are shown as a pilot and never scored.
 | Suite | Result |
 |---|---|
 | Python | 397 tests, including the ITF reader, rankings, matching, pipeline and board |
-| Publisher | 50 tests, including the ITF view: counting rule, pilot, archive and board |
+| Publisher | 59 tests, including the ITF view (counting rule, pilot, archive), the ITF match files (main-tour formats, revisions, contributions that must give back each probability) and the ITF profiles (listing rule, result order, names). Also: an ITF failure never stops the main-tour publish |
 | Website unit tests | 10, including the circuit labels |
-| Browser tests | 46, desktop and phone, including `/itf` with accessibility checks and an ITF labels-and-boards test |
+| Browser tests | 48, desktop and phone, including `/itf` with accessibility checks, an ITF match page, and the ITF players table, profile and Compare |
 | Typecheck | Passes |
 
 ## Limits
@@ -191,4 +216,4 @@ Five months of results since June were read in once, so the ratings are up to da
 
 The live model is the one without serve statistics, because those stopped being published. Every forecast is locked before the match, chained so it can't be altered, and scored against a plain Elo forecast once results come in.
 
-The website has an ITF section, ITF boards and labels on every match. Once the protocol is frozen and committed, the cloud starts the live ITF record by itself.
+The website has an ITF section and labels on every match. The ITF tabs work exactly like the main-tour ones: the same match board and match pages, the same archive, and the same players table with profiles and comparisons. The protocol is frozen, and the cloud keeps the live ITF record by itself, about every hour.

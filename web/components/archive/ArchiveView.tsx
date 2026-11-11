@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Fragment, useMemo, useState } from "react";
 import type { ArchiveEntry } from "@/lib/contract";
 import { FEATURES, featureLabel } from "@/lib/features";
-import { familyName, favourite, pct, roundLabel, STATE_LABELS } from "@/lib/format";
+import { circuitLabel, familyName, favourite, pct, roundLabel, STATE_LABELS } from "@/lib/format";
 import { FigureStrip, Segmented } from "../lab/parts";
 import { LocalTime } from "../LocalTime";
 import { ProbabilitySplit } from "../match/parts";
@@ -12,6 +12,9 @@ import { Badge } from "../ui";
 
 type Kind = ArchiveEntry["kind"];
 const MODEL_LABEL: Record<Kind, string> = { tournament_start: "Tournament start", round_aware: "Round-aware" };
+/** ITF forecasts come from one model (ITF M1, a tournament-start model). */
+const isItf = (e: ArchiveEntry) => e.model_version.startsWith("itf-");
+const modelLabel = (k: Kind, itf: boolean) => (itf ? "ITF model (M1)" : MODEL_LABEL[k]);
 
 /** Issuance: was this the counted (first) forecast, a later revision, or neither? */
 function issuance(e: ArchiveEntry): { label: string; tone: "accent" | "neutral" } {
@@ -36,7 +39,10 @@ const EVAL_LABEL: Record<Eval, string> = { scored: "Scored", excluded: "Excluded
 
 type SortKey = "position" | "issued" | "start" | "prob";
 
-export function ArchiveView({ entries }: { entries: ArchiveEntry[] }) {
+/** The forecast archive. `circuit="itf"` is the same view for ITF forecasts: ITF Men and ITF Women, and one model
+ * (ITF M1, a tournament-start model), so there is no model filter. */
+export function ArchiveView({ entries, circuit = "main" }: { entries: ArchiveEntry[]; circuit?: "main" | "itf" }) {
+  const itf = circuit === "itf";
   const [view, setView] = useState<"matches" | "ledger">("matches");
   const [q, setQ] = useState("");
   const [model, setModel] = useState<"all" | Kind>("all");
@@ -70,7 +76,7 @@ export function ArchiveView({ entries }: { entries: ArchiveEntry[] }) {
   const byTournament = useMemo(() => {
     const events = new Map<string, Map<string, ArchiveEntry[]>>();
     for (const e of [...filtered].sort((a, b) => (b.scheduled_start ?? "").localeCompare(a.scheduled_start ?? ""))) {
-      const key = `${e.tour} · ${e.event}`;
+      const key = `${isItf(e) ? circuitLabel(e.tour, null, "itf") : e.tour} · ${e.event}`;
       if (!events.has(key)) events.set(key, new Map());
       const m = events.get(key)!;
       m.set(e.match_uid, [...(m.get(e.match_uid) ?? []), e]);
@@ -107,8 +113,9 @@ export function ArchiveView({ entries }: { entries: ArchiveEntry[] }) {
           </label>
         </div>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[12px]">
-          <Segmented label="Tour" value={tour} onChange={setTour} options={[["all", "All tours"], ["ATP", "ATP"], ["WTA", "WTA"]]} />
-          <Segmented label="Model" value={model} onChange={setModel} options={[["all", "Both models"], ["tournament_start", "Tournament start"], ["round_aware", "Round-aware"]]} />
+          <Segmented label="Tour" value={tour} onChange={setTour}
+                     options={itf ? [["all", "All ITF"], ["ATP", "ITF Men"], ["WTA", "ITF Women"]] : [["all", "All tours"], ["ATP", "ATP"], ["WTA", "WTA"]]} />
+          {!itf && <Segmented label="Model" value={model} onChange={setModel} options={[["all", "Both models"], ["tournament_start", "Tournament start"], ["round_aware", "Round-aware"]]} />}
           <label className="flex items-center gap-2">
             <span className="text-dim">Evaluation</span>
             <select id="archive-state" value={state} onChange={(e) => setState(e.target.value as typeof state)} className="rounded-md border border-border bg-bg px-2 py-1 text-[12px] text-text">
@@ -207,9 +214,9 @@ function MatchRecord({ uid, list, open, setOpen }: { uid: string; list: ArchiveE
           <div className="mt-2 flex flex-wrap gap-1.5"><Badge tone={settlement(first).tone}>{settlement(first).label}</Badge></div>
         </div>
         <div className="grid gap-2">
-          {byModel.map(({ k, versions }) => (
+          {byModel.filter(({ k }) => !isItf(first) || k === "tournament_start").map(({ k, versions }) => (
             <div key={k} className="grid gap-1.5 sm:grid-cols-[120px_minmax(0,1fr)] sm:items-start">
-              <span className="pt-1 text-[12px] text-muted">{MODEL_LABEL[k]}</span>
+              <span className="pt-1 text-[12px] text-muted">{modelLabel(k, isItf(first))}</span>
               {versions.length === 0 ? <span className="pt-1 text-[12px] text-dim">No forecast issued</span> : (
                 <ul className="grid gap-1.5">
                   {versions.map((e) => {
@@ -247,7 +254,7 @@ function Inspect({ e }: { e: ArchiveEntry }) {
     <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
       <div className="grid content-start gap-4">
         <dl className="grid grid-cols-[130px_minmax(0,1fr)] gap-y-1.5 text-[12px]">
-          <dt className="text-dim">Model</dt><dd>{MODEL_LABEL[e.kind]} <span className="mono text-muted">{e.model_version}</span></dd>
+          <dt className="text-dim">Model</dt><dd>{modelLabel(e.kind, isItf(e))} <span className="mono text-muted">{e.model_version}</span></dd>
           <dt className="text-dim">Issued</dt><dd className="fig"><LocalTime iso={e.issued_at} style="datetime" /> {e.issued_before_start && <span className="text-pos">· before the scheduled start</span>}</dd>
           <dt className="text-dim">Scheduled start</dt><dd className="fig">{e.scheduled_start ? <LocalTime iso={e.scheduled_start} style="datetime" /> : "—"}</dd>
           <dt className="text-dim">Forecast</dt><dd className="fig">{familyName(e.players[0])} {pct(e.p[0])}% · {familyName(e.players[1])} {pct(e.p[1])}%</dd>

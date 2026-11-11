@@ -123,7 +123,11 @@ const seg = "rounded-[5px] px-2.5 py-1 text-[12px] transition-colors";
 const segOn = "bg-card-hover text-text";
 const segOff = "text-muted hover:text-text";
 
-export function MatchList({ matches }: { matches: MatchSummary[] }) {
+/** The match board. `circuit="itf"` is the same board for ITF matches: ITF Men and ITF Women instead of ATP and WTA,
+ * no majors filter (ITF has none), and the ITF model's wording. */
+export function MatchList({ matches, circuit = "main" }: { matches: MatchSummary[]; circuit?: "main" | "itf" }) {
+  const itf = circuit === "itf";
+  const tourName = (t: "All" | "ATP" | "WTA") => (t === "All" ? (itf ? "All ITF" : "All tours") : itf ? (t === "ATP" ? "ITF Men" : "ITF Women") : t);
   const zone = useZone();
   const [tab, setTab] = useState<string | null>(null);
   const [tour, setTour] = useState<"All" | "ATP" | "WTA">("All");
@@ -202,7 +206,7 @@ export function MatchList({ matches }: { matches: MatchSummary[] }) {
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[12px]">
           <span role="group" aria-label="Tour" className="inline-flex gap-0.5 rounded-md border border-border bg-bg p-0.5">
             {(["All", "ATP", "WTA"] as const).map((t) => (
-              <button key={t} aria-pressed={tour === t} onClick={() => setTour(t)} className={`${seg} ${tour === t ? segOn : segOff}`}>{t === "All" ? "All tours" : t}</button>
+              <button key={t} aria-pressed={tour === t} onClick={() => setTour(t)} className={`${seg} ${tour === t ? segOn : segOff}`}>{tourName(t)}</button>
             ))}
           </span>
           {surfaces.length > 1 && (
@@ -214,9 +218,11 @@ export function MatchList({ matches }: { matches: MatchSummary[] }) {
               ))}
             </span>
           )}
-          <button aria-pressed={majors} onClick={() => setMajors((v) => !v)} className={`rounded-md border px-2.5 py-1 transition-colors ${majors ? "border-accent/50 bg-accent-soft text-accent" : "border-border text-muted hover:text-text"}`}>
-            Majors and 1000s only
-          </button>
+          {!itf && (
+            <button aria-pressed={majors} onClick={() => setMajors((v) => !v)} className={`rounded-md border px-2.5 py-1 transition-colors ${majors ? "border-accent/50 bg-accent-soft text-accent" : "border-border text-muted hover:text-text"}`}>
+              Majors and 1000s only
+            </button>
+          )}
           <span className="ml-auto flex items-center gap-3 text-dim" aria-live="polite">
             <span className="fig">{shown.length} {shown.length === 1 ? "match" : "matches"}</span>
             {filtered && <button type="button" onClick={() => { setTour("All"); setSurface("All"); setMajors(false); }} className="link">Reset</button>}
@@ -230,7 +236,9 @@ export function MatchList({ matches }: { matches: MatchSummary[] }) {
         groups.map((g) => <TournamentGroup key={g[0]!.edition.uid} matches={g} />)
       )}
       <p className="text-[12px] text-dim">
-        {active === "tbc" ? "Forecasts are issued once a start time is published, at least 30 minutes before play."
+        {itf ? (active === "pending" ? "These matches have started. Each keeps its pre-match forecast; the result appears after the next hourly ITF run."
+            : `Times in ${zone}. Percentages are the ITF model's forecast, issued before the event; open a match for the reasoning.`)
+          : active === "tbc" ? "Forecasts are issued once a start time is published, at least 30 minutes before play."
           : active === "pending" ? "These matches have started. Each keeps its pre-match forecast; the final result appears here shortly after the match ends."
           : `Times in ${zone}. Percentages are the tournament-start forecast; open a match for the round-aware update and the reasoning.`}
       </p>
