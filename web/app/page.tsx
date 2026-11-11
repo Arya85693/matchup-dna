@@ -29,11 +29,18 @@ export default async function Home() {
   //   last count can be up to a day behind, so the total is rounded down to the thousand.
   const mainIds = players.ok ? players.data.players.map((p) => `${p.tour}-${p.id}`) : [];
   const itfIds = itfPlayers.ok ? itfPlayers.data.players.map((p) => `${p.tour}-${p.id}`) : [];
-  const mainMatches = status.ok ? status.data.history?.matches ?? null : null;
-  const itfMatches = itf.ok ? itf.data.history?.matches ?? null : null;
-  const overlap = itfPlayers.ok ? itfPlayers.data.history?.main_tour_matches ?? null : null;
-  const allMatches = mainMatches !== null && itfMatches !== null && overlap !== null
-    ? Math.floor((mainMatches + itfMatches - overlap) / 1000) * 1000 : mainMatches;
+  // Until a run has published a count (or if one is ever missing), the last counted figures stand in, shown with a
+  // "+": a history only grows, so an older count is always a true minimum. Counted on 11 November 2026.
+  const live = {
+    main: status.ok ? status.data.history?.matches ?? null : null,
+    itf: itf.ok ? itf.data.history?.matches ?? null : null,
+    overlap: itfPlayers.ok ? itfPlayers.data.history?.main_tour_matches ?? null : null,
+  };
+  const mainMatches = live.main ?? 364_207;
+  const itfMatches = live.itf ?? 890_882;
+  const overlap = live.overlap ?? 93_375;
+  // The overlap only grows too, so a stand-in for it could overstate the total: the rounding down covers that.
+  const allMatches = Math.floor((mainMatches + itfMatches - overlap) / 1000) * 1000;
   const mainForecasts = status.ok ? status.data.counts.forecasts : null;
   const itfForecasts = itfArchive.ok ? itfArchive.data.entries.length : null;
   const n = (v: number | null) => (v === null ? "—" : v.toLocaleString("en-US"));
@@ -41,8 +48,8 @@ export default async function Home() {
   const stats: { value: number | null; suffix?: string; label: string; split: [string, string] }[] = [
     { value: mainIds.length || itfIds.length ? new Set([...mainIds, ...itfIds]).size : null, label: "players rated",
       split: [`${n(players.ok ? mainIds.length : null)} main tour`, `${n(itfPlayers.ok ? itfIds.length : null)} ITF`] },
-    { value: allMatches, suffix: allMatches !== null && allMatches !== mainMatches ? "+" : "", label: "matches in the history",
-      split: [`${n(mainMatches)} main tour`, `${n(itfMatches)} ITF`] },
+    { value: allMatches, suffix: "+", label: "matches in the history",
+      split: [`${n(mainMatches)}${live.main === null ? "+" : ""} main tour`, `${n(itfMatches)}${live.itf === null ? "+" : ""} ITF`] },
     { value: sum(mainForecasts, itfForecasts), label: "forecasts locked so far", split: [`${n(mainForecasts)} main tour`, `${n(itfForecasts)} ITF`] },
     { value: sum(featured.length, itfUpcoming), label: "upcoming forecasts", split: [`${n(featured.length)} main tour`, `${n(itfUpcoming)} ITF`] },
   ];
