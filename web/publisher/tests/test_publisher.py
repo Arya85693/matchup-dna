@@ -253,6 +253,25 @@ class CloudGateTests(unittest.TestCase):
                 else:
                     self.assertEqual(problems, found)                 # a real difference or a broken chain stops the run
 
+    def test_status_page_judges_integrity_by_the_preflight_rule(self):
+        """The site showed "Data may be out of date" and "1 issues" on 10-11 November while every run succeeded: its
+        status view counted the processor-rounding note that the preflight lets through. Both now use one rule."""
+        from unittest import mock
+        snap = mock.Mock(settled={}, matches={})
+        snap.store.runs.return_value = []
+        snap.store.predictions.return_value = []
+        now = datetime.datetime(2026, 11, 11, 1, 30, tzinfo=datetime.timezone.utc)
+        cases = {"rounding": (["94cff5deeace: recomputed 0.6499868570461047, stored 0.6499868570461048"], True, 0, 1),
+                 "changed": (["94cff5deeace: recomputed 0.6499, stored 0.6500"], False, 1, 0),
+                 "chain": (["chain broken at seq 5"], False, 1, 0)}
+        for case, (found, ok, problems, notes) in cases.items():
+            with self.subTest(case), mock.patch("matchup_dna.forecasting.api.verify_store", return_value=found), \
+                    mock.patch("matchup_dna.forecasting.api.freshness",
+                               return_value={"ok": True, "rule": "r", "forecast": {}, "settle": {}, "espn_download": {}}):
+                status = views.status_view(snap, now)
+                self.assertEqual((status["integrity"]["ok"], status["integrity"]["problems"],
+                                  status["integrity"]["rounding_notes"]), (ok, problems, notes))
+
     def test_forecast_slot_due_once(self):
         g = self.gate
 

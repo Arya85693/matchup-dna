@@ -16,13 +16,13 @@ export default async function StatusPage() {
   const s = status.data;
   return (
     <>
-      <PageHeader title="Data status" description={`The forecasting job runs twice a day. Data counts as late after ${s.stale_after_hours} hours without a run.`}
+      <PageHeader title="Data status" description={`The forecasting job runs every 15 minutes. Data counts as late after ${s.stale_after_hours} hours without a successful run.`}
                   actions={s.ok ? <Badge tone="pos">All systems normal</Badge> : <Badge tone="warn">Attention needed</Badge>} />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Metric label="Forecasts stored" value={s.counts.forecasts} />
         <Metric label="Matches tracked" value={s.counts.matches} />
         <Metric label="Results recorded" value={s.counts.settled} />
-        <Metric label="Integrity check" value={s.integrity.ok ? "Passed" : `${s.integrity.problems} issues`} tone={s.integrity.ok ? "pos" : "neg"} />
+        <Metric label="Integrity check" value={s.integrity.ok ? "Passed" : `${s.integrity.problems} ${s.integrity.problems === 1 ? "issue" : "issues"}`} tone={s.integrity.ok ? "pos" : "neg"} />
       </div>
       <Card title="Jobs" className="mt-6" padded={false}>
         <ul className="divide-y divide-border">

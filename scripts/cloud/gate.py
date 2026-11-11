@@ -18,7 +18,6 @@ Sunday of November), so no time-zone package is needed.
 import argparse
 import datetime
 import os
-import re
 import sys
 from pathlib import Path
 
@@ -96,17 +95,12 @@ def results_due(store, now, protocol=None):
     return False, "no result due"
 
 
-ROUNDING = 1e-12          # the largest recomputation difference that is processor rounding, not a changed forecast
-RECOMPUTED = re.compile(r"^(?P<id>\w+): recomputed (?P<now>[-+0-9.eE]+), stored (?P<then>[-+0-9.eE]+)$")
-
-
 def preflight(store_path):
-    """([problems], [notes]). Problems stop the run. A probability that recomputes within ROUNDING of the stored value
-    is a note: on 10 November a GitHub machine recomputed a laptop forecast as 0.6499868570461047 against the stored
-    0.6499868570461048, a difference in the 16th decimal place from a different processor. The hash chain, the content
-    hashes and the code fingerprint are still checked exactly."""
+    """([problems], [notes]). Problems stop the run. A probability that recomputes within the processor-rounding
+    tolerance of its stored value is a note, by the rule in web/publisher/integrity.py that the website's status page
+    applies too. The hash chain, the content hashes and the code fingerprint are still checked exactly."""
     from matchup_dna.forecasting import prospective
-    from matchup_dna.forecasting.api import verify_store
+    from web.publisher import integrity
     from web.publisher.readonly import open_readonly
     problems, notes = [], []
     if prospective.code_sha256() not in prospective.accepted_code(prospective.load_protocol()):
@@ -115,13 +109,8 @@ def preflight(store_path):
     try:
         if store.mode != "live":
             problems.append(f"the store is in {store.mode} mode, not live")
-        for problem in verify_store(store):
-            m = RECOMPUTED.match(problem)
-            if m and abs(float(m["now"]) - float(m["then"])) <= ROUNDING:
-                notes.append(f"{m['id'][:12]} recomputes {float(m['now']) - float(m['then']):+.1e} from its stored value "
-                             "(processor rounding)")
-            else:
-                problems.append(problem)
+        found, notes = integrity.check(store)
+        problems += found
     finally:
         store.close()
     return problems, notes

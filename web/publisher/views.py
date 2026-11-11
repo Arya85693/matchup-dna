@@ -25,7 +25,7 @@ from pathlib import Path
 
 from matchup_dna.forecasting import api, prospective
 from matchup_dna.forecasting.records import iso, utc
-from web.publisher import reasons
+from web.publisher import integrity, reasons
 
 SCHEMA_VERSION = "1"
 KINDS = ("tournament_start", "round_aware")
@@ -469,7 +469,7 @@ def status_view(snap, now):
         elif run["status"] == "failed" and (now - utc(run["started_at"])).days < 7:
             failed_recent += 1
     fresh = api.freshness(last, now)
-    problems = api.verify_store(store)
+    problems, rounding = integrity.check(store)     # the preflight's rule: processor rounding is a note, not an issue
     settled = snap.settled
     return _clean({
         "schema_version": SCHEMA_VERSION, "generated_at": iso(now),
@@ -480,8 +480,9 @@ def status_view(snap, now):
         "counts": {"forecasts": len(store.predictions()), "matches": len(snap.matches),
                    "settled": sum(1 for s in settled.values() if s["state"] == "settled"),
                    "result_conflicts": sum(1 for s in settled.values() if s["state"] == "conflict")},
-        "integrity": {"ok": not problems, "problems": len(problems),
-                      "check": "every hash and every stored probability recomputed from its saved inputs"},
+        "integrity": {"ok": not problems, "problems": len(problems), "rounding_notes": len(rounding),
+                      "check": "every hash and every stored probability recomputed from its saved inputs; a "
+                               "difference within 1e-12 is processor rounding, noted but not an issue"},
     })
 
 
