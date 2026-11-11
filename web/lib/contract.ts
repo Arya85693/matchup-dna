@@ -149,6 +149,8 @@ export const StatusSchema = z.object({
     settled: z.number().int(),
     result_conflicts: z.number().int(),
   }),
+  /** The size of the history the latest forecasting run read; optional for snapshots published before it. */
+  history: z.object({ matches: z.number().int().nullable(), as_of: UtcTime.nullable() }).optional(),
   integrity: z.object({ ok: z.boolean(), problems: z.number().int(), check: z.string() }),
 });
 
@@ -304,6 +306,8 @@ export const HistoryIndexSchema = z.object({
     season: WinLoss, spark: z.array(z.tuple([z.string(), z.number()])),
     surface_matches: z.record(z.enum(SURFACE_KEYS), z.number().int()),
   })),
+  /** ITF export only: its history's size, and how much of it is main-tour matches (also in the main history). */
+  history: z.object({ matches: z.number().int(), main_tour_matches: z.number().int() }).optional(),
 });
 
 export const HistoryPlayerSchema = z.object({
@@ -433,6 +437,8 @@ export const ItfSchema = z.object({
   recent: z.array(ItfRecent),
   archive: z.array(ItfArchiveRow),
   record: z.object({ forecast_matches: z.number().int(), settled: z.number().int(), m1: ItfScore, elo: ItfScore }),
+  /** The size of the history the latest ITF run read: the Sackmann snapshot plus the Flashscore results added. */
+  history: z.object({ matches: z.number().int().nullable(), flashscore_added: z.number().int().nullable(), as_of: UtcTime.nullable() }).optional(),
   research: z.looseObject({
     names: z.record(z.string(), z.string()),
     live_model: z.string(),

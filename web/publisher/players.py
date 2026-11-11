@@ -296,10 +296,11 @@ def build(matches, sources, now, photos=None, retired=None, replay=main_tour_rep
     return index, profiles
 
 
-def write(index, profiles, now, out=OUT):
+def write(index, profiles, now, out=OUT, extra=None):
+    """`extra`: more fields for players/index.json (the ITF export adds its history's size)."""
     stamp = now.strftime("%Y%m%dT%H%M%SZ")
     directory = Path(out) / "v1" / stamp
-    files = {"players/index.json": {"schema_version": "1", "generated_at": iso(now), "players": index}}
+    files = {"players/index.json": {"schema_version": "1", "generated_at": iso(now), "players": index, **(extra or {})}}
     for p in profiles.values():
         files[f"players/{p['tour'].lower()}-{p['id']}.json"] = {"schema_version": "1", "generated_at": iso(now), "player": p}
     hashes = {}

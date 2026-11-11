@@ -130,6 +130,14 @@ class SnapshotTests(unittest.TestCase):
             self.assertEqual(sha(self.out / "v1" / manifest["snapshot"] / name), digest, name)
         self.assertTrue(manifest["code_matches_protocol"])
 
+    def test_status_reports_the_history_size_of_the_latest_forecasting_run(self):
+        manifest = self.publish()
+        runs = [r for r in self.store.runs("forecast") if r["status"] == "ok"]
+        expected = json.loads(runs[-1]["counts_json"])["assembly: history matches"]
+        history = self.read(manifest, "status.json")["history"]
+        self.assertEqual(history["matches"], expected)
+        self.assertEqual(history["as_of"], runs[-1]["as_of"])
+
     def test_an_itf_failure_never_stops_the_main_tour_publish(self):
         from unittest import mock
         with mock.patch.object(publish, "itf_documents", side_effect=ValueError("broken ITF file")),                 contextlib.redirect_stdout(io.StringIO()) as said:

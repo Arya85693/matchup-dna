@@ -480,10 +480,21 @@ def status_view(snap, now):
         "counts": {"forecasts": len(store.predictions()), "matches": len(snap.matches),
                    "settled": sum(1 for s in settled.values() if s["state"] == "settled"),
                    "result_conflicts": sum(1 for s in settled.values() if s["state"] == "conflict")},
+        "history": main_history(store),
         "integrity": {"ok": not problems, "problems": len(problems), "rounding_notes": len(rounding),
                       "check": "every hash and every stored probability recomputed from its saved inputs; a "
                                "difference within 1e-12 is processor rounding, noted but not an issue"},
     })
+
+
+def main_history(store):
+    """The size of the match history the latest finished forecasting run read (its "assembly: history matches"
+    count). None before a run that recorded it."""
+    for run in reversed(list(store.runs("forecast"))):
+        counts = json.loads(run["counts_json"] or "{}")
+        if run["status"] == "ok" and "assembly: history matches" in counts:
+            return {"matches": counts["assembly: history matches"], "as_of": run["as_of"] or run["started_at"]}
+    return {"matches": None, "as_of": None}
 
 
 def ledger_recent(snap):

@@ -134,7 +134,8 @@ def build_tour(tour, fs_all, monday_of, now, log=print):
     index, profiles = players.build(matches, None, now, replay=lambda _: (predictions, ratings, surface),
                                     listed=lambda _last: chosen, names=display_names(tour, ids, fs))
     log(f"{tour}: {len(matches)} matches ({len(history)} from Flashscore), {len(profiles)} players listed")
-    return index, profiles
+    size = {"matches": len(matches), "sackmann": len(sackmann), "main_tour": sum(m["family"] == "main" for m in matches)}
+    return index, profiles, size
 
 
 def main():
@@ -146,13 +147,21 @@ def main():
         print("skipped: no ITF pages on disk yet")
         return 0
     monday_of = editions(fs_all)
-    index, profiles = [], {}
+    from web.publisher.itf_view import ITF_SACKMANN_MATCHES
+    index, profiles, size = [], {}, {"matches": 0, "sackmann": 0, "main_tour": 0}
     for tour in ("ATP", "WTA"):
-        i, p = build_tour(tour, fs_all, monday_of, now)
+        i, p, s = build_tour(tour, fs_all, monday_of, now)
         index += i
         profiles.update(p)
+        size = {k: size[k] + s[k] for k in size}
+    if size["sackmann"] != ITF_SACKMANN_MATCHES:
+        print(f"warning: the Sackmann ITF history has {size['sackmann']} matches, not ITF_SACKMANN_MATCHES "
+              f"({ITF_SACKMANN_MATCHES}); the ITF match count on the home page is off by the difference")
     index.sort(key=lambda p: (p["tour"], p["elo_rank"]))
-    manifest = players.write(index, profiles, now, out=OUT)
+    # The history's size, and how much of it is main-tour (also in the main tour's history): the home page subtracts
+    # that part so the combined match count never counts a match twice.
+    extra = {"history": {"matches": size["matches"], "main_tour_matches": size["main_tour"]}}
+    manifest = players.write(index, profiles, now, out=OUT, extra=extra)
     print(f"wrote {manifest['players']} ITF player profiles to web/.data/itf-history/v1/{manifest['snapshot']}")
     return 0
 

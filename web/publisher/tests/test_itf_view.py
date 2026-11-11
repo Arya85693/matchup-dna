@@ -73,6 +73,19 @@ class ItfViewTests(unittest.TestCase):
         finally:
             store.close()
 
+    def test_the_history_size_comes_from_the_latest_finished_itf_run(self):
+        self.assertIsNone(self.build()["history"]["matches"])               # the runs here recorded no counts
+        store = Store(self.path)
+        with store.transaction():
+            store.start_run("r9", "itf_forecast", "2026-11-11T11:00:00Z", {})
+            store.finish_run("r9", "ok", {"ATP history added": 120, "WTA history added": 80})
+            store.start_run("r10", "itf_forecast", "2026-11-11T12:00:00Z", {})
+            store.finish_run("r10", "failed", {"ATP history added": 999})   # a failed run is not used
+        store.close()
+        history = self.build()["history"]
+        self.assertEqual(history["matches"], itf_view.ITF_SACKMANN_MATCHES + 200)
+        self.assertEqual((history["flashscore_added"], history["as_of"]), (200, "2026-11-11T11:00:00Z"))
+
     def test_before_p2_is_frozen_forecasts_are_a_pilot_and_nothing_is_scored(self):
         doc = self.build()
         self.assertFalse(doc["protocol"]["frozen"])

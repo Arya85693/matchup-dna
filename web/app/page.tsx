@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import hero from "@/public/images/hero-clay.jpg";
 import { HEADLINES } from "@/lib/research";
-import { getHistoryIndex, getIndex, getStatus } from "@/lib/snapshot";
+import { getHistoryIndex, getIndex, getItf, getItfArchive, getItfHistoryIndex, getItfMatches, getStatus } from "@/lib/snapshot";
 import { CountUp } from "@/components/CountUp";
 import { FeaturedCarousel, HowItWorks, TopPlayers } from "@/components/HomeWidgets";
 import { IconArchive, IconLab, IconMatches, IconMethod } from "@/components/icons";
@@ -13,15 +13,38 @@ const UPCOMING = new Set(["scheduled", "in_progress", "postponed", "suspended"])
 const delay = (ms: number) => ({ animationDelay: `${ms}ms` });
 
 export default async function Home() {
-  const [index, players, status] = await Promise.all([getIndex(), getHistoryIndex(), getStatus()]);
+  const [index, players, status, itf, itfIndex, itfPlayers, itfArchive] = await Promise.all([
+    getIndex(), getHistoryIndex(), getStatus(), getItf(), getItfMatches(), getItfHistoryIndex(), getItfArchive(),
+  ]);
   const matches = index.ok ? index.data.matches : [];
   const featured = matches.filter((m) => UPCOMING.has(m.state) && m.start && m.forecasts.tournament_start.available)
     .sort((a, b) => Number(b.forecasts.round_aware.available) - Number(a.forecasts.round_aware.available));
-  const stats: { value: number | null; suffix?: string; label: string }[] = [
-    { value: players.ok ? players.data.players.length : null, label: "players rated" },
-    { value: 360000, suffix: "+", label: "matches in the history" },
-    { value: status.ok ? status.data.counts.forecasts : null, label: "forecasts locked so far" },
-    { value: featured.length, label: "upcoming forecasts" },
+  const itfUpcoming = itfIndex.ok
+    ? itfIndex.data.matches.filter((m) => UPCOMING.has(m.state) && m.start && m.forecasts.tournament_start.available).length : null;
+
+  // One row for both circuits, never double counting:
+  // - players on both boards (main-tour and ITF ids are the same Sackmann ids) count once;
+  // - matches: the main tour's history (counted by every forecasting run) plus the ITF model's (counted by every ITF
+  //   run), less the main-tour matches the ITF history also holds (counted by the daily ITF players export). That
+  //   last count can be up to a day behind, so the total is rounded down to the thousand.
+  const mainIds = players.ok ? players.data.players.map((p) => `${p.tour}-${p.id}`) : [];
+  const itfIds = itfPlayers.ok ? itfPlayers.data.players.map((p) => `${p.tour}-${p.id}`) : [];
+  const mainMatches = status.ok ? status.data.history?.matches ?? null : null;
+  const itfMatches = itf.ok ? itf.data.history?.matches ?? null : null;
+  const overlap = itfPlayers.ok ? itfPlayers.data.history?.main_tour_matches ?? null : null;
+  const allMatches = mainMatches !== null && itfMatches !== null && overlap !== null
+    ? Math.floor((mainMatches + itfMatches - overlap) / 1000) * 1000 : mainMatches;
+  const mainForecasts = status.ok ? status.data.counts.forecasts : null;
+  const itfForecasts = itfArchive.ok ? itfArchive.data.entries.length : null;
+  const n = (v: number | null) => (v === null ? "—" : v.toLocaleString("en-US"));
+  const sum = (a: number | null, b: number | null) => (a === null && b === null ? null : (a ?? 0) + (b ?? 0));
+  const stats: { value: number | null; suffix?: string; label: string; split: [string, string] }[] = [
+    { value: mainIds.length || itfIds.length ? new Set([...mainIds, ...itfIds]).size : null, label: "players rated",
+      split: [`${n(players.ok ? mainIds.length : null)} main tour`, `${n(itfPlayers.ok ? itfIds.length : null)} ITF`] },
+    { value: allMatches, suffix: allMatches !== null && allMatches !== mainMatches ? "+" : "", label: "matches in the history",
+      split: [`${n(mainMatches)} main tour`, `${n(itfMatches)} ITF`] },
+    { value: sum(mainForecasts, itfForecasts), label: "forecasts locked so far", split: [`${n(mainForecasts)} main tour`, `${n(itfForecasts)} ITF`] },
+    { value: sum(featured.length, itfUpcoming), label: "upcoming forecasts", split: [`${n(featured.length)} main tour`, `${n(itfUpcoming)} ITF`] },
   ];
 
   return (
@@ -37,7 +60,7 @@ export default async function Home() {
         </div>
         <div className="max-w-[640px] px-6 py-16 sm:px-10 lg:py-28">
           <p className="anim-rise inline-flex items-center gap-2 rounded-full border border-border-strong bg-bg/70 px-3 py-1 text-[12px] text-muted" style={delay(0)}>
-            <span className="size-1.5 animate-pulse rounded-full bg-pos" aria-hidden="true" /> ATP and WTA forecasts, updated twice a day
+            <span className="size-1.5 animate-pulse rounded-full bg-pos" aria-hidden="true" /> ATP, WTA and ITF forecasts, updated every 15 minutes (ITF every hour)
           </p>
           <h1 className="anim-rise mt-6 text-[36px] font-semibold leading-[1.08] sm:text-[52px]" style={delay(90)}>
             Who wins the next match, and how sure should we be?
@@ -58,6 +81,9 @@ export default async function Home() {
           <div key={s.label} className="bg-bg px-5 py-5">
             <p className="text-[28px] font-semibold">{s.value === null ? "—" : <><CountUp value={s.value} />{s.suffix}</>}</p>
             <p className="mt-1 text-[13px] text-muted">{s.label}</p>
+            <p className="fig mt-2 text-[11px] text-dim">
+              <span className="block sm:inline">{s.split[0]}</span><span className="hidden sm:inline"> · </span><span className="block sm:inline">{s.split[1]}</span>
+            </p>
           </div>
         ))}
       </section>
@@ -69,7 +95,7 @@ export default async function Home() {
             <Link href="/matches" className="link text-[13px]">All matches</Link>
           </div>
           {featured.length > 0 ? <FeaturedCarousel matches={featured} /> : (
-            <div className="card p-6 text-muted">No upcoming forecasts right now. New ones are issued twice a day.</div>
+            <div className="card p-6 text-muted">No upcoming forecasts right now. New ones are issued every 15 minutes.</div>
           )}
         </div>
         <div className="grid content-start gap-4">

@@ -24,6 +24,9 @@ ITF_PROTOCOL = ROOT / "experiments" / "itf_prospective_protocol.json"
 BOARD = ROOT / "data" / "raw" / "itf" / "board.json"
 MODEL, BASELINE = "itf-m1-v1", "itf-elo-v1"
 RECENT = 60
+# The Sackmann part of the ITF model's history: every level from 2010 to the snapshot of 1 June 2026, ATP 461,658 and
+# WTA 405,738 matches. The snapshot never changes; the daily ITF players export recounts it and warns on a difference.
+ITF_SACKMANN_MATCHES = 867_396
 UPCOMING = 300
 ARCHIVE = 1500
 
@@ -123,4 +126,16 @@ def build(store, now_iso, protocol_path=ITF_PROTOCOL, research_path=RESEARCH, bo
                    "m1": _score(scored_model), "elo": _score(scored_base)},
         "research": json.loads(Path(research_path).read_text(encoding="utf-8")),
         "board": json.loads(Path(board_path).read_text(encoding="utf-8")) if Path(board_path).exists() else None,
+        "history": history(store),
     }
+
+
+def history(store):
+    """The size of the history the latest finished ITF run read: the Sackmann snapshot plus the Flashscore results it
+    added (both players resolved, not already in Sackmann). None before the first finished run."""
+    for run in reversed(list(store.runs("itf_forecast"))):
+        counts = json.loads(run["counts_json"] or "{}")
+        if run["status"] == "ok" and "ATP history added" in counts:
+            added = counts["ATP history added"] + counts.get("WTA history added", 0)
+            return {"matches": ITF_SACKMANN_MATCHES + added, "flashscore_added": added, "as_of": run["as_of"] or run["started_at"]}
+    return {"matches": None, "flashscore_added": None, "as_of": None}
