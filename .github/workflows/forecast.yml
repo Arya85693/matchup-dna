@@ -49,7 +49,7 @@ jobs:
         run: rm -f forecasts/ledger.jsonl
       - name: Forecast, settle, ledger
         run: python -m matchup_dna.forecasting daily --store "$STORE"
-      - name: ITF forecasts (P2, about every two hours)
+      - name: ITF forecasts (P2, about every hour)
         # Separate store, ledger and code (matchup_dna/itf_*.py); nothing here touches P1. A failure here never stops
         # the main-tour forecasts, the publish or the ledger commit.
         if: env.SLOT == 'live'
@@ -57,7 +57,7 @@ jobs:
         run: |
           if [ ! -f experiments/itf_prospective_protocol.json ]; then echo "P2 is not frozen yet: no ITF run"; exit 0; fi
           node web/scripts/state.mjs pull-store itf --allow-missing
-          if python -m matchup_dna.itf_live due; then
+          if python scripts/cloud/itf_due.py --store data/store/itf.sqlite; then
             python -m matchup_dna.itf_live run
             node web/scripts/state.mjs push-store itf
             node web/scripts/state.mjs pack itfraw data/raw/flashscore data/raw/tennisexplorer data/raw/itf

@@ -1,0 +1,42 @@
+{
+  "name": "P2: prospective ITF forecasts",
+  "frozen_at": "2026-11-11T07:43:42Z",
+  "code_commit": "386c45b67d387107fe7dc4575bb9b02f558f06c6",
+  "code_sha256": {
+    "matchup_dna/itf_live.py": "af52f0edf94adf51f3569d30e9a1c871f47dfb35266666fd0f0948327d961df6",
+    "matchup_dna/itf_flashscore.py": "1d1cbf580a6ab63ef1a3690be08f326fcb9ef4065e5d56a476628274508014d5",
+    "matchup_dna/itf_rankings.py": "eae06717b76c620d95456e2ced6604220434516f083fabf144928473caca891a",
+    "matchup_dna/itf_identity.py": "9a16fb9d9b893e230862c14b5c6a976fd2f537a4d9fc4313b51e24e144ba7c25",
+    "matchup_dna/itf_data.py": "c3c01c2df6236dc285c8a13de59fe1a98337fd34cc0c9147478b616e01a4dbad",
+    "matchup_dna/itf_ratings.py": "fe4489bfec7af6bb29f8f63824428195f9bcdfb7e73cef3249ac5b17894d3e42",
+    "matchup_dna/itf_features.py": "974a38cf17421796b360703c7b100dcc1a6c3d111ed838d7ab1066da7f22e3c0",
+    "matchup_dna/itf_model.py": "00d67947c43d92102e5dc40139ea9978dd883665604664e9f89951f2462e6d47",
+    "matchup_dna/itf_splits.py": "18338b0ac47813f4d7bc994e1ddbb3ac26b70a95ee6df90ef6d682fdf25c6f6f",
+    "matchup_dna/elo.py": "c9cb9acf2a9fc673f29cca6fe05ac30952afae51d386d5a35df78b5b8bb77b1d",
+    "matchup_dna/features.py": "de3c5f2436be4bd145c88a87307b605fe2893a9c0caccee392788c88be150818",
+    "matchup_dna/load.py": "ac13a0937a2c82e4b131490a60684be3b7f6a3a83903e366ac4a11c9ac6d77b6",
+    "matchup_dna/model.py": "3599b7c991e44f97ee500565ee2e26343e606937535ab6f7db412e1c5839caad",
+    "matchup_dna/phase4_model.py": "14f9e0d3ec9aa5391386f3f176b6d457ea1782bbc6ecac4b9d6061df5e6cbc07",
+    "matchup_dna/profiles.py": "6cf41457b1b38586ef2b4b354fdb0e0ec42b550c4539bd2f88400ba6dc3a4877",
+    "matchup_dna/serve_stats.py": "9305b4bf85db8211a9e9a115c2dedbac2c1dc9b23670040ea4225fb04fe6d2de",
+    "matchup_dna/workload.py": "82529c1cb4d12aec910c9adc0a98bc393a13ee0fb81d7cec45c2e95703b218bd",
+    "matchup_dna/periods.py": "0fef0079403491689d8beff56f8467d1014db6f9b76ee6908a45214f17f64816",
+    "matchup_dna/forecasting/store.py": "77c64eb40af5fcc6b145a262583d9d7db59520e47d78cf18703b8d1f4aad2fe7",
+    "matchup_dna/forecasting/records.py": "42a0b2059fcfbffdf683f7780b1d068d19ee0de08408f878e8ef59bbbc150039",
+    "models/itf_m1.json": "d94c3914ee46e663088f64d06878a431b1b4dbeb85dca228d666428387f395d1"
+  },
+  "model": {
+    "version": "itf-m1-v1",
+    "sha256": "d94c3914ee46e663088f64d06878a431b1b4dbeb85dca228d666428387f395d1"
+  },
+  "baseline": "itf-elo-v1",
+  "population": "ITF men's and women's main-draw singles (M15, M25, W15-W100) listed on Flashscore, both players resolved to one identity, forecast at least 5 minutes before the scheduled start",
+  "counting_rule": "the first M1 forecast stored for a match counts; later revisions are recorded but not scored",
+  "window": {
+    "from": "2026-11-11T07:43:42Z",
+    "to": "2027-06-30T23:59:59Z"
+  },
+  "metrics": "log loss and Brier of M1 against the Elo-only forecast for the same matches (paired bootstrap by edition); calibration; by tour and tier. Retirements and walkovers are not scored",
+  "evaluation_not_before": "2027-07-15",
+  "code_rule": "forecasts from runs whose code_sha256 differs from this protocol's are excluded unless a committed amendment lists the change"
+}
