@@ -1,0 +1,45 @@
+{
+  "name": "ITF extension frozen protocol",
+  "frozen_at": "2026-11-11T04:34:31Z",
+  "code_commit": "abf8a18f0ef845a2f1d4647d6ccef3934b5ed5a8",
+  "code_sha256": {
+    "matchup_dna/itf_splits.py": "18338b0ac47813f4d7bc994e1ddbb3ac26b70a95ee6df90ef6d682fdf25c6f6f",
+    "matchup_dna/itf_data.py": "c3c01c2df6236dc285c8a13de59fe1a98337fd34cc0c9147478b616e01a4dbad",
+    "matchup_dna/itf_ratings.py": "fe4489bfec7af6bb29f8f63824428195f9bcdfb7e73cef3249ac5b17894d3e42",
+    "matchup_dna/itf_features.py": "974a38cf17421796b360703c7b100dcc1a6c3d111ed838d7ab1066da7f22e3c0",
+    "matchup_dna/itf_model.py": "00d67947c43d92102e5dc40139ea9978dd883665604664e9f89951f2462e6d47",
+    "matchup_dna/itf_experiment.py": "d96ec00c23965c55e6a6c2c0ceba20a3911c42dea7652eb8ab9c8bfa6c297d7e",
+    "matchup_dna/elo.py": "c9cb9acf2a9fc673f29cca6fe05ac30952afae51d386d5a35df78b5b8bb77b1d",
+    "matchup_dna/features.py": "de3c5f2436be4bd145c88a87307b605fe2893a9c0caccee392788c88be150818",
+    "matchup_dna/load.py": "ac13a0937a2c82e4b131490a60684be3b7f6a3a83903e366ac4a11c9ac6d77b6",
+    "matchup_dna/model.py": "3599b7c991e44f97ee500565ee2e26343e606937535ab6f7db412e1c5839caad",
+    "matchup_dna/periods.py": "0fef0079403491689d8beff56f8467d1014db6f9b76ee6908a45214f17f64816",
+    "matchup_dna/phase4_model.py": "14f9e0d3ec9aa5391386f3f176b6d457ea1782bbc6ecac4b9d6061df5e6cbc07",
+    "matchup_dna/phase4_features.py": "a75865935df998b3fcd6903efc207f7b9940fde53aed1d7da1adb66a893ae763",
+    "matchup_dna/profiles.py": "6cf41457b1b38586ef2b4b354fdb0e0ec42b550c4539bd2f88400ba6dc3a4877",
+    "matchup_dna/serve_stats.py": "9305b4bf85db8211a9e9a115c2dedbac2c1dc9b23670040ea4225fb04fe6d2de",
+    "matchup_dna/workload.py": "82529c1cb4d12aec910c9adc0a98bc393a13ee0fb81d7cec45c2e95703b218bd",
+    "models/phase4_tournament_start.json": "a34233a3876d89fe3cd70c782b0d0a31de9192ad0895e05332c7bb5a93fd246c",
+    "results/phase4/profile_settings.json": "993753ec0422031133c596f81fbbf28ed89104a161dda4f1a3c2b317c50717c8"
+  },
+  "splits_sha256": "b40df378ebe5299cdb4cec2167f06c75c0ab051ec95d932629f56e9bcd10568a",
+  "development_sha256": "77b43292fded75a567e30547e29e21c95241a3cf9a4878e553f1501f0921fa7e",
+  "validation_sha256": "ad95fcaa4afbfda4bdcd64ad3848ca4e1a8d421faadada37ac5bdf176a6f6ca3",
+  "elo_variant": "decaying",
+  "chosen_model": "M2",
+  "l2": {
+    "ATP": {
+      "B0": 0.0,
+      "M1": 0.0,
+      "M2": 0.0
+    },
+    "WTA": {
+      "B0": 0.0,
+      "M1": 0.0,
+      "M2": 0.0
+    }
+  },
+  "final_fit": "each fitted model refitted per tour on development + validation rows (all ITF rows before 2026)",
+  "held_out": "every rated ITF main-draw match from 2026-01-01 to the end of the data, scored once",
+  "primary": "log loss of M2 against B0 (rank only), B1 (Elo only) and B2 (production main-tour model), paired bootstrap by edition; reported pooled, by tour and by tier"
+}
