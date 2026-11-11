@@ -356,3 +356,107 @@ export type Status = z.infer<typeof StatusSchema>;
 export type TrackRecord = z.infer<typeof TrackRecordSchema>;
 export type Manifest = z.infer<typeof ManifestSchema>;
 
+
+// ---------------------------------------------------------------- ITF extension (itf.json, optional in a snapshot)
+
+const ItfBin = z.object({ bin: z.string(), matches: z.number().int(), forecast: z.number(), observed: z.number() });
+const ItfScore = z.object({
+  matches: z.number().int(),
+  log_loss: z.number().nullable(),
+  brier: z.number().nullable(),
+  accuracy: z.number().nullable(),
+  reliability: z.array(ItfBin),
+});
+const ItfCalibration = z.object({ ece: z.number(), bins: z.array(ItfBin) });
+const ItfEntry = z.object({
+  uid: z.string().regex(/^I-[0-9a-f]{24}$/),
+  tour: z.enum(["ATP", "WTA"]),
+  event: z.string().nullable(),
+  tier: z.number().int(),
+  surface: z.string().nullable(),
+  round: z.string(),
+  start: UtcTime.nullable(),
+  issued_at: UtcTime,
+  a: z.string().nullable(),
+  b: z.string().nullable(),
+  p_a: Probability,
+  p_a_elo: Probability.nullable(),
+});
+const ItfRecent = ItfEntry.extend({
+  status: z.string(),
+  winner: z.enum(["a", "b"]).nullable(),
+  score: z.string(),
+});
+const ItfArchiveRow = z.object({
+  seq: z.number().int(),
+  prediction_id: z.string(),
+  record_hash: z.string(),
+  uid: z.string(),
+  issued_at: UtcTime,
+  start: UtcTime.nullable(),
+  tour: z.enum(["ATP", "WTA"]),
+  event: z.string().nullable(),
+  round: z.string(),
+  a: z.string().nullable(),
+  b: z.string().nullable(),
+  p_a: Probability,
+  p_a_elo: Probability.nullable(),
+  status: z.enum(["counted", "pilot", "revision"]),
+  result: z.string().nullable(),
+  winner: z.enum(["a", "b"]).nullable(),
+});
+const ItfMetric = z.object({ log_loss: z.number(), brier: z.number(), accuracy: z.number(), matches: z.number().int() });
+
+const ItfBoardRow = z.object({
+  id: z.number().int(),
+  name: z.string(),
+  country: z.string().nullable(),
+  rating: z.number(),
+  rank: z.number().int().nullable(),
+  wins: z.number().int(),
+  losses: z.number().int(),
+  last_event: z.number().int(),
+  position: z.number().int(),
+});
+const ItfBoard = z.object({
+  generated_at: UtcTime,
+  rank_lists: z.record(z.string(), z.string().nullable()),
+  min_matches: z.number().int(),
+  tours: z.object({ ATP: z.array(ItfBoardRow), WTA: z.array(ItfBoardRow) }),
+});
+
+export const ItfSchema = z.object({
+  generated_at: UtcTime,
+  model: z.object({ version: z.string(), baseline: z.string(), description: z.string() }),
+  protocol: z.object({ frozen: z.boolean(), frozen_at: UtcTime.nullable() }),
+  upcoming: z.array(ItfEntry),
+  recent: z.array(ItfRecent),
+  archive: z.array(ItfArchiveRow),
+  record: z.object({ forecast_matches: z.number().int(), settled: z.number().int(), m1: ItfScore, elo: ItfScore }),
+  research: z.looseObject({
+    names: z.record(z.string(), z.string()),
+    live_model: z.string(),
+    held_out: z.looseObject({
+      period: z.string(),
+      pooled: z.record(z.string(), ItfMetric),
+      tours: z.record(z.string(), z.record(z.string(), ItfMetric)),
+      comparisons: z.record(z.string(), z.object({ mean: z.number(), ci95: z.tuple([z.number(), z.number()]) })),
+    }),
+    validation: z.looseObject({ period: z.string(), pooled: z.record(z.string(), ItfMetric) }),
+    calibration: z.object({
+      held_out: z.record(z.string(), ItfCalibration),
+      validation: z.record(z.string(), ItfCalibration),
+    }).optional(),
+    model: z.object({
+      version: z.string(), sha256: z.string(), elo_variant: z.string(), description: z.string(),
+      tours: z.record(z.string(), z.object({ fit_rows: z.number().int(), weights: z.record(z.string(), z.number()) })),
+    }).optional(),
+  }),
+  board: ItfBoard.nullable(),
+});
+export type Itf = z.infer<typeof ItfSchema>;
+export type ItfEntryT = z.infer<typeof ItfEntry>;
+export type ItfRecentT = z.infer<typeof ItfRecent>;
+export type ItfBoardT = z.infer<typeof ItfBoard>;
+export type ItfArchiveRowT = z.infer<typeof ItfArchiveRow>;
+export type ItfBoardRowT = z.infer<typeof ItfBoardRow>;

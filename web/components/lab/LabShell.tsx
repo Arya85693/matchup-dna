@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { ArchiveEntry, Models, TrackRecord } from "@/lib/contract";
+import type { ArchiveEntry, Itf, Models, TrackRecord } from "@/lib/contract";
 import type { HISTORICAL as H, MARKET as M } from "@/lib/research";
 import { BenchmarksTab } from "./BenchmarksTab";
 import { CalibrationTab } from "./CalibrationTab";
+import { ItfTab } from "./ItfTab";
 import { LiveTab } from "./LiveTab";
 import { MarketTab } from "./MarketTab";
 import { ModelsTab } from "./ModelsTab";
@@ -15,12 +16,14 @@ const TABS = [
   { id: "calibration", label: "Calibration" },
   { id: "market", label: "Market" },
   { id: "models", label: "Models" },
+  { id: "itf", label: "ITF model" },
 ] as const;
 type TabId = (typeof TABS)[number]["id"];
 
 /** Tabs with shareable addresses (/lab#market) and arrow-key navigation, as the WAI-ARIA tabs pattern describes. */
-export function LabShell({ record, archive, historical, market, models }: {
+export function LabShell({ record, archive, historical, market, models, itfResearch, itfRecord }: {
   record: TrackRecord | null; archive: ArchiveEntry[]; historical: typeof H; market: typeof M; models: Models | null;
+  itfResearch: Itf["research"]; itfRecord: Itf["record"] | null;
 }) {
   const [tab, setTab] = useState<TabId>("live");
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -61,9 +64,10 @@ export function LabShell({ record, archive, historical, market, models }: {
       <div key={tab} role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`} className="anim-fade">
         {tab === "live" && <LiveTab record={record} entries={archive} />}
         {tab === "benchmarks" && <BenchmarksTab h={historical} m={market} />}
-        {tab === "calibration" && <CalibrationTab h={historical} record={record} />}
+        {tab === "calibration" && <CalibrationTab h={historical} record={record} itf={itfResearch} itfRecord={itfRecord} />}
         {tab === "market" && <MarketTab m={market} />}
         {tab === "models" && <ModelsTab models={models} />}
+        {tab === "itf" && <ItfTab research={itfResearch} record={itfRecord} />}
       </div>
     </div>
   );

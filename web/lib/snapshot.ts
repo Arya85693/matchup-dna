@@ -6,8 +6,8 @@
 import { createHash } from "node:crypto";
 import type { z } from "zod";
 import {
-  ArchiveSchema, HistoryIndexSchema, HistoryManifestSchema, HistoryPlayerSchema, LedgerSchema, ManifestSchema, PlayersSchema, MatchIndexSchema, MatchPageSchema, ModelsSchema, StatusSchema, TrackRecordSchema,
-  type Archive, type HistoryIndex, type HistoryPlayer, type Ledger, type Manifest, type Players, type MatchIndex, type MatchPage, type Models, type Status, type TrackRecord,
+  ArchiveSchema, HistoryIndexSchema, ItfSchema, HistoryManifestSchema, HistoryPlayerSchema, LedgerSchema, ManifestSchema, PlayersSchema, MatchIndexSchema, MatchPageSchema, ModelsSchema, StatusSchema, TrackRecordSchema,
+  type Archive, type HistoryIndex, type Itf, type HistoryPlayer, type Ledger, type Manifest, type Players, type MatchIndex, type MatchPage, type Models, type Status, type TrackRecord,
 } from "./contract";
 import { readText } from "./storage";
 
@@ -52,6 +52,7 @@ export const getModels = (): Promise<Loaded<Models>> => getFile(ModelsSchema, "m
 export const getArchive = (): Promise<Loaded<Archive>> => getFile(ArchiveSchema, "archive.json");
 export const getPlayers = (): Promise<Loaded<Players>> => getFile(PlayersSchema, "players.json");
 export const getLedger = (): Promise<Loaded<Ledger>> => getFile(LedgerSchema, "ledger/recent.json");
+export const getItf = (): Promise<Loaded<Itf>> => getFile(ItfSchema, "itf.json");
 
 export async function getMatch(uid: string): Promise<Loaded<MatchPage>> {
   if (!/^M-[0-9a-f]{24}$/.test(uid)) return { ok: false, reason: "not_found", detail: "Unknown match." };

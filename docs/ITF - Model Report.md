@@ -219,7 +219,16 @@ Most bins agree within 1–2 points. Strong favourites (60–90%) won about 2 po
 
 ## 7. What comes next
 
-The model is finished and tested. Live ITF forecasts (stages I4–I6) need a live source of ITF fixtures and results, and none is available yet (see the I1 report, section 3). Until then, the website can show this model and its test result as research, without live ITF forecasts.
+The model is finished and tested. Live ITF forecasts (stages I4–I6) use Flashscore for fixtures and results (see the I1 report, section 3).
+
+**The live model is M1, not M2.** M2 needs serve counts that keep arriving. Sackmann's data ends in June 2026, and Flashscore's ITF matches carry no serve statistics. This was checked on 11 November 2026 on finished M15 and W35 matches, which have only "last 10 points" and "match points saved".
+
+Live, M2 would face three problems:
+- its serve profiles would stop following form;
+- every player's profile would drift toward the ITF average;
+- every player who began after June 2026 would be treated as having no serve history.
+
+That is a set of inputs unlike anything it was tested on. M1 uses only Elo, rank, rest, form and tier, all of which stay current from results alone. On the held-out half-year it scored 0.5517, 0.0011 behind M2. So M1 is the better model for live use, and it is the one the live protocol (P2) registers.
 
 ## Reproducing
 

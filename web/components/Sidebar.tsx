@@ -10,6 +10,7 @@ const NAV = [
   { href: "/", label: "Home", icon: IconOverview, match: (p: string) => p === "/" },
   { href: "/matches", label: "Matches", icon: IconMatches, match: (p: string) => p.startsWith("/matches") },
   { href: "/players", label: "Players", icon: IconPlayers, match: (p: string) => p.startsWith("/players") },
+  { href: "/itf", label: "ITF", icon: IconMatches, match: (p: string) => p.startsWith("/itf") },
   { href: "/lab", label: "Model Lab", icon: IconLab, match: (p: string) => p.startsWith("/lab") },
   { href: "/archive", label: "Forecast Archive", icon: IconArchive, match: (p: string) => p.startsWith("/archive") },
   { href: "/methodology", label: "Methodology", icon: IconMethod, match: (p: string) => p.startsWith("/methodology") },

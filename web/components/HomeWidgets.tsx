@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import type { HistoryListing, MatchSummary } from "@/lib/contract";
-import { favourite, NOT_RECORDED_TEXT, notRecorded, pct, playerSlug, roundLabel } from "@/lib/format";
+import { eventLabel, favourite, NOT_RECORDED_TEXT, notRecorded, pct, playerSlug, roundLabel } from "@/lib/format";
 import { Spark } from "./EloChart";
 import { LocalTime } from "./LocalTime";
 import { Badge, ProbBar, SurfaceDot } from "./ui";
@@ -21,7 +21,7 @@ export function FeaturedCarousel({ matches }: { matches: MatchSummary[] }) {
   return (
     <div className="card lift relative overflow-hidden p-6 hover:border-border-strong">
       <div className="flex items-center justify-between gap-3 text-[12px] text-muted">
-        <span className="inline-flex items-center gap-2"><SurfaceDot surface={m.edition.surface} />{m.edition.name} · {roundLabel(m.round)}</span>
+        <span className="inline-flex items-center gap-2"><SurfaceDot surface={m.edition.surface} />{eventLabel(m.tour, m.edition.level)} · {m.edition.name} · {roundLabel(m.round)}</span>
         <span className="num">{m.start && <LocalTime iso={m.start} style="datetime" />}</span>
       </div>
       <div key={`${m.uid}-${kind}`} className="anim-fade mt-6 grid gap-4">

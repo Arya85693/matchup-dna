@@ -13,6 +13,35 @@ export const LEVELS: Record<string, Record<string, string>> = {
   WTA: { G: "Grand Slam", PM: "WTA 1000", P: "WTA 500", I: "WTA Tour", F: "WTA Finals", D: "Billie Jean King Cup", O: "Olympics" },
 };
 
+/** The circuit a match belongs to, always shown, so men's and women's events and every level are told apart:
+ * ATP and WTA (main tour), ATP Challenger and WTA 125, ITF Men and ITF Women. `kind` is "itf" for ITF matches
+ * (their level is the prize money, "15", "35", ...); otherwise the Sackmann level code decides. */
+export const CIRCUITS = {
+  ATP: { main: "ATP", challenger: "ATP Challenger", itf: "ITF Men" },
+  WTA: { main: "WTA", challenger: "WTA 125", itf: "ITF Women" },
+} as const;
+
+export function circuitLabel(tour: string, level: string | null, kind: "main" | "itf" = "main"): string {
+  const names = CIRCUITS[tour as "ATP" | "WTA"];
+  if (!names) return tour;
+  if (kind === "itf") return names.itf;
+  return level === "C" || level === "CH" ? names.challenger : names.main;
+}
+
+/** Short level names shown after the circuit. */
+export const SHORT_LEVELS: Record<string, Record<string, string>> = {
+  ATP: { G: "Grand Slam", M: "Masters 1000", A: "250/500", F: "Finals", D: "Davis Cup", O: "Olympics" },
+  WTA: { G: "Grand Slam", PM: "1000", P: "500", I: "250", F: "Finals", D: "Billie Jean King Cup", O: "Olympics" },
+};
+
+/** "ATP · Grand Slam", "WTA · 1000", "ITF Women · W35": the circuit first, then the event level. */
+export function eventLabel(tour: string, level: string | null, kind: "main" | "itf" = "main"): string {
+  const circuit = circuitLabel(tour, level, kind);
+  if (kind === "itf") return level ? `${circuit} · ${tour === "ATP" ? "M" : "W"}${level}` : circuit;
+  const named = level ? SHORT_LEVELS[tour]?.[level] : undefined;
+  return named ? `${circuit} · ${named}` : circuit;
+}
+
 /** A player's address: ATP and WTA ids are separate pools, so the tour is part of it (e.g. atp-206173, wta--12345). */
 /** A match the models never forecast because it was first listed too close to its start, under way or played. The
  * site shows one plain explanation for these (owner's decision, 10 November 2026); the decision log keeps the detail. */

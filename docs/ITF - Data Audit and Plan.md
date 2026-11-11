@@ -3,11 +3,11 @@
 **Date:** 10 November 2026  
 **Sources:** Jeff Sackmann's ITF, Challenger/qualifying and main-tour files (the Phase 0 archival mirror, snapshot to early June 2026), plus checks of every live source that could supply ITF matches.  
 **Question:** Is there enough clean ITF data to build and test an ITF forecasting model, including serve statistics, and is there a source that can keep it running live?  
-**Answer:** Yes for the model, no for live data yet.
+**Answer:** Yes on both.
 
 - About 180,000 ITF main-draw matches from 2021 to June 2026 can be used, with full serve statistics from January 2025.
 - The main-tour model cannot simply be reused. 96% of men's ITF matches involve a player with no main-tour history at all, so ITF needs its own ratings across every level.
-- There is no free, permitted live ITF source today. The ITF site blocks automated access, and the sites that list ITF matches forbid scraping. The one candidate is a free API plan the user would have to sign up for.
+- For live data, Flashscore lists men's and women's ITF fixtures and results, with exact start times (section 3; updated 11 November 2026).
 
 The rest of this report covers the splits, what the audit found, the live-source search, and the plan for stages I2–I6. The last section, "What the audit did," says it in ordinary language.
 
@@ -130,21 +130,24 @@ The model will use these five tiers rather than the raw codes. Men's levels need
 
 ## 3. Live sources
 
-| Source | ITF fixtures and results | Serve stats | Can it be used? |
-|---|---|---|---|
-| ITF site (itftennis.com, now world.tennis; also live, feeds and player portal) | Yes | Yes | **No.** Every address, even robots.txt, returns an Imperva bot-protection challenge. Getting past it would mean defeating bot protection, which this project doesn't do |
-| ESPN (current live source) | **No.** Its archive holds only ATP and WTA main-tour events and about 40 WTA 125s | – | – |
-| Sackmann (GitHub) | Up to June 2026 | From 2025 | **No updates.** `tennis_atp` and `tennis_wta` are no longer public; only the Match Charting Project is |
-| Match Charting Project | – | 5 men's and 87 women's ITF matches in 2021–2024 | Too few to matter |
-| TennisIsMyLife (on disk) | No | – | Main tour only |
-| TennisExplorer | Yes | Some | **No.** Its terms forbid scraping and database extraction without written consent |
-| tennislive.net | Yes | – | **No.** Its robots.txt blocks its match API and Anthropic's crawler |
-| Flashscore, Sofascore and the Apify scrapers built on them | Yes | Some | **No**, without the sites' permission |
-| Free API plans: Tennis API (RapidAPI), Matchstat, Live Tennis API | Claimed | Unverified | **Possibly.** The user creates a free key; then test ITF start times, serve counts and the daily request budget |
+| Source | Men's ITF | Women's ITF | Start times | Serve stats | Outcome |
+|---|---|---|---|---|---|
+| **Flashscore** | **Yes** | **Yes** | **Exact, in UTC** | No: only "last 10 points" and "match points saved" | **The live source.** Each event's page carries its matches in the page itself: start time, round, players, score, and the event's level, country and surface |
+| TennisExplorer | No (none on three dates checked in 2025–2026) | Yes | Yes | No | Women's ITF only |
+| ITF site (itftennis.com, now world.tennis) | Yes | Yes | Yes | Yes | Not reachable: every address returns a bot-protection challenge to automated requests |
+| ESPN (current main-tour source) | No | No | – | – | Only ATP and WTA main-tour events and about 40 WTA 125s |
+| Sackmann (GitHub) | Up to June 2026 | Up to June 2026 | – | From 2025 | No updates: `tennis_atp` and `tennis_wta` are no longer public |
+| Match Charting Project | – | – | – | 5 men's and 87 women's ITF matches in 2021–2024 | Too few to matter |
+| TennisIsMyLife (on disk) | No | No | – | – | Main tour only |
+| CoreTennis | Results | Results | No | No | Finished draws only, with no start times, so it can't support pre-match forecasts |
+| Sofascore | – | – | – | – | Refuses automated requests (HTTP 403) |
 
-The user has ruled out paying and asking the ITF. That leaves the free API plans. A free tier of about 100 requests a day can probably cover a day's ITF fixtures and results. It likely cannot fetch serve counts match by match, since there are several hundred ITF matches on a busy day.
+**Flashscore page details** (checked 11 November 2026 on M15 Antalya 7):
+- **Header:** each event's header reads "ITF MEN - SINGLES: M15 Antalya 7 (Turkey), clay", so it gives the level, country and surface.
+- **Per match:** a Flashscore match id, a start time as a UTC timestamp, both players ("Dlimi Y."), the round ("1/16-final"), the status, and the set scores.
+- **Event list:** the tennis page lists every current ITF men's and women's singles event.
 
-**If no free plan works**, the ITF model and its one-time test still go ahead (stages I2–I3). The website gets an ITF research section, but no live ITF forecasts.
+ITF matches there carry no serve statistics (checked 11 November 2026 on finished M15 and W35 matches). So the live forecasts use **M1**, the model without serve features, which needs only results and rankings. M2 can't be kept current; the Model Report, section 7, gives the reasons.
 
 **Integrity.** The 2018 Independent Review of Integrity in Tennis found match-fixing concentrated at the lowest professional levels. Any ITF forecasts on the site will be labelled as model estimates, and ITF matches won't be compared with betting odds.
 
@@ -155,7 +158,7 @@ The user has ruled out paying and asking the ITF. That leaves the free API plans
 | **I1** (this report) | Splits, audit, plan | No |
 | **I2. Data, ratings and features** | Sealed loader for every file, with the unmarked-retirement rule. One Elo pool across all levels. Phase 3 features plus level tier and unranked flags. Serve-return profiles from January 2025 | No |
 | **I3. Experiments and the one-time test** | Develop, choose on validation, freeze, then score 2026 once | No |
-| I4. Live source | Reader and archive for the chosen API, like `espn.py` | Yes |
+| I4. Live source | Flashscore reader and archive, like `espn.py`; backfill of results since June 2026; player matching | Yes |
 | I5. Protocol P2 and the cloud job | A separate frozen prospective protocol. **P1 is never touched**: its amendments must keep eligibility unchanged, so ITF can't join it | Yes |
 | I6. Website | An ITF section with its own track record | Partly |
 
@@ -217,4 +220,4 @@ Two things needed fixing:
 
 The main finding: the existing model can't simply be pointed at ITF matches, because it has never seen almost any of these players. ITF needs ratings built across every level.
 
-Live ITF matches are the open problem. Every site that lists them either blocks automated access or forbids scraping, so live forecasts depend on a free API plan that hasn't been tested yet.
+For live ITF matches, Flashscore lists men's and women's events with exact start times, so it is the live source.

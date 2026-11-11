@@ -30,7 +30,7 @@ import { AwsClient } from "aws4fetch";
 const WEB = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const ROOT = path.resolve(WEB, "..");
 const BACKUPS = 60;
-const SLOTS = new Set(["live", "shadow"]);
+const SLOTS = new Set(["live", "shadow", "itf"]);   // itf: the ITF extension's store (data/store/itf.sqlite)
 const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
 // On Windows, Windows' own tar (bsdtar). Git Bash's GNU tar, first on the PATH on GitHub's Windows machines, reads
 // "C:\..." as a remote host called C.

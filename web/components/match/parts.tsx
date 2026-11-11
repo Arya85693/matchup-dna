@@ -1,5 +1,5 @@
 /** Shared building blocks for the match board and the match page. Stored probabilities only; nothing is computed. */
-import { favourite, levelLabel, pct } from "@/lib/format";
+import { eventLabel, favourite, pct } from "@/lib/format";
 
 export type Tier = "slam" | "premier" | "tour";
 
@@ -12,7 +12,7 @@ export function tierOf(level: string | null): Tier {
 
 export function TierBadge({ tour, level }: { tour: string; level: string | null }) {
   const tier = tierOf(level);
-  const label = levelLabel(tour, level);
+  const label = eventLabel(tour, level);
   if (tier === "tour") return <span className="text-[12px] text-dim">{label}</span>;
   return (
     <span className={`inline-flex items-center rounded px-1.5 py-[1px] text-[11px] font-medium ${tier === "slam" ? "border border-accent/50 text-accent" : "border border-border-strong text-muted"}`}>

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ago, dayKey, familyName, favourite, levelLabel, pct, roundLabel, utcDate } from "./format.ts";
+import { ago, circuitLabel, dayKey, eventLabel, familyName, favourite, levelLabel, pct, roundLabel, utcDate } from "./format.ts";
 
 test("percentages are the stored value rounded for display", () => {
   assert.equal(pct(0.6463), "64.6");
@@ -44,4 +44,17 @@ test("day keys follow the viewer's time zone", () => {
 test("protocol dates are read in UTC", () => {
   assert.equal(utcDate("2026-11-09T00:29:15Z"), "9 November 2026");
   assert.equal(utcDate("2027-07-15T00:00:00Z"), "15 July 2027");
+});
+
+test("every match names its circuit, men's and women's alike", () => {
+  assert.equal(eventLabel("ATP", "G"), "ATP · Grand Slam");
+  assert.equal(eventLabel("WTA", "G"), "WTA · Grand Slam");
+  assert.equal(eventLabel("WTA", "PM"), "WTA · 1000");
+  assert.equal(eventLabel("WTA", "I"), "WTA · 250");
+  assert.equal(eventLabel("ATP", "A"), "ATP · 250/500");
+  assert.equal(eventLabel("ATP", null), "ATP");
+  assert.equal(circuitLabel("ATP", "C"), "ATP Challenger");
+  assert.equal(circuitLabel("WTA", "C"), "WTA 125");
+  assert.equal(eventLabel("ATP", "15", "itf"), "ITF Men · M15");
+  assert.equal(eventLabel("WTA", "35", "itf"), "ITF Women · W35");
 });

@@ -1,0 +1,112 @@
+{
+ "description": "ITF M1: all-level decaying-K Elo, surface Elo, rank, rest, form, Elo x tier; fitted per tour on every rated ITF main-draw match from 2021 to 1 June 2026",
+ "elo_variant": "decaying",
+ "itf_protocol_sha256": "8e8bf6e67a636ea63502b08f42c91d0900f6f41abb3973f2acef29cc840c31e7",
+ "kind": "itf_tournament_start",
+ "model_version": "itf-m1-v1",
+ "research_name": "M1",
+ "tours": {
+  "ATP": {
+   "coefficients": [
+    0.476230877373952,
+    0.4977482593679396,
+    -0.14942558375248663,
+    -0.15433631191967714,
+    -0.2549010473426853,
+    0.05519003693162057,
+    0.02123146843423031
+   ],
+   "coefficients_per_unit": {
+    "elo_logit": 0.3707340768455026,
+    "elo_x_tier": 0.03289242087529351,
+    "form_diff": 0.25208230180145885,
+    "log_days_since_diff": -0.17668264552178128,
+    "log_rank_diff": -0.19925700258242782,
+    "rank_missing_diff": -0.35419159493107394,
+    "surface_elo_logit": 0.4063931792617229
+   },
+   "columns": [
+    "elo_logit",
+    "surface_elo_logit",
+    "log_rank_diff",
+    "rank_missing_diff",
+    "log_days_since_diff",
+    "form_diff",
+    "elo_x_tier"
+   ],
+   "fit_rows": 84889,
+   "fit_rows_sha256": "dd1a92578d3b92e6152c8aed270292e5d100beb4b45cf943cd9360167a6b03e1",
+   "l2": 0.0,
+   "model": "M1",
+   "preprocessing": {
+    "dominance_mean": -4.2144243359588454e-17,
+    "experience_mean": 3.325073516473923,
+    "rank_impute": 2062.0,
+    "representation": "adjusted",
+    "return_mean": 0.4033261218440519,
+    "serve_mean": 0.5812630913884125,
+    "tier_mean": 1.3833123255074273
+   },
+   "scale": [
+    1.2845619194925355,
+    1.2247948163701408,
+    0.749913838991294,
+    0.43574244597676337,
+    1.4427056295761733,
+    0.21893657959013912,
+    0.6454820858192869
+   ]
+  },
+  "WTA": {
+   "coefficients": [
+    0.7094713843035481,
+    0.5337718023667665,
+    -0.0752271909687287,
+    -0.039509247825695384,
+    -0.11584919880771995,
+    0.03176330872200231,
+    -0.07079077299406816
+   ],
+   "coefficients_per_unit": {
+    "elo_logit": 0.6075652550644435,
+    "elo_x_tier": -0.05486189847479455,
+    "form_diff": 0.15448734266098973,
+    "log_days_since_diff": -0.09618791683487368,
+    "log_rank_diff": -0.11023218515735236,
+    "rank_missing_diff": -0.0826482493540073,
+    "surface_elo_logit": 0.47919828620350496
+   },
+   "columns": [
+    "elo_logit",
+    "surface_elo_logit",
+    "log_rank_diff",
+    "rank_missing_diff",
+    "log_days_since_diff",
+    "form_diff",
+    "elo_x_tier"
+   ],
+   "fit_rows": 86407,
+   "fit_rows_sha256": "76396763e056bc37b0010c83604c70f141c40f6c836d62395b95f8079fc78581",
+   "l2": 0.0,
+   "model": "M1",
+   "preprocessing": {
+    "dominance_mean": 9.941858501440405e-17,
+    "experience_mean": 4.101915356139721,
+    "rank_impute": 1418.0,
+    "representation": "adjusted",
+    "return_mean": 0.4612297855205652,
+    "serve_mean": 0.5291963210318901,
+    "tier_mean": 1.9832999641232771
+   },
+   "scale": [
+    1.167728698093994,
+    1.1138850403569376,
+    0.6824430710626362,
+    0.47804095228279303,
+    1.2044049046887968,
+    0.2056046027777459,
+    1.2903449381466792
+   ]
+  }
+ }
+}

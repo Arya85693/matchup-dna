@@ -22,3 +22,6 @@ runs:
       run: |
         node web/scripts/state.mjs unpack static
         node web/scripts/state.mjs unpack raw
+        # The ITF extension's pages (Flashscore, TennisExplorer rankings, the ITF board), in their own archive so the
+        # main-tour archive is never involved; absent until the first upload.
+        node web/scripts/state.mjs unpack itfraw || echo "no ITF archive yet"

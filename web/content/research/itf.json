@@ -1,0 +1,475 @@
+{
+ "source": "docs/ITF - Model Report.md, sections 4 and 6 (results/itf/validation.json and holdout.json)",
+ "names": {
+  "B0": "Rank only",
+  "B1": "Elo only (all levels)",
+  "B2": "Main-tour model, unchanged",
+  "M1": "M1: Elo, rank, rest, form, tier (live model)",
+  "M2": "M2: M1 plus serve and return"
+ },
+ "live_model": "M1",
+ "held_out": {
+  "period": "1 January - 1 June 2026",
+  "pooled": {
+   "B0": {
+    "log_loss": 0.5921,
+    "brier": 0.2032,
+    "accuracy": 0.6843,
+    "matches": 13537
+   },
+   "B1": {
+    "log_loss": 0.5629,
+    "brier": 0.1911,
+    "accuracy": 0.7036,
+    "matches": 13537
+   },
+   "B2": {
+    "log_loss": 0.6351,
+    "brier": 0.2223,
+    "accuracy": 0.6687,
+    "matches": 13537
+   },
+   "M1": {
+    "log_loss": 0.5517,
+    "brier": 0.1866,
+    "accuracy": 0.7131,
+    "matches": 13537
+   },
+   "M2": {
+    "log_loss": 0.5505,
+    "brier": 0.1862,
+    "accuracy": 0.7138,
+    "matches": 13537
+   }
+  },
+  "tours": {
+   "ATP": {
+    "B0": {
+     "log_loss": 0.5789,
+     "brier": 0.1973,
+     "accuracy": 0.6997,
+     "matches": 6590
+    },
+    "B1": {
+     "log_loss": 0.57,
+     "brier": 0.1934,
+     "accuracy": 0.6991,
+     "matches": 6590
+    },
+    "B2": {
+     "log_loss": 0.6267,
+     "brier": 0.2185,
+     "accuracy": 0.6877,
+     "matches": 6590
+    },
+    "M1": {
+     "log_loss": 0.5508,
+     "brier": 0.1857,
+     "accuracy": 0.7165,
+     "matches": 6590
+    },
+    "M2": {
+     "log_loss": 0.5495,
+     "brier": 0.1852,
+     "accuracy": 0.7173,
+     "matches": 6590
+    }
+   },
+   "WTA": {
+    "B0": {
+     "log_loss": 0.6046,
+     "brier": 0.2087,
+     "accuracy": 0.6696,
+     "matches": 6947
+    },
+    "B1": {
+     "log_loss": 0.5562,
+     "brier": 0.189,
+     "accuracy": 0.7079,
+     "matches": 6947
+    },
+    "B2": {
+     "log_loss": 0.6431,
+     "brier": 0.226,
+     "accuracy": 0.6506,
+     "matches": 6947
+    },
+    "M1": {
+     "log_loss": 0.5525,
+     "brier": 0.1875,
+     "accuracy": 0.7098,
+     "matches": 6947
+    },
+    "M2": {
+     "log_loss": 0.5514,
+     "brier": 0.1871,
+     "accuracy": 0.7105,
+     "matches": 6947
+    }
+   }
+  },
+  "comparisons": {
+   "M2 - M1": {
+    "mean": -0.0011,
+    "ci95": [
+     -0.0017,
+     -0.0006
+    ]
+   },
+   "M1 - B0": {
+    "mean": -0.0404,
+    "ci95": [
+     -0.046,
+     -0.0351
+    ]
+   },
+   "M1 - B1": {
+    "mean": -0.0112,
+    "ci95": [
+     -0.0139,
+     -0.0087
+    ]
+   },
+   "M1 - B2": {
+    "mean": -0.0835,
+    "ci95": [
+     -0.0905,
+     -0.0763
+    ]
+   }
+  }
+ },
+ "validation": {
+  "period": "1 July - 31 December 2025",
+  "pooled": {
+   "B0": {
+    "log_loss": 0.5852,
+    "brier": 0.2,
+    "accuracy": 0.6911,
+    "matches": 17608
+   },
+   "B1": {
+    "log_loss": 0.5438,
+    "brier": 0.1833,
+    "accuracy": 0.7199,
+    "matches": 17608
+   },
+   "B2": {
+    "log_loss": 0.624,
+    "brier": 0.2172,
+    "accuracy": 0.6801,
+    "matches": 17608
+   },
+   "M1": {
+    "log_loss": 0.5326,
+    "brier": 0.1787,
+    "accuracy": 0.731,
+    "matches": 17608
+   },
+   "M2": {
+    "log_loss": 0.5305,
+    "brier": 0.1779,
+    "accuracy": 0.7319,
+    "matches": 17608
+   }
+  }
+ },
+ "model": {
+  "version": "itf-m1-v1",
+  "sha256": "d94c3914ee46e663088f64d06878a431b1b4dbeb85dca228d666428387f395d1",
+  "elo_variant": "decaying",
+  "description": "ITF M1: all-level decaying-K Elo, surface Elo, rank, rest, form, Elo x tier; fitted per tour on every rated ITF main-draw match from 2021 to 1 June 2026",
+  "tours": {
+   "ATP": {
+    "fit_rows": 84889,
+    "weights": {
+     "elo_logit": 0.3707,
+     "elo_x_tier": 0.0329,
+     "form_diff": 0.2521,
+     "log_days_since_diff": -0.1767,
+     "log_rank_diff": -0.1993,
+     "rank_missing_diff": -0.3542,
+     "surface_elo_logit": 0.4064
+    }
+   },
+   "WTA": {
+    "fit_rows": 86407,
+    "weights": {
+     "elo_logit": 0.6076,
+     "elo_x_tier": -0.0549,
+     "form_diff": 0.1545,
+     "log_days_since_diff": -0.0962,
+     "log_rank_diff": -0.1102,
+     "rank_missing_diff": -0.0826,
+     "surface_elo_logit": 0.4792
+    }
+   }
+  }
+ },
+ "calibration": {
+  "held_out": {
+   "M1": {
+    "ece": 0.0112,
+    "bins": [
+     {
+      "bin": "0.0-0.1",
+      "matches": 807,
+      "forecast": 0.0632,
+      "observed": 0.0719
+     },
+     {
+      "bin": "0.1-0.2",
+      "matches": 1307,
+      "forecast": 0.151,
+      "observed": 0.1538
+     },
+     {
+      "bin": "0.2-0.3",
+      "matches": 1451,
+      "forecast": 0.2504,
+      "observed": 0.2295
+     },
+     {
+      "bin": "0.3-0.4",
+      "matches": 1553,
+      "forecast": 0.3519,
+      "observed": 0.3632
+     },
+     {
+      "bin": "0.4-0.5",
+      "matches": 1627,
+      "forecast": 0.4503,
+      "observed": 0.4487
+     },
+     {
+      "bin": "0.5-0.6",
+      "matches": 1657,
+      "forecast": 0.5502,
+      "observed": 0.5438
+     },
+     {
+      "bin": "0.6-0.7",
+      "matches": 1580,
+      "forecast": 0.6504,
+      "observed": 0.6253
+     },
+     {
+      "bin": "0.7-0.8",
+      "matches": 1436,
+      "forecast": 0.7499,
+      "observed": 0.7416
+     },
+     {
+      "bin": "0.8-0.9",
+      "matches": 1331,
+      "forecast": 0.8488,
+      "observed": 0.8317
+     },
+     {
+      "bin": "0.9-1.0",
+      "matches": 788,
+      "forecast": 0.9381,
+      "observed": 0.9302
+     }
+    ]
+   },
+   "B1": {
+    "ece": 0.0109,
+    "bins": [
+     {
+      "bin": "0.0-0.1",
+      "matches": 613,
+      "forecast": 0.0659,
+      "observed": 0.075
+     },
+     {
+      "bin": "0.1-0.2",
+      "matches": 1261,
+      "forecast": 0.1519,
+      "observed": 0.1459
+     },
+     {
+      "bin": "0.2-0.3",
+      "matches": 1541,
+      "forecast": 0.249,
+      "observed": 0.2362
+     },
+     {
+      "bin": "0.3-0.4",
+      "matches": 1619,
+      "forecast": 0.3517,
+      "observed": 0.3576
+     },
+     {
+      "bin": "0.4-0.5",
+      "matches": 1730,
+      "forecast": 0.4492,
+      "observed": 0.4543
+     },
+     {
+      "bin": "0.5-0.6",
+      "matches": 1720,
+      "forecast": 0.5494,
+      "observed": 0.5465
+     },
+     {
+      "bin": "0.6-0.7",
+      "matches": 1651,
+      "forecast": 0.6494,
+      "observed": 0.6214
+     },
+     {
+      "bin": "0.7-0.8",
+      "matches": 1522,
+      "forecast": 0.7494,
+      "observed": 0.7332
+     },
+     {
+      "bin": "0.8-0.9",
+      "matches": 1265,
+      "forecast": 0.8481,
+      "observed": 0.853
+     },
+     {
+      "bin": "0.9-1.0",
+      "matches": 615,
+      "forecast": 0.9338,
+      "observed": 0.9106
+     }
+    ]
+   }
+  },
+  "validation": {
+   "M1": {
+    "ece": 0.0065,
+    "bins": [
+     {
+      "bin": "0.0-0.1",
+      "matches": 1135,
+      "forecast": 0.0621,
+      "observed": 0.0599
+     },
+     {
+      "bin": "0.1-0.2",
+      "matches": 1861,
+      "forecast": 0.1522,
+      "observed": 0.1483
+     },
+     {
+      "bin": "0.2-0.3",
+      "matches": 1952,
+      "forecast": 0.2507,
+      "observed": 0.2316
+     },
+     {
+      "bin": "0.3-0.4",
+      "matches": 2006,
+      "forecast": 0.3505,
+      "observed": 0.3559
+     },
+     {
+      "bin": "0.4-0.5",
+      "matches": 1895,
+      "forecast": 0.4497,
+      "observed": 0.4559
+     },
+     {
+      "bin": "0.5-0.6",
+      "matches": 2015,
+      "forecast": 0.5505,
+      "observed": 0.5573
+     },
+     {
+      "bin": "0.6-0.7",
+      "matches": 1945,
+      "forecast": 0.6509,
+      "observed": 0.6514
+     },
+     {
+      "bin": "0.7-0.8",
+      "matches": 1986,
+      "forecast": 0.7497,
+      "observed": 0.7593
+     },
+     {
+      "bin": "0.8-0.9",
+      "matches": 1754,
+      "forecast": 0.8512,
+      "observed": 0.8563
+     },
+     {
+      "bin": "0.9-1.0",
+      "matches": 1059,
+      "forecast": 0.9374,
+      "observed": 0.9386
+     }
+    ]
+   },
+   "B1": {
+    "ece": 0.009,
+    "bins": [
+     {
+      "bin": "0.0-0.1",
+      "matches": 870,
+      "forecast": 0.0661,
+      "observed": 0.0575
+     },
+     {
+      "bin": "0.1-0.2",
+      "matches": 1798,
+      "forecast": 0.151,
+      "observed": 0.1418
+     },
+     {
+      "bin": "0.2-0.3",
+      "matches": 2044,
+      "forecast": 0.2514,
+      "observed": 0.2373
+     },
+     {
+      "bin": "0.3-0.4",
+      "matches": 2042,
+      "forecast": 0.3514,
+      "observed": 0.3448
+     },
+     {
+      "bin": "0.4-0.5",
+      "matches": 2100,
+      "forecast": 0.451,
+      "observed": 0.4671
+     },
+     {
+      "bin": "0.5-0.6",
+      "matches": 2172,
+      "forecast": 0.5507,
+      "observed": 0.5488
+     },
+     {
+      "bin": "0.6-0.7",
+      "matches": 2060,
+      "forecast": 0.6505,
+      "observed": 0.6544
+     },
+     {
+      "bin": "0.7-0.8",
+      "matches": 1991,
+      "forecast": 0.749,
+      "observed": 0.7539
+     },
+     {
+      "bin": "0.8-0.9",
+      "matches": 1719,
+      "forecast": 0.8489,
+      "observed": 0.8645
+     },
+     {
+      "bin": "0.9-1.0",
+      "matches": 812,
+      "forecast": 0.9326,
+      "observed": 0.9433
+     }
+    ]
+   }
+  }
+ }
+}

@@ -1,14 +1,22 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { TrackRecord } from "@/lib/contract";
+import type { Itf, TrackRecord } from "@/lib/contract";
 import type { HISTORICAL as H } from "@/lib/research";
 import { EvidenceTag, Finding, pc, SectionHead, type Evidence } from "./parts";
 
 type Bin = { low: number; high: number; n: number; mean_p: number; observed: number; observed_low?: number; observed_high?: number };
 type Dataset = { key: string; label: string; window: string; n: number; evidence: Evidence; color: string; bins: Bin[] };
 
-export function CalibrationTab({ h, record }: { h: typeof H; record: TrackRecord | null }) {
+type ItfBins = { bin: string; matches: number; forecast: number; observed: number }[];
+const fromItf = (bins: ItfBins): Bin[] => bins.map((b) => {
+  const [l, u] = b.bin.split("-").map(Number);
+  return { low: l ?? 0, high: u ?? 0, n: b.matches, mean_p: b.forecast, observed: b.observed };
+});
+
+export function CalibrationTab({ h, record, itf, itfRecord }: {
+  h: typeof H; record: TrackRecord | null; itf?: Itf["research"]; itfRecord?: Itf["record"] | null;
+}) {
   const datasets = useMemo<Dataset[]>(() => {
     const list: Dataset[] = [
       { key: "p4", label: "Phase 4 tournament-start model", window: "Held-out matches, Jun – Oct 2026 (corrected)", n: h.phase4.held_out_corrected.scores.n, evidence: "retrospective", color: "var(--color-accent)", bins: h.phase4.held_out_corrected.reliability },
@@ -20,8 +28,18 @@ export function CalibrationTab({ h, record }: { h: typeof H; record: TrackRecord
       list.push({ key: "live", label: "Live record", window: "Prospective P1, scored so far", n: live.n, evidence: "interim", color: "var(--color-warn)",
         bins: liveBins.map((b) => { const [l, u] = b.bin.split("-").map(Number); return { low: l ?? 0, high: u ?? 0, n: b.n, mean_p: b.mean_p, observed: b.observed }; }) });
     }
+    const itfHeld = itf?.calibration?.held_out.M1;
+    if (itfHeld) {
+      list.push({ key: "itf", label: "ITF M1 (ITF Men and ITF Women)", window: `Held-out matches, ${itf?.held_out.period ?? "Jan – Jun 2026"}`,
+        n: itfHeld.bins.reduce((s, b) => s + b.matches, 0), evidence: "held-out", color: "#8fb3ff", bins: fromItf(itfHeld.bins) });
+    }
+    const itfLive = itfRecord?.m1;
+    if (itfLive && itfLive.matches >= 30) {
+      list.push({ key: "itf-live", label: "ITF live record", window: "Prospective P2, scored so far", n: itfLive.matches,
+        evidence: "interim", color: "#e0a3ff", bins: fromItf(itfLive.reliability) });
+    }
     return list;
-  }, [h, record]);
+  }, [h, record, itf, itfRecord]);
   const [shown, setShown] = useState<string[]>(datasets.map((d) => d.key));
   const [focus, setFocus] = useState(datasets[0]!.key);
   const visible = datasets.filter((d) => shown.includes(d.key));

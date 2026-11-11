@@ -29,7 +29,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <main id="main" className="mx-auto w-full max-w-[1180px] px-4 pb-16 pt-6 sm:px-8 lg:pt-10">{children}</main>
           <footer className="mx-auto max-w-[1180px] border-t border-border px-4 py-6 text-[12px] text-dim sm:px-8">
             Non-commercial research. Not betting advice. Data: Jeff Sackmann (CC BY-NC-SA 4.0), TennisIsMyLife, TennisData.app,
-            ESPN; prices for research only: Valuebetennis (CC BY 4.0). Player photos: WTA and ESPN, used with permission, and
+            ESPN, Flashscore (ITF, Challenger and tour results), TennisExplorer (weekly rankings); prices for research only:
+            Valuebetennis (CC BY 4.0). Player photos: WTA and ESPN, used with permission, and
             Wikimedia Commons contributors under the licence credited on each player&apos;s page.
           </footer>
         </div>

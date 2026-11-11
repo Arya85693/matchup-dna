@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
-const PAGES = ["/", "/matches", "/players", "/lab", "/archive", "/methodology", "/status"];
+const PAGES = ["/", "/matches", "/players", "/itf", "/lab", "/archive", "/methodology", "/status"];
 
 /** Fails the test on any console error, uncaught exception or failed request. */
 function watch(page: Page) {
@@ -309,4 +309,18 @@ test("compare: the tour decides which player an id means", async ({ page }) => {
   await expect(page.getByRole("region", { name: "Players" })).toContainText("Venus Williams");
   await page.goto("/players/compare?tour=ATP&a=200748");
   await expect(page.getByRole("region", { name: "Players" })).not.toContainText("Venus Williams");
+});
+
+test("ITF: forecasts, the boards and the archive are labelled by circuit", async ({ page }) => {
+  await page.goto("/itf");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("ITF World Tennis Tour");
+  await expect(page.getByText(/ITF (Men|Women) · [MW]\d+/).first()).toBeVisible();
+  await page.goto("/players");
+  await page.getByRole("button", { name: "ITF", exact: true }).click();
+  await expect(page.getByRole("columnheader", { name: "ITF rating" })).toBeVisible();
+  await page.getByRole("button", { name: "Women", exact: true }).click();
+  await expect(page.getByRole("columnheader", { name: "WTA rank" })).toBeVisible();
+  await page.goto("/archive");
+  await page.getByRole("button", { name: "ITF", exact: true }).click();
+  await expect(page.getByRole("button", { name: "ITF Women", exact: true })).toBeVisible();
 });

@@ -30,7 +30,8 @@ export function ModelsTab({ models }: { models: Models | null }) {
       <Finding kicker="Two frozen models" title="One set of inputs, plus one more for later rounds.">
         Both models are logistic regressions fitted separately for ATP and WTA, then frozen as files with fingerprints. The
         round-aware model uses everything the tournament-start model uses, plus how each player has done earlier in the same
-        tournament. Neither is refitted to make a forecast; a changed model would need a new version name.
+        tournament. Neither is refitted to make a forecast; a changed model would need a new version name. ITF matches
+        have a third, separate model (ITF M1), described in the ITF model tab.
       </Finding>
       {[ts, ra].filter((m): m is Model => Boolean(m)).map((m, i) => (
         <section key={m.model_version} className={`grid gap-6 ${i > 0 ? "border-t border-border pt-10" : ""}`}>

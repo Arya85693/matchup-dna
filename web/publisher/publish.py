@@ -32,6 +32,7 @@ from web.publisher.readonly import copy_store, open_readonly, runs_in_progress
 
 ROOT = Path(__file__).resolve().parents[2]
 LIVE_STORE = ROOT / "data" / "store" / "live.sqlite"
+ITF_STORE = ROOT / "data" / "store" / "itf.sqlite"          # optional: the ITF extension's store (P2)
 DEFAULT_OUT = ROOT / "web" / ".data" / "snapshot"
 PUBLISHER_VERSION = "1"
 KEEP_SNAPSHOTS = 24
@@ -79,7 +80,28 @@ def build(store, now, protocol):
     return files
 
 
-def publish(store_path=LIVE_STORE, out=DEFAULT_OUT, now=None, allow_replay=False, protocol=None):
+def itf_document(itf_store_path, now, work):
+    """itf.json from a read-only copy of the ITF store, or None when there is no ITF store (or a run is writing)."""
+    from web.publisher import itf_view
+    if not Path(itf_store_path).exists():
+        return None
+    source = open_readonly(itf_store_path)
+    try:
+        if runs_in_progress(source):
+            return None
+    finally:
+        source.close()
+    store = open_readonly(copy_store(itf_store_path, work / "itf.sqlite"))
+    try:
+        document = itf_view.build(store, iso(now))
+    finally:
+        store.close()
+    contract.check_any(document)
+    return document
+
+
+def publish(store_path=LIVE_STORE, out=DEFAULT_OUT, now=None, allow_replay=False, protocol=None,
+            itf_store_path=None):
     now = utc(now) if now else datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0)
     protocol = protocol or prospective.load_protocol()
     live = open_readonly(store_path)
@@ -103,6 +125,9 @@ def publish(store_path=LIVE_STORE, out=DEFAULT_OUT, now=None, allow_replay=False
             count = len(store.predictions())
         finally:
             store.close()
+        itf = itf_document(itf_store_path, now, work) if itf_store_path else None
+        if itf is not None:
+            files["itf.json"] = itf
         stamp = now.strftime("%Y%m%dT%H%M%SZ")
         version_dir = Path(out) / "v1" / stamp
         if version_dir.exists():
@@ -127,9 +152,10 @@ def main(argv=None):
     parser.add_argument("--store", type=Path, default=LIVE_STORE)
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
     parser.add_argument("--allow-replay", action="store_true", help="development only: publish a replay store")
+    parser.add_argument("--itf-store", type=Path, default=ITF_STORE, help="the ITF store; itf.json is added if it exists")
     args = parser.parse_args(argv)
     try:
-        manifest = publish(args.store, args.out, allow_replay=args.allow_replay)
+        manifest = publish(args.store, args.out, allow_replay=args.allow_replay, itf_store_path=args.itf_store)
     except Skipped as skipped:
         print(f"skipped: {skipped}")
         return 0

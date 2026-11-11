@@ -49,6 +49,19 @@ jobs:
         run: rm -f forecasts/ledger.jsonl
       - name: Forecast, settle, ledger
         run: python -m matchup_dna.forecasting daily --store "$STORE"
+      - name: ITF forecasts (P2, about every two hours)
+        # Separate store, ledger and code (matchup_dna/itf_*.py); nothing here touches P1. A failure here never stops
+        # the main-tour forecasts, the publish or the ledger commit.
+        if: env.SLOT == 'live'
+        continue-on-error: true
+        run: |
+          if [ ! -f experiments/itf_prospective_protocol.json ]; then echo "P2 is not frozen yet: no ITF run"; exit 0; fi
+          node web/scripts/state.mjs pull-store itf --allow-missing
+          if python -m matchup_dna.itf_live due; then
+            python -m matchup_dna.itf_live run
+            node web/scripts/state.mjs push-store itf
+            node web/scripts/state.mjs pack itfraw data/raw/flashscore data/raw/tennisexplorer data/raw/itf
+          fi
       - name: Save the store and the ESPN archive
         run: |
           node web/scripts/state.mjs push-store "$SLOT"
@@ -63,6 +76,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add forecasts/ledger.jsonl
+          if [ -f forecasts/itf_ledger.jsonl ]; then git add forecasts/itf_ledger.jsonl; fi
           if git diff --cached --quiet; then echo "ledger unchanged"; exit 0; fi
           git commit -m "Record forecasts from the scheduled run (Actions run ${{ github.run_id }})"
           for attempt in 1 2 3; do

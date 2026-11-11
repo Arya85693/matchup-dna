@@ -4,6 +4,7 @@
  */
 
 export const FEATURES: Record<string, { label: string; help: string }> = {
+  elo_x_tier: { label: "Elo x event tier", help: "ITF model only: how much more, or less, rating matters at stronger ITF events." },
   elo_logit: { label: "Overall Elo", help: "Strength rating from every past result, weighted by the opponent's strength." },
   surface_elo_logit: { label: "Elo on this surface", help: "The same rating, built from matches on this surface." },
   log_rank_diff: { label: "Ranking", help: "The official ranking before the match (on a log scale)." },
