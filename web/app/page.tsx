@@ -39,16 +39,17 @@ export default async function Home() {
   const mainMatches = live.main ?? 364_207;
   const itfMatches = live.itf ?? 890_882;
   const overlap = live.overlap ?? 93_375;
-  // The overlap only grows too, so a stand-in for it could overstate the total: the rounding down covers that.
-  const allMatches = Math.floor((mainMatches + itfMatches - overlap) / 1000) * 1000;
+  // Shown to three significant figures, rounded down ("1.16M+"). The overlap only grows too, so a stand-in for it
+  // could overstate the total by a few hundred matches: the rounding down covers that.
+  const allMatches = mainMatches + itfMatches - overlap;
   const mainForecasts = status.ok ? status.data.counts.forecasts : null;
   const itfForecasts = itfArchive.ok ? itfArchive.data.entries.length : null;
   const n = (v: number | null) => (v === null ? "—" : v.toLocaleString("en-US"));
   const sum = (a: number | null, b: number | null) => (a === null && b === null ? null : (a ?? 0) + (b ?? 0));
-  const stats: { value: number | null; suffix?: string; label: string; split: [string, string] }[] = [
+  const stats: { value: number | null; suffix?: string; short?: boolean; label: string; split: [string, string] }[] = [
     { value: mainIds.length || itfIds.length ? new Set([...mainIds, ...itfIds]).size : null, label: "players rated",
       split: [`${n(players.ok ? mainIds.length : null)} main tour`, `${n(itfPlayers.ok ? itfIds.length : null)} ITF`] },
-    { value: allMatches, suffix: "+", label: "matches in the history",
+    { value: allMatches, suffix: "+", short: true, label: "matches in the history",
       split: [`${n(mainMatches)}${live.main === null ? "+" : ""} main tour`, `${n(itfMatches)}${live.itf === null ? "+" : ""} ITF`] },
     { value: sum(mainForecasts, itfForecasts), label: "forecasts locked so far", split: [`${n(mainForecasts)} main tour`, `${n(itfForecasts)} ITF`] },
     { value: sum(featured.length, itfUpcoming), label: "upcoming forecasts", split: [`${n(featured.length)} main tour`, `${n(itfUpcoming)} ITF`] },
@@ -86,7 +87,7 @@ export default async function Home() {
       <section aria-label="In numbers" className="anim-rise grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border lg:grid-cols-4" style={delay(360)}>
         {stats.map((s) => (
           <div key={s.label} className="bg-bg px-5 py-5">
-            <p className="text-[28px] font-semibold">{s.value === null ? "—" : <><CountUp value={s.value} />{s.suffix}</>}</p>
+            <p className="text-[28px] font-semibold">{s.value === null ? "—" : <><CountUp value={s.value} short={s.short} />{s.suffix}</>}</p>
             <p className="mt-1 text-[13px] text-muted">{s.label}</p>
             <p className="fig mt-2 text-[11px] text-dim">
               <span className="block sm:inline">{s.split[0]}</span><span className="hidden sm:inline"> · </span><span className="block sm:inline">{s.split[1]}</span>

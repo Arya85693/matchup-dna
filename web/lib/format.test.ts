@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ago, circuitLabel, dayKey, eventLabel, familyName, favourite, levelLabel, pct, roundLabel, utcDate } from "./format.ts";
+import { ago, circuitLabel, compact, dayKey, eventLabel, familyName, favourite, levelLabel, pct, roundLabel, utcDate } from "./format.ts";
 
 test("percentages are the stored value rounded for display", () => {
   assert.equal(pct(0.6463), "64.6");
@@ -57,4 +57,14 @@ test("every match names its circuit, men's and women's alike", () => {
   assert.equal(circuitLabel("WTA", "C"), "WTA 125");
   assert.equal(eventLabel("ATP", "15", "itf"), "ITF Men · M15");
   assert.equal(eventLabel("WTA", "35", "itf"), "ITF Women · W35");
+});
+
+test("compact counts keep three significant figures and always round down", () => {
+  assert.equal(compact(1_161_409), "1.16M");
+  assert.equal(compact(1_169_999), "1.16M");                // never rounded up to 1.17M
+  assert.equal(compact(12_345_678), "12.3M");
+  assert.equal(compact(890_895), "890K");
+  assert.equal(compact(12_345), "12.3K");
+  assert.equal(compact(1_000_000), "1.00M");
+  assert.equal(compact(999), "999");
 });

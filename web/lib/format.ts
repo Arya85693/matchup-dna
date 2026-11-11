@@ -127,3 +127,15 @@ export function utcDate(iso: string): string {
 export function shortHash(hash: string | null, length = 10): string {
   return hash ? hash.slice(0, length) : "none";
 }
+
+/** A number to three significant figures with K, M or B, always rounded down, so "1.16M+" never overstates
+ * (1,161,409 is 1.16M; 12,345 is 12.3K; below 1,000 the number itself). */
+export function compact(value: number): string {
+  const units: [number, string][] = [[1e9, "B"], [1e6, "M"], [1e3, "K"]];
+  const unit = units.find(([u]) => value >= u);
+  if (!unit) return String(Math.floor(value));
+  const x = value / unit[0];
+  const digits = x >= 100 ? 0 : x >= 10 ? 1 : 2;
+  const scale = 10 ** digits;
+  return `${(Math.floor(x * scale + 1e-9) / scale).toFixed(digits)}${unit[1]}`;
+}

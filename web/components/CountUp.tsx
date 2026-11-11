@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { compact } from "@/lib/format";
 
 /**
- * Counts up to `value` when it scrolls into view. The server renders the final number, so the page is correct before
+ * Counts up to `value` when it scrolls into view. `short` shows it with compact() instead of in full. The server renders the final number, so the page is correct before
  * any script runs and stays static for visitors who prefer reduced motion.
  */
-export function CountUp({ value, duration = 1200 }: { value: number; duration?: number }) {
+export function CountUp({ value, duration = 1200, short = false }: { value: number; duration?: number; short?: boolean }) {
   const [shown, setShown] = useState(value);
   const ref = useRef<HTMLSpanElement>(null);
   useEffect(() => {
@@ -28,5 +29,5 @@ export function CountUp({ value, duration = 1200 }: { value: number; duration?: 
     observer.observe(el);
     return () => { observer.disconnect(); cancelAnimationFrame(frame); };
   }, [value, duration]);
-  return <span ref={ref} className="num">{shown.toLocaleString("en-GB")}</span>;
+  return <span ref={ref} className="num">{short ? compact(shown) : shown.toLocaleString("en-GB")}</span>;
 }
