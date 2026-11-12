@@ -49,7 +49,7 @@ export function ContributionChart({ v, names }: { v: Version; names: readonly [s
                 <span className="truncate text-[12px] text-muted">{featureLabel(c.feature)}<span className="sr-only">: {Math.abs(c.log_odds).toFixed(3)} log-odds toward {toward === 0 ? names[0] : names[1]}</span></span>
                 <span className="relative h-6">
                   <span className="absolute inset-y-0 left-1/2 w-px bg-border-strong" aria-hidden="true" />
-                  <span className={`anim-fill absolute top-1/2 h-3 -translate-y-1/2 ${towardLeft ? "rounded-l-sm" : "rounded-r-sm"} ${fav === toward ? "bg-accent/85" : "bg-[#5b6b80]"}`}
+                  <span className={`anim-fill absolute top-1/2 h-3 -translate-y-1/2 ${towardLeft ? "rounded-l-sm" : "rounded-r-sm"} ${fav === toward ? "bg-accent/85" : "bg-underdog-strong"}`}
                         style={towardLeft ? { right: "50%", width, transformOrigin: "right" } : { left: "50%", width }} aria-hidden="true" />
                   <span className="fig absolute top-1/2 -translate-y-1/2 text-[11px] text-text/80" style={towardLeft ? { right: `calc(50% + ${width} + 6px)` } : { left: `calc(50% + ${width} + 6px)` }} aria-hidden="true">
                     {Math.abs(c.log_odds).toFixed(2)}

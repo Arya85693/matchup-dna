@@ -103,7 +103,7 @@ export function ForecastSummary({ page, kind, onKind }: { page: MatchPage; kind:
             <>
               <span className="mono text-dim">{f.model_version}</span>
               <span>Issued <span className="fig"><LocalTime iso={f.issued_at} style="datetime" /></span></span>
-              {f.counted ? <Badge tone="accent">Scored forecast</Badge> : <Badge>{f.pilot ? "Pilot forecast, not counted" : "Not counted"}</Badge>}
+              {f.counted ? <Badge tone="counted">Scored forecast</Badge> : <Badge>{f.pilot ? "Pilot forecast, not counted" : "Not counted"}</Badge>}
               {f.pilot && (
                 <span className="basis-full text-[12px] text-dim">
                   Issued before play by the pilot run, before the forecasting protocol was frozen. Shown here, but not

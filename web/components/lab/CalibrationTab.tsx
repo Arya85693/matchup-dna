@@ -6,7 +6,11 @@ import type { HISTORICAL as H } from "@/lib/research";
 import { EvidenceTag, Finding, pc, SectionHead, type Evidence } from "./parts";
 
 type Bin = { low: number; high: number; n: number; mean_p: number; observed: number; observed_low?: number; observed_high?: number };
-type Dataset = { key: string; label: string; window: string; n: number; evidence: Evidence; color: string; bins: Bin[] };
+type Dataset = { key: string; label: string; short: string; window: string; n: number; evidence: Evidence; color: string; bins: Bin[] };
+
+/** Band index 0–9 for a bin (0–10%, 10–20%, ...). */
+const band = (b: Bin) => Math.round(b.low * 10);
+const binsTotal = (d: Dataset) => d.bins.reduce((s, b) => s + b.n, 0);
 
 type ItfBins = { bin: string; matches: number; forecast: number; observed: number }[];
 const fromItf = (bins: ItfBins): Bin[] => bins.map((b) => {
@@ -19,31 +23,29 @@ export function CalibrationTab({ h, record, itf, itfRecord }: {
 }) {
   const datasets = useMemo<Dataset[]>(() => {
     const list: Dataset[] = [
-      { key: "p4", label: "Phase 4 tournament-start model", window: "Held-out matches, Jun – Oct 2026 (corrected)", n: h.phase4.held_out_corrected.scores.n, evidence: "retrospective", color: "var(--color-accent)", bins: h.phase4.held_out_corrected.reliability },
-      { key: "p3", label: "Phase 3 model", window: "Reserved matches, Jan 2024 – May 2026", n: h.phase3.model.n, evidence: "held-out", color: "#c9ced6", bins: h.phase3.reliability },
+      { key: "p4", label: "Phase 4 tournament-start model", short: "Phase 4", window: "Held-out matches, Jun – Oct 2026 (corrected)", n: h.phase4.held_out_corrected.scores.n, evidence: "retrospective", color: "var(--color-accent)", bins: h.phase4.held_out_corrected.reliability },
+      { key: "p3", label: "Phase 3 model", short: "Phase 3", window: "Reserved matches, Jan 2024 – May 2026", n: h.phase3.model.n, evidence: "held-out", color: "var(--color-neutral)", bins: h.phase3.reliability },
     ];
     const live = record?.tournament_start.all;
     const liveBins = (live as { reliability?: { bin: string; n: number; mean_p: number; observed: number }[] } | undefined)?.reliability ?? [];
     if (live && live.n >= 30) {
-      list.push({ key: "live", label: "Live record", window: "Prospective P1, scored so far", n: live.n, evidence: "interim", color: "var(--color-warn)",
+      list.push({ key: "live", label: "Live record", short: "Live record", window: "Prospective P1, scored so far", n: live.n, evidence: "interim", color: "var(--color-warn)",
         bins: liveBins.map((b) => { const [l, u] = b.bin.split("-").map(Number); return { low: l ?? 0, high: u ?? 0, n: b.n, mean_p: b.mean_p, observed: b.observed }; }) });
     }
     const itfHeld = itf?.calibration?.held_out.M1;
     if (itfHeld) {
-      list.push({ key: "itf", label: "ITF M1 (ITF Men and ITF Women)", window: `Held-out matches, ${itf?.held_out.period ?? "Jan – Jun 2026"}`,
-        n: itfHeld.bins.reduce((s, b) => s + b.matches, 0), evidence: "held-out", color: "#8fb3ff", bins: fromItf(itfHeld.bins) });
+      list.push({ key: "itf", label: "ITF M1 (ITF Men and ITF Women)", short: "ITF M1", window: `Held-out matches, ${itf?.held_out.period ?? "Jan – Jun 2026"}`,
+        n: itfHeld.bins.reduce((s, b) => s + b.matches, 0), evidence: "held-out", color: "var(--color-series-blue)", bins: fromItf(itfHeld.bins) });
     }
     const itfLive = itfRecord?.m1;
     if (itfLive && itfLive.matches >= 30) {
-      list.push({ key: "itf-live", label: "ITF live record", window: "Prospective P2, scored so far", n: itfLive.matches,
-        evidence: "interim", color: "#e0a3ff", bins: fromItf(itfLive.reliability) });
+      list.push({ key: "itf-live", label: "ITF live record", short: "ITF live", window: "Prospective P2, scored so far", n: itfLive.matches,
+        evidence: "interim", color: "var(--color-series-aqua)", bins: fromItf(itfLive.reliability) });
     }
     return list;
   }, [h, record, itf, itfRecord]);
   const [shown, setShown] = useState<string[]>(datasets.map((d) => d.key));
-  const [focus, setFocus] = useState(datasets[0]!.key);
   const visible = datasets.filter((d) => shown.includes(d.key));
-  const focused = datasets.find((d) => d.key === focus) ?? datasets[0]!;
   const toggle = (key: string) => setShown((s) => (s.includes(key) ? (s.length > 1 ? s.filter((k) => k !== key) : s) : [...s, key]));
 
   return (
@@ -63,7 +65,7 @@ export function CalibrationTab({ h, record, itf, itfRecord }: {
           {datasets.map((d) => {
             const on = shown.includes(d.key);
             return (
-              <button key={d.key} onClick={() => toggle(d.key)} onMouseEnter={() => setFocus(d.key)} onFocus={() => setFocus(d.key)} aria-pressed={on}
+              <button key={d.key} onClick={() => toggle(d.key)} aria-pressed={on}
                       className={`grid gap-1.5 rounded-lg border px-4 py-3 text-left transition-colors ${on ? "border-border-strong bg-card" : "border-border opacity-60 hover:opacity-100"}`}>
                 <span className="flex items-center justify-between gap-2">
                   <span className="inline-flex items-center gap-2 text-[13px] font-medium"><span className="size-2.5 rounded-full" style={{ background: d.color }} />{d.label}</span>
@@ -78,36 +80,130 @@ export function CalibrationTab({ h, record, itf, itfRecord }: {
         </aside>
       </section>
 
-      <section className="grid gap-5 border-t border-border pt-10">
-        <SectionHead title={`Matches per band: ${focused.label}`}>Most forecasts sit near the middle: few matches are near-certain. Hover a dataset on the right to switch.</SectionHead>
-        <div className="grid grid-cols-10 items-end gap-1.5" style={{ height: 96 }}>
-          {Array.from({ length: 10 }, (_, i) => {
-            const b = focused.bins.find((x) => Math.round(x.low * 10) === i);
-            const max = Math.max(...focused.bins.map((x) => x.n));
-            return (
-              <div key={i} className="flex h-full flex-col justify-end" title={b ? `${Math.round(b.low * 100)}–${Math.round(b.high * 100)}%: ${b.n.toLocaleString("en-GB")} matches` : "No matches"}>
-                <span className="fig mb-1 text-center text-[10px] text-dim">{b ? b.n.toLocaleString("en-GB") : 0}</span>
-                <span className="anim-fade block rounded-t-sm" style={{ height: `${b ? Math.max(2, (b.n / max) * 64) : 1}px`, background: focused.color, opacity: 0.85 }} />
-              </div>
-            );
-          })}
-        </div>
-        <div className="grid grid-cols-10 gap-1.5 text-center text-[10px] text-dim">{Array.from({ length: 10 }, (_, i) => <span key={i} className="fig">{i * 10}–{i * 10 + 10}</span>)}</div>
-        <details className="text-[13px]">
-          <summary className="cursor-pointer text-muted hover:text-text">Show the data</summary>
-          <div className="mt-3 overflow-x-auto rounded-lg border border-border" tabIndex={0} role="region" aria-label="Calibration data">
-            <table className="w-full min-w-[520px]">
-              <thead><tr className="border-b border-border bg-card text-left text-[11px] text-dim"><th className="px-4 py-2 font-normal">Band</th><th className="px-3 py-2 text-right font-normal">Matches</th><th className="px-3 py-2 text-right font-normal">Average forecast</th><th className="px-3 py-2 text-right font-normal">Won</th><th className="px-4 py-2 text-right font-normal">95% interval</th></tr></thead>
-              <tbody className="divide-y divide-border">
-                {focused.bins.map((b) => (
-                  <tr key={b.low}><td className="fig px-4 py-2 text-[12px]">{Math.round(b.low * 100)}–{Math.round(b.high * 100)}%</td><td className="fig px-3 py-2 text-right text-[12px] text-muted">{b.n.toLocaleString("en-GB")}</td><td className="fig px-3 py-2 text-right text-[12px]">{pc(b.mean_p)}</td><td className="fig px-3 py-2 text-right text-[12px]">{pc(b.observed)}</td><td className="fig px-4 py-2 text-right text-[12px] text-muted">{b.observed_low !== undefined ? `${pc(b.observed_low)} – ${pc(b.observed_high!)}` : "—"}</td></tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </details>
-      </section>
+      <MatchesPerBand datasets={visible} />
     </div>
+  );
+}
+
+/**
+ * Matches per band for the datasets selected on the reliability diagram. One dataset: raw counts, as before.
+ * Several: one row of bars per dataset (small multiples) on a shared scale, each bar the share of its own dataset's
+ * matches in the band, so datasets of very different sizes can be compared by shape with every row on its own
+ * baseline. Bands with fewer than 20 matches are faded (the same cut-off as the hollow points above).
+ */
+const THIN = 20;
+const ROW_BAR = 44;
+
+function MatchesPerBand({ datasets }: { datasets: Dataset[] }) {
+  const single = datasets.length === 1;
+  const totals = new Map(datasets.map((d) => [d.key, Math.max(1, binsTotal(d))]));
+  const share = (d: Dataset, b: Bin) => b.n / totals.get(d.key)!;
+  const value = (d: Dataset, b: Bin) => (single ? b.n : share(d, b));
+  const max = Math.max(1e-9, ...datasets.flatMap((d) => d.bins.map((b) => value(d, b))));
+  const bandLabel = (i: number) => `${i * 10}–${i * 10 + 10}%`;
+  const bands = Array.from({ length: 10 }, (_, i) => i);
+  const rowsFor = (i: number) => datasets.flatMap((d) => { const b = d.bins.find((x) => band(x) === i); return b ? [{ d, b }] : []; });
+  const binAt = (d: Dataset, i: number) => d.bins.find((x) => band(x) === i);
+  const shareText = (v: number) => (v > 0 && v < 0.005 ? "<1%" : `${Math.round(v * 100)}%`);
+  const tip = (d: Dataset, b: Bin) =>
+    `${d.short}, ${bandLabel(band(b))}: ${b.n.toLocaleString("en-GB")} matches (${pc(share(d, b))} of the dataset)${b.n < THIN ? ", fewer than 20 matches" : ""}`;
+  const bandAxis = <div className="grid grid-cols-10 gap-1.5 text-center text-[10px] text-dim">{bands.map((i) => <span key={i} className="fig">{i * 10}–{i * 10 + 10}</span>)}</div>;
+
+  return (
+    <section className="grid gap-5 border-t border-border pt-10">
+      <SectionHead title={single ? `Matches per band: ${datasets[0]!.label}` : "Matches per band"}>
+        {single
+          ? "Most forecasts sit near the middle: few matches are near-certain. Select datasets on the right to compare them."
+          : `One row per dataset, on one shared scale: each bar is the share of that dataset's matches in the band, so datasets of very different sizes can be compared by shape. Faded bars have fewer than ${THIN} matches.`}
+      </SectionHead>
+
+      {single ? (
+        <>
+          <div className="grid grid-cols-10 items-end gap-1.5" style={{ height: 96 }} role="img" aria-label={`Matches per forecast band for ${datasets[0]!.label}`}>
+            {bands.map((i) => {
+              const b = binAt(datasets[0]!, i);
+              return (
+                <div key={i} className="flex h-full flex-col justify-end" title={b ? tip(datasets[0]!, b) : "No matches"}>
+                  <span className="fig mb-1 text-center text-[10px] text-dim">{b ? b.n.toLocaleString("en-GB") : 0}</span>
+                  <span className="anim-fade block rounded-t-sm" style={{ height: `${b ? Math.max(2, (b.n / max) * 64) : 1}px`, background: datasets[0]!.color, opacity: 0.85 }} />
+                </div>
+              );
+            })}
+          </div>
+          {bandAxis}
+        </>
+      ) : (
+        <div className="grid gap-6" role="group" aria-label="Share of each selected dataset's matches per forecast band; the table below has the figures">
+          {datasets.map((d) => (
+            <div key={d.key} className="grid gap-2 sm:grid-cols-[160px_minmax(0,1fr)] sm:items-end sm:gap-6">
+              <div className="flex items-baseline gap-2 sm:block sm:pb-0.5">
+                <p className="inline-flex items-center gap-2 text-[13px] font-medium">
+                  <span className="size-2 shrink-0 rounded-full" style={{ background: d.color }} aria-hidden="true" />{d.short}
+                </p>
+                <p className="fig text-[11px] text-dim sm:mt-0.5 sm:pl-4">{binsTotal(d).toLocaleString("en-GB")} matches</p>
+              </div>
+              <div className="grid grid-cols-10 items-end gap-1.5 border-b border-border" style={{ height: ROW_BAR + 18 }}>
+                {bands.map((i) => {
+                  const b = binAt(d, i);
+                  const thin = b !== undefined && b.n < THIN;
+                  return (
+                    <div key={i} className="flex h-full flex-col justify-end" title={b ? tip(d, b) : `${d.short}, ${bandLabel(i)}: no matches`}>
+                      <span className={`fig mb-1 text-center text-[10px] ${thin ? "text-dim/60" : "text-dim"}`}>{b ? shareText(share(d, b)) : ""}</span>
+                      {b && <span className="anim-fade block rounded-t-sm" style={{ height: `${Math.max(2, (share(d, b) / max) * ROW_BAR)}px`, background: d.color, opacity: thin ? 0.3 : 0.9 }} />}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+          <div className="-mt-3 grid sm:grid-cols-[160px_minmax(0,1fr)] sm:gap-6">
+            <span className="hidden sm:block" aria-hidden="true" />
+            {bandAxis}
+          </div>
+        </div>
+      )}
+      <details className="text-[13px]">
+        <summary className="cursor-pointer text-muted hover:text-text">Show the data</summary>
+        <div className="mt-3 overflow-x-auto rounded-lg border border-border" tabIndex={0} role="region" aria-label="Calibration data">
+          <table className={`w-full ${single ? "min-w-[520px]" : "min-w-[720px]"}`}>
+            <thead>
+              <tr className="border-b border-border bg-card text-left text-[11px] text-dim">
+                <th className="px-4 py-2 font-normal">Band</th>
+                {!single && <th className="px-3 py-2 font-normal">Dataset</th>}
+                <th className="px-3 py-2 text-right font-normal">Matches</th>
+                {!single && <th className="px-3 py-2 text-right font-normal">Share of dataset</th>}
+                <th className="px-3 py-2 text-right font-normal">Average forecast</th>
+                <th className="px-3 py-2 text-right font-normal">Won</th>
+                <th className="px-4 py-2 text-right font-normal">95% interval</th>
+              </tr>
+            </thead>
+            {bands.map((i) => {
+              const rows = rowsFor(i);
+              if (!rows.length) return null;
+              return (
+                <tbody key={i} className="border-t border-border first-of-type:border-t-0">
+                  {rows.map(({ d, b }, k) => (
+                    <tr key={d.key}>
+                      {k === 0 && <td rowSpan={rows.length} className="fig px-4 py-2 align-top text-[12px]">{bandLabel(i)}</td>}
+                      {!single && (
+                        <td className="px-3 py-2 text-[12px]">
+                          <span className="inline-flex items-center gap-2"><span className="size-2 shrink-0 rounded-full" style={{ background: d.color }} aria-hidden="true" />{d.short}</span>
+                        </td>
+                      )}
+                      <td className="fig px-3 py-2 text-right text-[12px] text-muted">{b.n.toLocaleString("en-GB")}</td>
+                      {!single && <td className="fig px-3 py-2 text-right text-[12px] text-muted">{pc(share(d, b))}</td>}
+                      <td className="fig px-3 py-2 text-right text-[12px]">{pc(b.mean_p)}</td>
+                      <td className="fig px-3 py-2 text-right text-[12px]">{pc(b.observed)}</td>
+                      <td className="fig px-4 py-2 text-right text-[12px] text-muted">{b.observed_low !== undefined ? `${pc(b.observed_low)} – ${pc(b.observed_high!)}` : "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              );
+            })}
+          </table>
+        </div>
+      </details>
+    </section>
   );
 }
 

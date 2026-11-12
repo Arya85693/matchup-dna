@@ -7,7 +7,7 @@ import { favourite, pct, utcDate } from "@/lib/format";
 import { LocalTime } from "../LocalTime";
 import { f4, Finding, FigureStrip, pc, SectionHead, Segmented, sgn4 } from "./parts";
 
-const NEUTRAL = "#c9ced6";
+const NEUTRAL = "var(--color-neutral)";
 type Stage = "Scored" | "Eligible" | "Recorded";
 
 function stageOf(e: ArchiveEntry): Stage {

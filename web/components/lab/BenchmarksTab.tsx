@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { HISTORICAL as H, MARKET as M } from "@/lib/research";
 import { EVIDENCE, EvidenceTag, f4, Finding, pc, SectionHead, Segmented, sgn4, type Evidence } from "./parts";
 
-const NEUTRAL = "#c9ced6";
+const NEUTRAL = "var(--color-neutral)";
 
 export function BenchmarksTab({ h, m }: { h: typeof H; m: typeof M }) {
   const p4 = h.phase4;

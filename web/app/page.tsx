@@ -62,8 +62,8 @@ export default async function Home() {
         <div className="absolute inset-0 -z-10 lg:left-[34%]">
           <Image src={hero} alt="" fill priority placeholder="blur" sizes="(min-width: 1024px) 60vw, 100vw"
                  className="anim-zoom object-cover object-[50%_28%]" />
-          <div className="absolute inset-0" style={{ background: "linear-gradient(90deg, var(--color-bg) 0%, rgba(16,21,29,0.75) 30%, rgba(16,21,29,0.15) 65%, rgba(16,21,29,0) 100%)" }} />
-          <div className="absolute inset-0" style={{ background: "linear-gradient(0deg, rgba(16,21,29,0.85) 0%, rgba(16,21,29,0) 35%)" }} />
+          <div className="absolute inset-0" style={{ background: "linear-gradient(90deg, var(--color-bg) 0%, rgba(9,39,66,0.75) 30%, rgba(9,39,66,0.15) 65%, rgba(9,39,66,0) 100%)" }} />
+          <div className="absolute inset-0" style={{ background: "linear-gradient(0deg, rgba(9,39,66,0.85) 0%, rgba(9,39,66,0) 35%)" }} />
           <div className="absolute inset-0 bg-bg/60 lg:hidden" />
         </div>
         <div className="max-w-[640px] px-6 py-16 sm:px-10 lg:py-28">

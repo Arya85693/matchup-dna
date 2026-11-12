@@ -14,7 +14,7 @@ The public website. It **reads published snapshots and never computes a forecast
 | Methodology | `/methodology` | static text |
 | Data status | `/status` | snapshot: `status.json` |
 
-Design: Linear-style app shell (sidebar), charcoal `#10151D`, cards `#19212D`, teal accent `#39C7AD`, Geist type.
+Design: Linear-style app shell (sidebar), cyan navy `#092742`, cards `#0D3152`, ghost white `#FEFFFA` text, neon pear accent `#D1E231`, Geist type.
 Green and red mark favourable and unfavourable outcomes only. Old `/research/*` addresses redirect to `/lab`.
 
 ```

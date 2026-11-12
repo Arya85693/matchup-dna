@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 
 export type Series = { name: string; points: [string, number][] };
-const COLORS = ["var(--color-accent)", "#c9ced6"];   // teal and a light neutral: distinct in hue and lightness
+const COLORS = ["var(--color-accent)", "var(--color-neutral)"];   // neon pear and a light neutral: distinct in hue and lightness
 const RANGES = [["6M", 182], ["1Y", 365], ["3Y", 1095]] as const;
 
 /**

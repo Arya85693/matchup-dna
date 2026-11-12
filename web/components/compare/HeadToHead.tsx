@@ -47,8 +47,8 @@ export function HeadToHead({ a, b, allLevels = false }: { a: HistoryPlayer; b: H
         <p className={`fig text-right text-[40px] font-semibold leading-none ${bWins >= aWins ? "text-text" : "text-muted"}`}>{bWins}</p>
       </div>
       <div className="mx-5 flex h-2 gap-0.5 overflow-hidden rounded-full" aria-hidden="true">
-        {aWins > 0 && <span className={`anim-fill h-full ${aWins >= bWins ? "bg-accent" : "bg-[#3b4a5c]"}`} style={{ width: `${(aWins / meetings.length) * 100}%`, transformOrigin: "left" }} />}
-        {bWins > 0 && <span className={`anim-fill h-full ${bWins >= aWins ? "bg-accent" : "bg-[#3b4a5c]"}`} style={{ width: `${(bWins / meetings.length) * 100}%`, transformOrigin: "right" }} />}
+        {aWins > 0 && <span className={`anim-fill h-full ${aWins >= bWins ? "bg-accent" : "bg-underdog"}`} style={{ width: `${(aWins / meetings.length) * 100}%`, transformOrigin: "left" }} />}
+        {bWins > 0 && <span className={`anim-fill h-full ${bWins >= aWins ? "bg-accent" : "bg-underdog"}`} style={{ width: `${(bWins / meetings.length) * 100}%`, transformOrigin: "right" }} />}
       </div>
       {bySurface.length > 0 && (
         <ul className="flex flex-wrap justify-center gap-x-5 gap-y-1 px-5 pt-3 text-[12px] text-muted" aria-label="By surface">

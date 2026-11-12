@@ -1,29 +1,39 @@
 @import "tailwindcss";
 
 /*
- * Matchup DNA design tokens: a Linear-style research product.
- * Charcoal canvas, slightly lighter cards, thin borders, one restrained teal accent.
- * Green and red only for favourable / unfavourable analytical outcomes. Surface colours appear only as small dots.
- * Contrast measured on --color-card (the lighter of the two grounds): text 13.3, muted 6.3, dim 5.0.
+ * Matchup DNA design tokens. Three-colour scheme: cyan navy (#092742) canvas, ghost white (#FEFFFA) type,
+ * and one neon pear accent (#D1E231) used sparingly for the favourite, the selected control and focus.
+ * Cards are a slightly lighter navy; muted and dim text are ghost white cooled toward the navy.
+ * Mint and coral only for favourable / unfavourable analytical outcomes, kept apart in hue from the pear.
+ * Surface colours appear only as small dots.
+ * Contrast on --color-card-hover (the lightest ground): text 12.0, muted 6.6, dim 4.8, accent 8.4, neg 4.6.
+ * Navy text on the accent: 10.6.
  */
 @theme {
-  --color-bg: #10151d;
-  --color-card: #19212d;
-  --color-card-hover: #1e2836;
-  --color-border: #252f3d;
-  --color-border-strong: #313c4c;
-  --color-text: #e6e9ee;
-  --color-muted: #98a2b3;
-  --color-dim: #8590a1;
-  --color-accent: #39c7ad;
-  --color-accent-soft: rgba(57, 199, 173, 0.12);
-  --color-track: #2a3444;
-  --color-pos: #3fb97f;
-  --color-neg: #ef6461;
-  --color-warn: #e5b454;
-  --color-hard: #5b9bd5;
-  --color-clay: #d9804f;
-  --color-grass: #55b87a;
+  --color-bg: #092742;
+  --color-card: #0d3152;
+  --color-card-hover: #11385c;
+  --color-border: #1c4468;
+  --color-border-strong: #285679;
+  --color-text: #fefffa;
+  --color-muted: #b3c1cf;
+  --color-dim: #93a6b9;
+  --color-accent: #d1e231;
+  --color-accent-soft: rgba(209, 226, 49, 0.12);
+  --color-track: #1b4265;
+  --color-underdog: #3a6389;        /* the non-favourite's side of a bar (4.4 : 1 against the accent) */
+  --color-underdog-strong: #5479a0; /* the same role where the bar is thin and must still read */
+  --color-neutral: #c3cdd8;         /* the second series in two-series charts */
+  --color-series-blue: #8fb3ff;     /* extra chart series (ITF calibration): ITF lines are cool, main-tour lines warm */
+  --color-series-aqua: #4fd1d9;
+  --color-counted: #c3a2f7;         /* the counted (scored) forecast; reserved for this meaning. 6.2 : 1 on card */
+  --color-counted-soft: rgba(195, 162, 247, 0.12);
+  --color-pos: #5ccb9c;
+  --color-neg: #f47c70;
+  --color-warn: #f2b85c;
+  --color-hard: #6ea8e2;
+  --color-clay: #e58c5c;
+  --color-grass: #5fc07f;
 
   --font-sans: var(--font-geist), "Segoe UI", system-ui, sans-serif;
   --font-mono: var(--font-plex-mono), ui-monospace, "Cascadia Mono", Consolas, monospace;
@@ -64,7 +74,7 @@
   .link {
     color: var(--color-accent);
     text-decoration: underline;
-    text-decoration-color: rgba(57, 199, 173, 0.45);
+    text-decoration-color: rgba(209, 226, 49, 0.45);
     text-underline-offset: 3px;
   }
   .link:hover { text-decoration-color: var(--color-accent); }

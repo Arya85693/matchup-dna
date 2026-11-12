@@ -3,7 +3,7 @@
 import type { MARKET as M } from "@/lib/research";
 import { f4, Finding, FigureStrip, pc, SectionHead, sgn4 } from "./parts";
 
-const MARKET_COLOR = "#c9ced6";
+const MARKET_COLOR = "var(--color-neutral)";
 const RANK_LABELS: Record<string, string> = {
   "better-ranked player top 20": "Top-20 player involved",
   "21-100": "Better-ranked player 21–100",

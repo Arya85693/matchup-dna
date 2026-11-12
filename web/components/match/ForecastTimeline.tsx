@@ -8,7 +8,7 @@ import { Badge } from "../ui";
 import { MODEL, type Kind } from "./ForecastSummary";
 
 const KINDS: Kind[] = ["tournament_start", "round_aware"];
-const COLOR: Record<Kind, string> = { tournament_start: "var(--color-accent)", round_aware: "#c9ced6" };
+const COLOR: Record<Kind, string> = { tournament_start: "var(--color-accent)", round_aware: "var(--color-neutral)" };
 
 /**
  * Every stored forecast version on a time axis, one lane per model, with the scheduled start and any result. Points
@@ -92,7 +92,7 @@ export function ForecastTimeline({ page, names }: { page: MatchPage; names: read
             <span className="text-text">{MODEL[current.k].label}</span>
             <span className="fig text-muted"><LocalTime iso={current.v.issued_at} style="datetime" /></span>
             <span className="fig">{familyName(names[0])} {pct(current.v.p[0])}% · {familyName(names[1])} {pct(current.v.p[1])}%</span>
-            {current.v.counted ? <Badge tone="accent">Scored</Badge> : <Badge>{current.v.supersedes ? "Revision, not scored" : "Not counted"}</Badge>}
+            {current.v.counted ? <Badge tone="counted">Scored</Badge> : <Badge>{current.v.supersedes ? "Revision, not scored" : "Not counted"}</Badge>}
           </p>
         ) : (
           <p className="text-dim">Filled points are the scored (first-issued) forecasts; hollow points are later revisions. Points are separate stored forecasts, not a continuous line.</p>

@@ -23,7 +23,7 @@ export function TierBadge({ tour, level }: { tour: string; level: string | null 
 
 /**
  * One two-sided bar: the left player's share from the left, the right player's from the right, meeting at the stored
- * split. The favourite's side is teal; the other side stays visible in a muted tone. A tick marks 50%.
+ * split. The favourite's side is in the accent; the other side stays visible in a muted tone. A tick marks 50%.
  */
 export function ProbabilitySplit({ p, height = 8, animate = true, showTick = true }: {
   p: readonly [number, number]; height?: number; animate?: boolean; showTick?: boolean;
@@ -32,15 +32,15 @@ export function ProbabilitySplit({ p, height = 8, animate = true, showTick = tru
   return (
     <div className="relative w-full" style={{ height }} aria-hidden="true">
       <div className={`flex h-full w-full gap-[2px] ${animate ? "anim-fill" : ""}`}>
-        <span className={`h-full rounded-l-full ${fav === 0 ? "bg-accent" : "bg-[#3b4a5c]"}`} style={{ width: `${p[0] * 100}%` }} />
-        <span className={`h-full rounded-r-full ${fav === 1 ? "bg-accent" : "bg-[#3b4a5c]"}`} style={{ width: `${p[1] * 100}%` }} />
+        <span className={`h-full rounded-l-full ${fav === 0 ? "bg-accent" : "bg-underdog"}`} style={{ width: `${p[0] * 100}%` }} />
+        <span className={`h-full rounded-r-full ${fav === 1 ? "bg-accent" : "bg-underdog"}`} style={{ width: `${p[1] * 100}%` }} />
       </div>
       {showTick && <span className="absolute -bottom-1 -top-1 left-1/2 w-px -translate-x-1/2 bg-text/40" />}
     </div>
   );
 }
 
-/** "64.6%" with the favourite in teal and the underdog muted but readable. */
+/** "64.6%" with the favourite in the accent and the underdog muted but readable. */
 export function Pct({ value, fav, size = "md" }: { value: number; fav: boolean; size?: "sm" | "md" | "xl" }) {
   const sizes = { sm: "text-[13px]", md: "text-[15px]", xl: "text-[40px] leading-none sm:text-[48px]" };
   return <span className={`fig ${sizes[size]} ${fav ? "font-semibold text-accent" : "text-muted"}`}>{pct(value)}<span className="text-[0.6em] opacity-80">%</span></span>;

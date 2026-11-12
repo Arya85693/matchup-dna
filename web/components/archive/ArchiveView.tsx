@@ -17,8 +17,8 @@ const isItf = (e: ArchiveEntry) => e.model_version.startsWith("itf-");
 const modelLabel = (k: Kind, itf: boolean) => (itf ? "ITF model (M1)" : MODEL_LABEL[k]);
 
 /** Issuance: was this the counted (first) forecast, a later revision, or neither? */
-function issuance(e: ArchiveEntry): { label: string; tone: "accent" | "neutral" } {
-  if (e.counted) return { label: "Counted (first issued)", tone: "accent" };
+function issuance(e: ArchiveEntry): { label: string; tone: "counted" | "neutral" } {
+  if (e.counted) return { label: "Counted (first issued)", tone: "counted" };
   return { label: e.supersedes ? "Superseding revision" : "Not counted", tone: "neutral" };
 }
 /** Settlement: has a result been recorded, and do the sources agree? */

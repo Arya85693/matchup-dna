@@ -18,7 +18,7 @@ const ROWS: Row[] = [
 
 /**
  * Mirrored bars: each player's stored input value, drawn from the centre outwards and scaled to the larger of the two.
- * The better value (where "better" is meaningful) is bold with a teal bar; neutral measures stay grey on both sides.
+ * The better value (where "better" is meaningful) is bold with an accent bar; neutral measures stay grey on both sides.
  */
 export function PlayerComparison({ v, names, roundAware }: { v: Version; names: readonly [string, string]; roundAware: boolean }) {
   const rows = ROWS.filter((r) => !r.roundAware || roundAware);
@@ -36,7 +36,7 @@ export function PlayerComparison({ v, names, roundAware }: { v: Version; names: 
         const bar = (value: number | null, wins: boolean | null, side: "left" | "right") => (
           <div className={`flex items-center gap-2 ${side === "left" ? "flex-row-reverse" : ""}`}>
             <div className={`flex h-2 flex-1 ${side === "left" ? "justify-end" : ""}`}>
-              {value !== null && !r.signed && <span className={`anim-fill h-full rounded-sm ${wins ? "bg-accent/80" : "bg-[#3b4a5c]"}`} style={{ width: `${(Math.abs(value) / scale) * 100}%`, transformOrigin: side === "left" ? "right" : "left" }} />}
+              {value !== null && !r.signed && <span className={`anim-fill h-full rounded-sm ${wins ? "bg-accent/80" : "bg-underdog"}`} style={{ width: `${(Math.abs(value) / scale) * 100}%`, transformOrigin: side === "left" ? "right" : "left" }} />}
             </div>
             <span className={`fig w-14 shrink-0 text-[12px] ${side === "left" ? "text-left" : "text-right"} ${wins ? "font-semibold text-text" : "text-muted"}`}>{value === null ? "—" : r.fmt(value)}</span>
           </div>

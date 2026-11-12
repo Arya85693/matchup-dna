@@ -139,7 +139,7 @@ export function CompareView({ options: everyone, a, b, tour, base = "/players", 
   );
 }
 
-/** Opta-style row: each side's bar grows from the centre in proportion to the pair; the better side is teal. */
+/** Opta-style row: each side's bar grows from the centre in proportion to the pair; the better side is in the accent. */
 function StatRow({ s }: { s: Stat }) {
   const { a, b } = s;
   const max = Math.max(Math.abs(a ?? 0), Math.abs(b ?? 0)) || 1;
@@ -147,7 +147,7 @@ function StatRow({ s }: { s: Stat }) {
   const side = (v: number | null, wins: boolean | null, left: boolean) => (
     <div className={`flex items-center gap-3 ${left ? "flex-row-reverse" : ""}`}>
       <div className={`flex h-2 flex-1 ${left ? "justify-end" : ""}`}>
-        {v !== null && s.bar && <span className={`anim-fill h-full rounded-full ${wins ? "bg-accent" : "bg-[#3b4a5c]"}`} style={{ width: `${(Math.abs(v) / max) * 100}%`, transformOrigin: left ? "right" : "left" }} />}
+        {v !== null && s.bar && <span className={`anim-fill h-full rounded-full ${wins ? "bg-accent" : "bg-underdog"}`} style={{ width: `${(Math.abs(v) / max) * 100}%`, transformOrigin: left ? "right" : "left" }} />}
       </div>
       <span className={`fig w-16 shrink-0 text-[15px] ${left ? "text-left" : "text-right"} ${wins ? "font-semibold text-text" : "text-muted"}`}>{v === null ? "—" : s.fmt(v)}</span>
     </div>

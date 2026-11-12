@@ -39,10 +39,11 @@ export function Metric({ label, value, note, tone }: { label: string; value: Rea
   );
 }
 
-export function Badge({ children, tone = "neutral" }: { children: React.ReactNode; tone?: "neutral" | "accent" | "warn" | "pos" | "neg" }) {
+export function Badge({ children, tone = "neutral" }: { children: React.ReactNode; tone?: "neutral" | "accent" | "counted" | "warn" | "pos" | "neg" }) {
   const styles = {
     neutral: "border-border-strong text-muted",
     accent: "border-accent/40 text-accent bg-accent-soft",
+    counted: "border-counted/40 text-counted bg-counted-soft",
     warn: "border-warn/40 text-warn",
     pos: "border-pos/40 text-pos",
     neg: "border-neg/40 text-neg",
