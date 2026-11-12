@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import type { Itf } from "@/lib/contract";
 import type { HISTORICAL as H, MARKET as M } from "@/lib/research";
 import { EVIDENCE, EvidenceTag, f4, Finding, pc, SectionHead, Segmented, sgn4, type Evidence } from "./parts";
 
 const NEUTRAL = "var(--color-neutral)";
+const ITF_ORDER = ["M1", "M2", "B1", "B0", "B2"] as const;
 
-export function BenchmarksTab({ h, m }: { h: typeof H; m: typeof M }) {
+export function BenchmarksTab({ h, m, itf }: { h: typeof H; m: typeof M; itf: Itf["research"] }) {
   const p4 = h.phase4;
   return (
     <div className="grid gap-12">
@@ -53,9 +55,82 @@ export function BenchmarksTab({ h, m }: { h: typeof H; m: typeof M }) {
       </section>
 
       <section className="grid gap-6 border-t border-border pt-10">
+        <ItfHeldOut research={itf} />
+      </section>
+
+      <section className="grid gap-6 border-t border-border pt-10">
         <YearByYear h={h} />
       </section>
     </div>
+  );
+}
+
+/** The ITF model's one-time held-out test against its baselines (ITF players rarely have main-tour history, so it is
+ *  benchmarked on its own matches, not the main-tour ones above). */
+function ItfHeldOut({ research }: { research: Itf["research"] }) {
+  const held = research.held_out;
+  const gain = (k: string) => {
+    const x = held.comparisons[k];
+    return x ? `${sgn4(x.mean)} (95% ${sgn4(x.ci95[0])} to ${sgn4(x.ci95[1])})` : "–";
+  };
+  const cal = research.calibration;
+  return (
+    <>
+      <SectionHead title={`ITF model: held-out test, ${held.period}`}>
+        {(held.pooled.M1?.matches ?? 0).toLocaleString("en-GB")} ITF main-draw matches, scored once after every choice was
+        frozen. The model was built on 2021 to mid-2025 and chosen on {research.validation.period}. Lower log loss is better.{" "}
+        <EvidenceTag kind="held-out" />
+      </SectionHead>
+      <div className="overflow-x-auto rounded-lg border border-border" tabIndex={0} role="region" aria-label="ITF held-out test">
+        <table className="w-full min-w-[560px] text-[13px]">
+          <thead>
+            <tr className="border-b border-border bg-card text-left text-[11px] text-dim">
+              <th className="px-4 py-2.5 font-normal">Model</th>
+              <th className="px-3 py-2.5 text-right font-normal">Log loss</th>
+              <th className="px-3 py-2.5 text-right font-normal">Brier</th>
+              <th className="px-3 py-2.5 text-right font-normal">Favourite won</th>
+              <th className="px-4 py-2.5 text-right font-normal">Validation log loss</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {ITF_ORDER.map((k) => {
+              const s = held.pooled[k];
+              if (!s) return null;
+              const v = research.validation.pooled[k];
+              const live = k === research.live_model;
+              return (
+                <tr key={k} className={`transition-colors hover:bg-card ${live ? "" : "text-muted"}`}>
+                  <td className={`px-4 py-2.5 ${live ? "font-medium" : ""}`}>{research.names[k] ?? k}</td>
+                  <td className="fig px-3 py-2.5 text-right text-[12px]">{f4(s.log_loss)}</td>
+                  <td className="fig px-3 py-2.5 text-right text-[12px]">{f4(s.brier)}</td>
+                  <td className="fig px-3 py-2.5 text-right text-[12px]">{pc(s.accuracy)}</td>
+                  <td className="fig px-4 py-2.5 text-right text-[12px]">{v ? f4(v.log_loss) : "–"}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <dl className="grid gap-2 text-[13px] text-muted sm:grid-cols-2">
+        <div><dt className="inline text-text">M1 against Elo only: </dt><dd className="fig inline">{gain("M1 - B1")}</dd></div>
+        <div><dt className="inline text-text">M1 against ranking only: </dt><dd className="fig inline">{gain("M1 - B0")}</dd></div>
+        <div><dt className="inline text-text">M1 against the main-tour model: </dt><dd className="fig inline">{gain("M1 - B2")}</dd></div>
+        <div><dt className="inline text-text">Serve model M2 against M1: </dt><dd className="fig inline">{gain("M2 - M1")}</dd></div>
+      </dl>
+      <p className="max-w-[70ch] text-[13px] text-muted">
+        M1 forecasts live, not M2: no serve statistics are published for ITF matches after June 2026, so the serve inputs
+        could not be kept current.
+      </p>
+      {cal?.held_out.M1 && (
+        <p className="max-w-[70ch] text-[13px] text-muted">
+          <span className="text-text">Calibration.</span> M1 was checked, not adjusted: its average gap between forecast and
+          outcome was {f4(cal.held_out.M1.ece)} on the held-out half-year
+          {cal.validation.M1 ? ` (${f4(cal.validation.M1.ece)} on validation)` : ""}, with strong favourites winning about two
+          points less often than forecast in 2026.{" "}
+          <a href="#calibration" className="link">Calibration chart</a>
+        </p>
+      )}
+    </>
   );
 }
 

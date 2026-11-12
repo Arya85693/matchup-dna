@@ -6,7 +6,6 @@ import type { LedgerEntry } from "@/lib/ledger";
 import type { HISTORICAL as H, MARKET as M } from "@/lib/research";
 import { BenchmarksTab } from "./BenchmarksTab";
 import { CalibrationTab } from "./CalibrationTab";
-import { ItfTab } from "./ItfTab";
 import { LiveTab, type ItfLive } from "./LiveTab";
 import { MarketTab } from "./MarketTab";
 import { ModelsTab } from "./ModelsTab";
@@ -17,7 +16,6 @@ const TABS = [
   { id: "calibration", label: "Calibration" },
   { id: "market", label: "Market" },
   { id: "models", label: "Models" },
-  { id: "itf", label: "ITF model" },
 ] as const;
 type TabId = (typeof TABS)[number]["id"];
 
@@ -64,11 +62,10 @@ export function LabShell({ record, archive, historical, market, models, itfResea
       </div>
       <div key={tab} role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`} className="anim-fade">
         {tab === "live" && <LiveTab record={record} entries={archive} itf={itfLive} itfRecord={itfRecord} />}
-        {tab === "benchmarks" && <BenchmarksTab h={historical} m={market} />}
+        {tab === "benchmarks" && <BenchmarksTab h={historical} m={market} itf={itfResearch} />}
         {tab === "calibration" && <CalibrationTab h={historical} record={record} itf={itfResearch} itfRecord={itfRecord} />}
         {tab === "market" && <MarketTab m={market} />}
-        {tab === "models" && <ModelsTab models={models} />}
-        {tab === "itf" && <ItfTab research={itfResearch} record={itfRecord} />}
+        {tab === "models" && <ModelsTab models={models} itf={itfResearch} />}
       </div>
     </div>
   );

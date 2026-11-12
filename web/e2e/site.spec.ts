@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
-const PAGES = ["/", "/matches", "/players", "/itf", "/lab", "/archive", "/methodology", "/status"];
+const PAGES = ["/", "/matches", "/players", "/lab", "/archive", "/methodology", "/status"];
 
 /** Fails the test on any console error, uncaught exception or failed request. */
 function watch(page: Page) {
@@ -312,8 +312,9 @@ test("compare: the tour decides which player an id means", async ({ page }) => {
 });
 
 test("ITF: forecasts, the boards and the archive are labelled by circuit", async ({ page }) => {
-  await page.goto("/itf");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("ITF World Tennis Tour");
+  await page.goto("/itf");                                                         // the old ITF page now opens Matches on ITF
+  await expect(page).toHaveURL(/\/matches\?circuit=itf/);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Matches");
   await expect(page.getByText(/ITF (Men|Women) · [MW]\d+/).first()).toBeVisible();
   const problems = watch(page);
   await page.locator("main a[href^='/matches/I-']").first().click();              // an ITF match page, as on the main tour

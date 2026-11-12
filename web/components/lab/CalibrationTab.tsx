@@ -148,7 +148,7 @@ function MatchesPerBand({ datasets }: { datasets: Dataset[] }) {
                   const thin = b !== undefined && b.n < THIN;
                   return (
                     <div key={i} className="flex h-full flex-col justify-end" title={b ? tip(d, b) : `${d.short}, ${bandLabel(i)}: no matches`}>
-                      <span className={`fig mb-1 text-center text-[10px] ${thin ? "text-dim/60" : "text-dim"}`}>{b ? shareText(share(d, b)) : ""}</span>
+                      <span className="fig mb-1 text-center text-[10px] text-dim">{b ? shareText(share(d, b)) : ""}</span>
                       {b && <span className="anim-fade block rounded-t-sm" style={{ height: `${Math.max(2, (share(d, b) / max) * ROW_BAR)}px`, background: d.color, opacity: thin ? 0.3 : 0.9 }} />}
                     </div>
                   );

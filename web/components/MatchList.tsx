@@ -171,12 +171,14 @@ export function MatchList({ matches, circuit = "main" }: { matches: MatchSummary
   const active = tabs.find((t) => t.key === tab)?.key ?? tabs[0]?.key ?? "results";
   const surfaces = useMemo(() => [...new Set(matches.map((m) => m.edition.surface).filter((s): s is string => Boolean(s)))].sort(), [matches]);
 
+  // Writes only this board's own filters; other parameters (the page's ?circuit=itf) are kept, or the Main tour | ITF
+  // switch, whose effect runs after this one, would never see the circuit the address asked for.
   useEffect(() => {
-    const q = new URLSearchParams();
-    if (tab) q.set("day", tab);
-    if (tour !== "All") q.set("tour", tour);
-    if (surface !== "All") q.set("surface", surface);
-    if (majors) q.set("majors", "1");
+    const q = new URLSearchParams(window.location.search);
+    const own: [string, string | null][] = [
+      ["day", tab || null], ["tour", tour !== "All" ? tour : null], ["surface", surface !== "All" ? surface : null], ["majors", majors ? "1" : null],
+    ];
+    for (const [k, v] of own) if (v) q.set(k, v); else q.delete(k);
     window.history.replaceState(null, "", q.toString() ? `?${q}` : window.location.pathname);
   }, [tab, tour, surface, majors]);
 

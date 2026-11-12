@@ -32,7 +32,7 @@ export default function Methodology() {
           <div className="grid gap-3 text-muted">
             <p><span className="text-text">Tournament start</span> (ATP and WTA) uses information from before the tournament began.</p>
             <p><span className="text-text">Round-aware</span> (ATP and WTA) adds this tournament&apos;s completed earlier rounds. It applies to knockout matches after the first round. When it cannot apply, the site shows why and never borrows the other model&apos;s number.</p>
-            <p><span className="text-text">ITF M1</span> (ITF Men and ITF Women) is a separate model for the ITF World Tennis Tour, with its own ratings and its own live record. <Link href="/itf" className="link">ITF</Link></p>
+            <p><span className="text-text">ITF M1</span> (ITF Men and ITF Women) is a separate model for the ITF World Tennis Tour, with its own ratings and its own live record. <Link href="/lab#models" className="link">ITF M1 in the Model Lab</Link></p>
           </div>
         </Card>
         <Card title="How forecasts are judged">

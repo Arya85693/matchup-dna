@@ -10,6 +10,8 @@ const config: NextConfig = {
     return [
       { source: "/research", destination: "/lab", permanent: false },
       { source: "/research/:path*", destination: "/lab", permanent: false },
+      // The ITF page was folded into Matches (ITF), the Model Lab and the Archive (November 2026).
+      { source: "/itf", destination: "/matches?circuit=itf", permanent: false },
     ];
   },
 };

@@ -98,7 +98,7 @@ function MainRecord({ model, record, pool, counts }: { model: "tournament_start"
   return (
     <>
       <Finding kicker={`Prospective record P1 · ${meta.label}`} evidence="interim" title={scoredTitle(counts.scored)}
-               aside={<Pipeline counts={counts} color={meta.color} />}>
+               aside={<Pipeline counts={counts} />}>
         {model === "round_aware" && <>The round-aware model forecasts only a player&apos;s later-round matches, so it is judged against tournament start on the same matches. </>}
         Since {utcDate(record.protocol.issued_from)}, every forecast is locked before its match and scored once a completed
         result arrives. This is the only test the model could not have been tuned on. Figures stay interim until the single
@@ -141,7 +141,7 @@ function ItfRecord({ itf, record, pool, counts }: { itf: ItfLive; record: Itf["r
   return (
     <>
       <Finding kicker={`Prospective record P2 · ${meta.label}`} evidence="interim" title={scoredTitle(counts.scored)}
-               aside={<Pipeline counts={counts} color={meta.color} />}>
+               aside={<Pipeline counts={counts} />}>
         Each ITF match&apos;s first M1 forecast counts, with the Elo-only forecast for the same match beside it. Forecasts
         made before P2 was frozen{frozen} are a pilot and are not scored. The ITF record is kept apart from the main-tour
         record, and while it runs every figure here is interim.
@@ -229,7 +229,8 @@ function ItfScores({ record }: { record: Itf["record"] | null }) {
   );
 }
 
-function Pipeline({ counts, color }: { counts: Counts; color: string }) {
+/** The record's stages in the counted colour (lavender), each step fainter than the one before. */
+function Pipeline({ counts }: { counts: Counts }) {
   const max = Math.max(counts.recorded, 1);
   const stages: [string, number, string][] = [
     ["Recorded", counts.recorded, "Locked in the ledger"],
@@ -247,7 +248,7 @@ function Pipeline({ counts, color }: { counts: Counts; color: string }) {
         <div key={label} className="grid grid-cols-[84px_minmax(0,1fr)_48px] items-center gap-3">
           <span className="text-[12px] text-muted">{label}</span>
           <div className="h-6 overflow-hidden rounded bg-track/60" title={note}>
-            <div className="anim-fill h-full rounded" style={{ width: `${(n / max) * 100}%`, background: color, opacity: 1 - i * 0.25, animationDelay: `${i * 120}ms` }} />
+            <div className="anim-fill h-full rounded" style={{ width: `${(n / max) * 100}%`, background: "var(--color-counted)", opacity: 1 - i * 0.25, animationDelay: `${i * 120}ms` }} />
           </div>
           <span className="fig text-right text-[15px]">{n.toLocaleString("en-GB")}</span>
         </div>
@@ -348,7 +349,7 @@ function Ledger({ entries, counts, label }: { entries: LedgerEntry[]; counts: Co
                   <td className="fig px-3 py-2.5 text-[12px]">{fav !== null ? `${(e.players[fav] ?? "").split(" ").slice(-1)[0]} ${pct(e.p[fav])}%` : "50 / 50"}</td>
                   <td className="mono px-3 py-2.5 text-muted">{e.model_version}</td>
                   <td className="px-3 py-2.5">
-                    <span className={`text-[12px] ${s === "Scored" ? "text-text" : s === "Eligible" ? "text-counted" : "text-dim"}`}>{s}</span>
+                    <span className="text-[12px] text-counted">{s}</span>
                     {s === "Scored" && <span className={`ml-2 text-[11px] ${e.favourite_won ? "text-pos" : "text-neg"}`}>{e.favourite_won ? "favourite won" : "upset"}</span>}
                   </td>
                   <td className="mono px-4 py-2.5 text-right text-dim" title={e.record_hash}>#{e.ledger_position} {e.record_hash.slice(0, 8)}</td>

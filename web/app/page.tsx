@@ -124,7 +124,7 @@ export default async function Home() {
       <section className="grid gap-3 sm:grid-cols-2">
         {[
           { href: "/matches", icon: IconMatches, title: "Matches", text: "Every upcoming ATP and WTA match with its forecast, grouped by tournament." },
-          { href: "/itf", icon: IconMatches, title: "ITF World Tennis Tour", text: "ITF Men and ITF Women forecasts from a separate model, tested once on matches it had never seen." },
+          { href: "/matches?circuit=itf", icon: IconMatches, title: "ITF World Tennis Tour", text: "ITF Men and ITF Women forecasts from a separate model, tested once on matches it had never seen." },
           { href: "/lab", icon: IconLab, title: "Is it any good?", text: `Calibration, held-out tests, and the honest part: the betting market is better (${HEADLINES.marketLogLoss.toFixed(3)} vs ${HEADLINES.modelLogLoss.toFixed(3)} log loss).` },
           { href: "/archive", icon: IconArchive, title: "Forecast Archive", text: "Every forecast ever issued, timestamped and impossible to edit." },
           { href: "/methodology", icon: IconMethod, title: "How it works", text: "The data, the ratings and the model, in five short steps." },

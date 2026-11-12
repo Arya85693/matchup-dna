@@ -196,7 +196,15 @@ export function ArchiveView({ entries, circuit = "main" }: { entries: ArchiveEnt
 }
 
 function EvalCell({ e, ev }: { e: ArchiveEntry; ev: Eval }) {
-  if (ev === "scored") return e.favourite_won ? <Badge tone="pos">Scored · favourite won</Badge> : <Badge tone="neg">Scored · upset</Badge>;
+  // Scored is a counting status (lavender); the result beside it keeps its own colour.
+  if (ev === "scored") {
+    return (
+      <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
+        <Badge tone="counted">Scored</Badge>
+        {e.favourite_won !== null && <span className={`whitespace-nowrap text-[12px] ${e.favourite_won ? "text-pos" : "text-neg"}`}>{e.favourite_won ? "favourite won" : "upset"}</span>}
+      </span>
+    );
+  }
   return <span className={ev === "pending" ? "text-muted" : "text-dim"}>{EVAL_LABEL[ev]}</span>;
 }
 

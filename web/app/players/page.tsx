@@ -53,7 +53,7 @@ export default async function PlayersPage() {
         </>}
         itf={<>
           {itf.ok ? <PlayersBrowser players={itf.data.players} base="/players/itf" circuit="itf" param="itf_tour" />
-            : <div className="card"><EmptyState title="The ITF board is not available yet">{itf.detail} The ITF forecasts and test results are on the ITF page.</EmptyState></div>}
+            : <div className="card"><EmptyState title="The ITF board is not available yet">{itf.detail} The ITF forecasts are under Matches (ITF), and the test results are in the Model Lab.</EmptyState></div>}
           {itf.ok && <p className="mt-3 text-[12px] text-dim">ITF ratings updated <LocalTime iso={itf.data.generated_at} style="datetime" />.</p>}
           <section aria-label="About the ITF board" className="mt-10 grid gap-2 border-t border-border pt-6 text-[13px] text-muted lg:grid-cols-[200px_minmax(0,1fr)] lg:gap-8">
             <h2 className="text-[13px] font-medium text-text">A different rating</h2>
@@ -67,7 +67,7 @@ export default async function PlayersPage() {
                 Listed: the 500 highest-rated men and the 500 highest-rated women with at least five ITF main-draw matches in
                 the last 52 weeks. Season records and head to heads count matches at every level.
               </p>
-              <p className="text-dim">Display only: recomputed once a day and never a forecast input. <Link href="/itf" className="link">ITF forecasts</Link></p>
+              <p className="text-dim">Display only: recomputed once a day and never a forecast input. <Link href="/matches?circuit=itf" className="link">ITF forecasts</Link></p>
             </div>
           </section>
         </>}
