@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { ArchiveEntry, Itf, Models, TrackRecord } from "@/lib/contract";
+import type { Itf, Models, TrackRecord } from "@/lib/contract";
+import type { LedgerEntry } from "@/lib/ledger";
 import type { HISTORICAL as H, MARKET as M } from "@/lib/research";
 import { BenchmarksTab } from "./BenchmarksTab";
 import { CalibrationTab } from "./CalibrationTab";
 import { ItfTab } from "./ItfTab";
-import { LiveTab } from "./LiveTab";
+import { LiveTab, type ItfLive } from "./LiveTab";
 import { MarketTab } from "./MarketTab";
 import { ModelsTab } from "./ModelsTab";
 
@@ -21,9 +22,9 @@ const TABS = [
 type TabId = (typeof TABS)[number]["id"];
 
 /** Tabs with shareable addresses (/lab#market) and arrow-key navigation, as the WAI-ARIA tabs pattern describes. */
-export function LabShell({ record, archive, historical, market, models, itfResearch, itfRecord }: {
-  record: TrackRecord | null; archive: ArchiveEntry[]; historical: typeof H; market: typeof M; models: Models | null;
-  itfResearch: Itf["research"]; itfRecord: Itf["record"] | null;
+export function LabShell({ record, archive, historical, market, models, itfResearch, itfRecord, itfLive }: {
+  record: TrackRecord | null; archive: LedgerEntry[]; historical: typeof H; market: typeof M; models: Models | null;
+  itfResearch: Itf["research"]; itfRecord: Itf["record"] | null; itfLive: ItfLive;
 }) {
   const [tab, setTab] = useState<TabId>("live");
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -62,7 +63,7 @@ export function LabShell({ record, archive, historical, market, models, itfResea
         ))}
       </div>
       <div key={tab} role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`} className="anim-fade">
-        {tab === "live" && <LiveTab record={record} entries={archive} />}
+        {tab === "live" && <LiveTab record={record} entries={archive} itf={itfLive} itfRecord={itfRecord} />}
         {tab === "benchmarks" && <BenchmarksTab h={historical} m={market} />}
         {tab === "calibration" && <CalibrationTab h={historical} record={record} itf={itfResearch} itfRecord={itfRecord} />}
         {tab === "market" && <MarketTab m={market} />}
