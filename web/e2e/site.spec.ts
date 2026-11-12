@@ -156,6 +156,13 @@ test("players: filters, sorting, row navigation and comparison", async ({ page }
   await page.getByRole("combobox").nth(0).click();
   for (const text of await page.getByRole("option").allTextContents()) expect(text).toContain("ATP");
 
+  // The search list scrolls through the whole tour, adding rows as it nears the end.
+  const listed = await page.getByRole("option").count();
+  expect(listed).toBeGreaterThan(8);
+  await page.getByRole("listbox").evaluate((el) => el.scrollTo({ top: el.scrollHeight }));
+  await expect.poll(() => page.getByRole("option").count()).toBeGreaterThan(listed);
+  await expect(page.getByRole("combobox").nth(0)).toBeFocused();                // scrolling does not close the list
+
   await page.goto("/players", { waitUntil: "networkidle" });
   await page.locator("tbody tr").first().locator("td").nth(2).click();     // the Elo cell, not the name link
   await expect(page).toHaveURL(/\/players\/(atp|wta)--?\d+$/);
