@@ -4,13 +4,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ago } from "@/lib/format";
-import { IconArchive, IconLab, IconLogo, IconMatches, IconMethod, IconOverview, IconPlayers, IconStatus } from "./icons";
+import { IconArchive, IconLab, IconLogo, IconMatches, IconMethod, IconOverview, IconPlayers, IconResearch, IconStatus } from "./icons";
 
 const NAV = [
   { href: "/", label: "Home", icon: IconOverview, match: (p: string) => p === "/" },
   { href: "/matches", label: "Matches", icon: IconMatches, match: (p: string) => p.startsWith("/matches") },
   { href: "/players", label: "Players", icon: IconPlayers, match: (p: string) => p.startsWith("/players") },
   { href: "/lab", label: "Model Lab", icon: IconLab, match: (p: string) => p.startsWith("/lab") },
+  { href: "/research", label: "Research", icon: IconResearch, match: (p: string) => p.startsWith("/research") },
   { href: "/archive", label: "Forecast Archive", icon: IconArchive, match: (p: string) => p.startsWith("/archive") },
   { href: "/methodology", label: "Methodology", icon: IconMethod, match: (p: string) => p.startsWith("/methodology") },
 ];

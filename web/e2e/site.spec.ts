@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
-const PAGES = ["/", "/matches", "/players", "/lab", "/archive", "/methodology", "/methodology/big-matches", "/status"];
+const PAGES = ["/", "/matches", "/players", "/lab", "/archive", "/methodology", "/research", "/research/big-matches", "/status"];
 
 /** Fails the test on any console error, uncaught exception or failed request. */
 function watch(page: Page) {
@@ -105,6 +105,15 @@ test("the tour filter is reflected in the address", async ({ page }) => {
 test("old research addresses redirect to the Model Lab", async ({ page }) => {
   await page.goto("/research/market");
   await expect(page).toHaveURL(/\/lab$/);
+});
+
+test("the research tab lists the papers and the old myth-check address reaches the paper", async ({ page }) => {
+  await page.goto("/research");
+  await page.getByRole("link", { name: /Do players choke in big matches\?/ }).click();
+  await expect(page).toHaveURL(/\/research\/big-matches$/);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Do players choke in big matches?");
+  await page.goto("/methodology/big-matches");
+  await expect(page).toHaveURL(/\/research\/big-matches$/);
 });
 
 test("players: filters, sorting, row navigation and comparison", async ({ page }) => {

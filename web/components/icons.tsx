@@ -8,7 +8,8 @@ export const IconPlayers = (p: P) => <svg {...base} {...p}><circle cx="8" cy="5.
 export const IconLab = (p: P) => <svg {...base} {...p}><path d="M2 13.5h12" /><path d="M3.5 11 6.5 7l2.5 2.5L13 4" /></svg>;
 export const IconArchive = (p: P) => <svg {...base} {...p}><rect x="2" y="2.5" width="12" height="3" rx="0.8" /><path d="M3 5.5v7.5h10V5.5M6.5 8.5h3" /></svg>;
 export const IconMethod = (p: P) => <svg {...base} {...p}><path d="M3 2.5h7l3 3v8H3z" /><path d="M5.5 8h5M5.5 10.5h5" /></svg>;
-export const IconStatus = (p: P) => <svg {...base} {...p}><path d="M1.5 8h3l1.5-4 3 8 1.5-4h4" /></svg>;
+export const IconResearch = (p: P) => <svg {...base} {...p}><path d="M8 4.5C6.5 3.3 4.5 3 2 3v9.5c2.5 0 4.5.3 6 1.5 1.5-1.2 3.5-1.5 6-1.5V3c-2.5 0-4.5.3-6 1.5z" /><path d="M8 4.5V14" /></svg>;
+export const IconStatus =(p: P) => <svg {...base} {...p}><path d="M1.5 8h3l1.5-4 3 8 1.5-4h4" /></svg>;
 export const IconChevron = (p: P) => <svg {...base} {...p}><path d="M6 4l4 4-4 4" /></svg>;
 export const IconLogo = (p: P) => (
   <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" {...p}>
