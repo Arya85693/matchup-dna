@@ -239,6 +239,65 @@ export function RunCurve({ p, mark, maxFinals = 40, ariaLabel }: { p: number; ma
   );
 }
 
+// ---------------------------------------------------------------- power curves (small multiples)
+
+export type PowerPanel = { title: string; note?: string; series: { series: string; points: { x: number; y: number }[] }[] };
+
+/** One small panel per test: share of simulations that detect a trait (y) against the trait's size (x, the edge in
+ *  win-probability points of a player one standard deviation above average against an equal opponent). */
+export function PowerCurves({ panels, xMax, xTicks, target = 0.8, ariaLabel }: {
+  panels: PowerPanel[]; xMax: number; xTicks: number[]; target?: number; ariaLabel: string;
+}) {
+  const W = 300, H = 210, L = 40, R = 12, T = 14, B = 36;
+  const x = (v: number) => L + (v / xMax) * (W - L - R);
+  const y = (v: number) => T + (1 - v) * (H - T - B);
+  return (
+    <div className="grid gap-4" role="img" aria-label={ariaLabel}>
+      <Legend items={[...tourLegend, { label: `${Math.round(target * 100)}% power`, swatch: <Dash /> }]} />
+      <div className="grid gap-6 sm:grid-cols-3 sm:gap-4">
+        {panels.map((panel) => (
+          <div key={panel.title} className="min-w-0">
+            <p className="text-[12.5px] leading-tight text-[var(--p-text)]">{panel.title}
+              {panel.note && <span className="block text-[11px] text-[var(--p-dim)]">{panel.note}</span>}
+            </p>
+            <svg viewBox={`0 0 ${W} ${H}`} className="mt-2 w-full" aria-hidden="true">
+              {[0, 0.5, 1].map((v) => (
+                <g key={v}>
+                  <line x1={L} x2={W - R} y1={y(v)} y2={y(v)} stroke="var(--p-rule)" strokeWidth="1" />
+                  <text x={L - 6} y={y(v) + 4} textAnchor="end" fontSize="11" fill="var(--p-muted)">{Math.round(v * 100)}%</text>
+                </g>
+              ))}
+              <line x1={L} x2={W - R} y1={y(target)} y2={y(target)} stroke="var(--p-text)" strokeOpacity="0.7" strokeDasharray="4 3" />
+              <line x1={L} x2={W - R} y1={y(0)} y2={y(0)} stroke="var(--p-text)" strokeOpacity="0.6" />
+              {xTicks.map((t) => (
+                <text key={t} x={x(t)} y={H - B + 16} textAnchor="middle" fontSize="11" fill="var(--p-muted)">{t}</text>
+              ))}
+              <text x={(L + W - R) / 2} y={H - 3} textAnchor="middle" fontSize="11" fill="var(--p-muted)">Trait size, points at evens</text>
+              {panel.series.map((s) => {
+                const color = seriesColor(s.series);
+                const d = s.points.map((p, i) => `${i ? "L" : "M"}${x(p.x).toFixed(1)},${y(p.y).toFixed(1)}`).join(" ");
+                return (
+                  <g key={s.series}>
+                    <path d={d} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" />
+                    {s.points.map((p) => (
+                      <g key={p.x}>
+                        <circle cx={x(p.x)} cy={y(p.y)} r="3.5" fill={color} stroke="var(--p-bg)" strokeWidth="1.5" />
+                        <circle cx={x(p.x)} cy={y(p.y)} r="9" fill="transparent" style={{ pointerEvents: "all" }}>
+                          <title>{`${panel.title}, ${s.series}: ${Math.round(p.y * 100)}% power at a ${p.x.toFixed(1)}-point trait`}</title>
+                        </circle>
+                      </g>
+                    ))}
+                  </g>
+                );
+              })}
+            </svg>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------- study flow (like a PRISMA diagram)
 
 export type FlowBox = { title: string; detail?: React.ReactNode };

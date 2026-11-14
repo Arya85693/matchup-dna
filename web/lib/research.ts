@@ -82,9 +82,46 @@ const Interval = z.object({ r: z.number(), low: z.number(), high: z.number() });
 const BigForecast = z.object({
   matches: z.number(), with_history: z.number(), beta: z.number(), se: z.number(), log_loss_change: z.number(), permutation_p: z.number(),
 });
+const Fit = z.object({ beta: z.number(), se: z.number(), p: z.number() });
+const Robustness = z.object({
+  sims: z.object({ null: z.number(), power: z.number(), permutations: z.number(), game_permutations: z.number() }),
+  slope_tests: z.array(z.object({
+    tour: z.string(), best_of: z.number(), big: z.number(), big_se: z.number(), regular: z.number(), regular_se: z.number(), z: z.number(), p: z.number(),
+  })),
+  null: z.array(z.object({ tour: z.string(), test: z.string(), observed: z.number(), critical: z.number(), p: z.number() })),
+  holm: z.array(z.object({ tour: z.string(), set: z.string(), p: z.number() })),
+  power: z.object({
+    taus: z.array(z.number()), evens: z.array(z.number()),
+    rows: z.array(z.object({ tour: z.string(), test: z.string(), power: z.array(z.number()), bound: z.number().nullable(), bound_points: z.number().nullable() })),
+  }),
+  games: z.array(z.object({
+    tour: z.string(), matches: z.number(), per_match_sd: z.number(),
+    spread: z.array(z.object({ set: z.string(), players: z.number(), ratio: z.number(), trait_sd: z.number(), p: z.number() })),
+    clutch: z.object({ players: z.number(), ratio: z.number(), p: z.number() }),
+    split_half: Interval.extend({ players: z.number() }),
+    players: z.number(),
+    correlations: z.object({ big: Interval, clutch: Interval, regular: Interval }),
+    forecasts: z.object({ big: Fit, clutch: Fit }),
+  })),
+  within: z.array(z.object({
+    tour: z.string(), eligible: z.number(), spread: z.record(z.string(), z.number()), clutch: z.number(), split_half: Interval,
+    correlations: z.object({ big: z.number(), clutch: z.number() }), forecasts: z.object({ big: Fit, clutch: Fit }),
+  })),
+  sensitivity: z.array(z.object({
+    tour: z.string(), label: z.string(), players: z.number(), clutch_r: z.number(), clutch_low: z.number(), clutch_high: z.number(),
+    big_beta: z.number(), big_p: z.number(), clutch_beta: z.number(), clutch_p: z.number(),
+  })),
+  format: z.array(z.object({
+    tour: z.string(), best_of: z.number(), big_matches: z.number(), regular_matches: z.number(),
+    wins: z.object({ players: z.number(), ratio: z.number(), p: z.number() }),
+    games: z.object({ players: z.number(), ratio: z.number(), p: z.number() }),
+  })),
+  sources: z.array(Source),
+});
 const BigMatch = z.object({
-  schema_version: z.literal("1"),
+  schema_version: z.literal("2"),
   evidence: z.literal("post-hoc"),
+  robustness: Robustness,
   window: z.string(), matches: z.number(), big_matches: z.number(), shrink: z.number(), min_big: z.number(),
   periods: z.tuple([z.string(), z.string()]),
   calibration: z.array(z.object({ tour: z.string(), kind: z.enum(["big", "regular"]), best_of: z.number(), slope: z.number() })),

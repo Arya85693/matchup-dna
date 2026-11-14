@@ -22,16 +22,18 @@ export const PAPERS: Paper[] = [
     title: "Do players choke in big matches?",
     subtitle: "Persistence of big-match performance in professional tennis, 2000–2026",
     date: "2026-11-14",
-    version: "1.0",
+    version: "2.0",
     number: 1,
     evidence: "post-hoc",
     abstract:
       "Using 131,649 tour-level matches, we test whether some players consistently win semi-finals, finals and late " +
       "Slam and Masters rounds more or less often than their strength predicts. Differences between players in big " +
       "matches are about as large as luck alone would produce, and a player's record in 2012–2018 does not predict " +
-      "their record in 2019–2026 beyond ordinary form. We find no measurable choke or clutch trait.",
-    keywords: ["tennis", "pressure", "Elo", "calibration", "empirical Bayes", "persistence"],
-    readingMinutes: 12,
+      "their record in 2019–2026 beyond ordinary form. Power simulations show the data rule out a large choke or " +
+      "clutch trait, though not one of a few percentage points, and the result holds with game margins, " +
+      "within-tournament ratings and other analysis choices.",
+    keywords: ["tennis", "pressure", "Elo", "calibration", "empirical Bayes", "persistence", "statistical power"],
+    readingMinutes: 22,
   },
 ];
 

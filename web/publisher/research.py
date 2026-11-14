@@ -277,7 +277,7 @@ def big_match():
 
     definitions = s["definitions"]
     return {
-        "schema_version": "1", "evidence": "post-hoc",
+        "schema_version": "2", "evidence": "post-hoc", "robustness": big_match_robustness(),
         "window": "2000 – May 2026", "matches": matches, "big_matches": big,
         "shrink": definitions["shrink"], "min_big": definitions["min_big"],
         "periods": ["2012–2018", "2019 – May 2026"],
@@ -287,8 +287,179 @@ def big_match():
     }
 
 
+ROBUSTNESS_TESTS = ("ratio finals only", "ratio semi-finals + finals", "ratio all big matches", "ratio regular matches",
+                    "clutch ratio", "split-half r", "period r big", "period r clutch", "forecast z big", "forecast z clutch")
+SETS = ("finals only", "semi-finals + finals", "all big matches", "regular matches")
+
+# Version 2 report ("Robustness, power and sensitivity" in docs/Myth Check - Do Players Choke in Big Matches.md): the
+# figures as printed there. Every one is asserted against the analysis output before anything is written.
+PRINTED_V2 = {
+    "slope_tests": {"ATP 3": (0.735, 0.748, -0.43, 0.67), "ATP 5": (1.005, 1.064, -1.02, 0.31),
+                    "WTA 3": (0.748, 0.822, -2.74, 0.006)},
+    "null_p": {
+        "ATP": {"ratio finals only": 0.501, "ratio semi-finals + finals": 0.358, "ratio all big matches": 0.062,
+                "ratio regular matches": 0.365, "clutch ratio": 0.044, "split-half r": 0.147, "period r big": 0.148,
+                "period r clutch": 0.314, "forecast z big": 0.123, "forecast z clutch": 0.082},
+        "WTA": {"ratio finals only": 0.172, "ratio semi-finals + finals": 0.462, "ratio all big matches": 0.760,
+                "ratio regular matches": 0.000, "clutch ratio": 0.543, "split-half r": 0.245, "period r big": 0.193,
+                "period r clutch": 0.340, "forecast z big": 0.033, "forecast z clutch": 0.498},
+    },
+    "clutch_ratio": {"ATP": 1.20, "WTA": 0.98},
+    "holm": {"ATP all big matches": 0.437, "WTA regular matches": 0.004},
+    "power_at_0.2": {"ATP": {"clutch ratio": 0.43, "split-half r": 0.61, "forecast z clutch": 0.42},
+                     "WTA": {"clutch ratio": 0.42, "split-half r": 0.55, "forecast z clutch": 0.37}},
+    "bounds": {"ATP": {"clutch ratio": 0.320, "split-half r": 0.247, "forecast z clutch": 0.392},
+               "WTA": {"clutch ratio": 0.200, "split-half r": 0.241, "forecast z clutch": 0.279}},
+}
+
+
+def big_match_robustness():
+    """Version 2 of the myth check: exact null tests, power and bounds, game margins, within-tournament ratings and
+    sensitivity (matchup_dna.posthoc_big_match_robustness). Aggregates only."""
+    path = RESULTS / "phase4" / "experiments" / "posthoc_big_match_robustness.json"
+    s = json.loads(path.read_text(encoding="utf-8"))
+    want = PRINTED_V2
+    if not s["reproduction"]["checked"] or s["reproduction"]["largest_difference"] > 1e-9:
+        raise Mismatch("the robustness run did not reproduce the version 1 point estimates")
+
+    slope_tests = []
+    for key, (big, regular, z, p) in want["slope_tests"].items():
+        tour, bo = key.split()
+        row = s["slope_tests"][f"{tour} bo{bo}"]
+        same(row["big"], big, 3, f"slope big {key}")
+        same(row["regular"], regular, 3, f"slope regular {key}")
+        same(row["z"], z, 2, f"slope z {key}")
+        same(row["p"], p, 3 if p < 0.01 else 2, f"slope p {key}")
+        slope_tests.append({"tour": tour, "best_of": int(bo), **{k: row[k] for k in ("big", "big_se", "regular",
+                                                                                    "regular_se", "z", "p")}})
+
+    null = []
+    for tour in ("ATP", "WTA"):
+        found = s["null"][tour]
+        for test in ROBUSTNESS_TESTS:
+            same(found["p"][test], want["null_p"][tour][test], 3, f"null p {tour} {test}")
+            null.append({"tour": tour, "test": test, "observed": found["observed"][test],
+                         "critical": found["critical"][test], "p": found["p"][test]})
+        same(found["clutch"]["ratio"], want["clutch_ratio"][tour], 2, f"clutch ratio {tour}")
+    holm = []
+    for key, value in s["holm"].items():
+        if key in want["holm"]:
+            same(value, want["holm"][key], 3, f"holm {key}")
+        tour, label = key.split(" ", 1)
+        holm.append({"tour": tour, "set": label, "p": value})
+
+    taus = s["definitions"]["taus"]
+    power = {"taus": taus, "evens": [100 * (1 / (1 + math.exp(-t)) - 0.5) for t in taus], "rows": []}
+    for tour in ("ATP", "WTA"):
+        found = s["power"][tour]
+        for test in ROBUSTNESS_TESTS:
+            curve, bound = found["power"][test], found["upper_bound"][test]
+            if test in want["power_at_0.2"][tour]:
+                same(curve[taus.index(0.2)], want["power_at_0.2"][tour][test], 2, f"power {tour} {test}")
+                same(bound, want["bounds"][tour][test], 3, f"bound {tour} {test}")
+            power["rows"].append({"tour": tour, "test": test, "power": curve, "bound": bound,
+                                  "bound_points": None if bound is None else 100 * (1 / (1 + math.exp(-bound)) - 0.5)})
+
+    games, within, sensitivity = [], [], []
+    for tour in ("ATP", "WTA"):
+        g = s["games"][tour]
+        pr = g["period"]
+        games.append({
+            "tour": tour, "matches": g["matches"], "per_match_sd": g["per_match_sd"],
+            "spread": [{"set": label, **{k: g["spread"][label][k] for k in ("players", "ratio", "trait_sd", "p")}}
+                       for label in SETS],
+            "clutch": {k: g["clutch"][k] for k in ("players", "ratio", "p")},
+            "split_half": {k: g["split_half"][k] for k in ("players", "r", "low", "high")},
+            "players": pr["players"],
+            "correlations": {k: {m: pr["correlations"][k][m] for m in ("r", "low", "high")} for k in ("big", "clutch", "regular")},
+            "forecasts": {k: {"beta": pr["forecasts"][k]["beta"], "se": pr["forecasts"][k]["se"],
+                              "p": pr["forecasts"][k]["permutation_p"]} for k in ("big", "clutch")},
+        })
+        w = s["within"][tour]
+        within.append({
+            "tour": tour, "eligible": w["eligible_share_big"],
+            "spread": {label: w["spread"][label]["ratio"] for label in SETS}, "clutch": w["clutch"]["ratio"],
+            "split_half": {k: w["split_half"][k] for k in ("r", "low", "high")},
+            "correlations": {k: w["period"]["correlations"][k]["r"] for k in ("big", "clutch")},
+            "forecasts": {k: {"beta": w["period"]["forecasts"][k]["beta"], "se": w["period"]["forecasts"][k]["se"],
+                              "p": w["period"]["forecasts"][k]["permutation_p"]} for k in ("big", "clutch")},
+        })
+        for label, found in s["sensitivity"][tour].items():
+            c, fb, fc = found["correlations"]["clutch"], found["forecasts"]["big"], found["forecasts"]["clutch"]
+            sensitivity.append({"tour": tour, "label": label, "players": found["players"], "clutch_r": c["r"],
+                                "clutch_low": c["low"], "clutch_high": c["high"], "big_beta": fb["beta"],
+                                "big_p": fb["permutation_p"], "clutch_beta": fc["beta"], "clutch_p": fc["permutation_p"]})
+    check_v2_rest(games, within, sensitivity)
+
+    by_format = []
+    for bo, (wins_ratio, wins_p, games_ratio, games_p) in PRINTED_FORMAT.items():
+        row = s["format"][f"ATP bo{bo}"]
+        same(row["wins"]["ratio"], wins_ratio, 2, f"format bo{bo} wins ratio")
+        same(row["wins"]["p"], wins_p, 3, f"format bo{bo} wins p")
+        same(row["games"]["ratio"], games_ratio, 2, f"format bo{bo} games ratio")
+        same(row["games"]["p"], games_p, 3, f"format bo{bo} games p")
+        by_format.append({"tour": "ATP", "best_of": bo, "big_matches": row["big_matches"],
+                          "regular_matches": row["regular_matches"],
+                          "wins": {k: row["wins"][k] for k in ("players", "ratio", "p")},
+                          "games": {k: row["games"][k] for k in ("players", "ratio", "p")}})
+
+    d = s["definitions"]
+    return {"sims": {"null": d["null_sims"], "power": d["power_sims"], "permutations": d["permutations"],
+                     "game_permutations": d["game_permutations"]},
+            "slope_tests": slope_tests, "null": null, "holm": holm, "power": power, "games": games, "within": within,
+            "sensitivity": sensitivity, "format": by_format,
+            "sources": [{"file": f"results/phase4/experiments/{p.name}", "sha256": sha(p)}
+                        for p in (path, path.with_suffix(".txt"))]}
+
+
+# "ATP clutch spread within one format" table: best of -> (wins ratio, wins p, games ratio, games p).
+PRINTED_FORMAT = {3: (1.19, 0.042, 1.28, 0.010), 5: (0.83, 0.849, 1.26, 0.077)}
+
+# (section, tour, path) -> (printed value, decimal places). A path is dotted keys into the exported row; list items by
+# index. Sensitivity paths are "<variant label>|<field>".
+PRINTED_V2_REST = {
+    # Game margins table.
+    ("games", "ATP", "per_match_sd"): (0.127, 3), ("games", "WTA", "per_match_sd"): (0.158, 3),
+    ("games", "ATP", "spread.0.ratio"): (1.21, 2), ("games", "ATP", "spread.0.p"): (0.098, 3),
+    ("games", "ATP", "spread.2.ratio"): (1.23, 2), ("games", "ATP", "spread.2.p"): (0.038, 3),
+    ("games", "ATP", "spread.3.ratio"): (1.69, 2), ("games", "WTA", "spread.3.ratio"): (1.97, 2),
+    ("games", "WTA", "spread.0.ratio"): (1.48, 2), ("games", "WTA", "spread.0.p"): (0.007, 3),
+    ("games", "ATP", "clutch.ratio"): (1.23, 2), ("games", "ATP", "clutch.p"): (0.022, 3),
+    ("games", "WTA", "clutch.ratio"): (1.02, 2), ("games", "WTA", "clutch.p"): (0.409, 3),
+    ("games", "ATP", "split_half.r"): (0.158, 3), ("games", "WTA", "split_half.r"): (0.066, 3),
+    ("games", "ATP", "correlations.clutch.r"): (0.122, 3), ("games", "WTA", "correlations.clutch.r"): (0.363, 3),
+    ("games", "WTA", "correlations.clutch.low"): (0.056, 3),
+    ("games", "ATP", "forecasts.big.p"): (0.191, 3), ("games", "ATP", "forecasts.clutch.p"): (0.185, 3),
+    ("games", "WTA", "forecasts.big.p"): (0.075, 3), ("games", "WTA", "forecasts.clutch.p"): (0.990, 3),
+    # Within-tournament table.
+    ("within", "ATP", "eligible"): (0.943, 3), ("within", "WTA", "eligible"): (0.943, 3),
+    ("within", "ATP", "clutch"): (1.17, 2), ("within", "WTA", "clutch"): (0.97, 2),
+    ("within", "ATP", "split_half.r"): (0.102, 3), ("within", "WTA", "split_half.r"): (0.064, 3),
+    ("within", "ATP", "forecasts.big.p"): (0.237, 3), ("within", "ATP", "forecasts.clutch.p"): (0.212, 3),
+    ("within", "WTA", "forecasts.big.p"): (0.110, 3), ("within", "WTA", "forecasts.clutch.p"): (0.962, 3),
+    # Sensitivity table: the rows the reading cites.
+    ("sensitivity", "ATP", "periods 2008-2015 / 2016-2026|clutch_r"): (0.336, 3),
+    ("sensitivity", "WTA", "semi-finals and finals only|clutch_r"): (-0.327, 3),
+    ("sensitivity", "WTA", "shrinkage 10|big_p"): (0.088, 3),
+    ("sensitivity", "ATP", "shrinkage 100|clutch_p"): (0.101, 3),
+}
+
+
+def check_v2_rest(games, within, sensitivity):
+    """Game-margin, within-tournament and sensitivity figures against the report's printed tables."""
+    for (section, tour, path), (value, places) in PRINTED_V2_REST.items():
+        if section == "sensitivity":
+            label, field = path.split("|")
+            found = next(r for r in sensitivity if r["tour"] == tour and r["label"] == label)[field]
+        else:
+            found = next(r for r in {"games": games, "within": within}[section] if r["tour"] == tour)
+            for part in path.split("."):
+                found = found[int(part)] if part.isdigit() else found[part]
+        same(found, value, places, f"{section} {tour} {path}")
+
+
 def build():
-    historical = {"schema_version": "1", "phase2": PHASE2, "phase3": phase3(), "phase4": phase4()}
+    historical ={"schema_version": "1", "phase2": PHASE2, "phase3": phase3(), "phase4": phase4()}
     market = {"schema_version": "1", **phase5()}
     return historical, market
 
