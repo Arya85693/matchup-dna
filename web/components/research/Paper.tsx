@@ -1,6 +1,6 @@
 /**
  * Building blocks for the Research tab's papers, laid out like a journal article: a masthead, a metadata column beside
- * the title, a structured abstract, two-column body text on wide screens, numbered sections, tables with dark header
+ * the title, a structured abstract, one continuous column of body text, numbered sections, tables with dark header
  * rows, boxed numbered figures, and an author-year reference list. The sheet uses the site's palette (.paper in
  * globals.css). Server-rendered.
  */
@@ -11,7 +11,7 @@ import { paperDate, type Paper } from "@/lib/papers";
 /** The paper sheet. `fontClass` carries the serif face's CSS variable from the page. */
 export function Sheet({ fontClass, children }: { fontClass: string; children: React.ReactNode }) {
   return (
-    <article className={`paper ${fontClass} -mx-4 border-y border-[var(--p-rule)] px-5 pb-14 pt-8 sm:mx-0 sm:rounded-lg sm:border sm:px-10 lg:px-14`}>
+    <article className={`paper ${fontClass} -mx-4 border-y border-[var(--p-rule)] px-5 pb-14 pt-8 sm:mx-auto sm:max-w-[980px] sm:rounded-lg sm:border sm:px-10 lg:px-14`}>
       {children}
     </article>
   );
@@ -109,9 +109,10 @@ export function Subsection({ number, title, children }: { number: string; title:
   );
 }
 
-/** Body prose: serif, justified, two columns on wide screens, each paragraph after the first indented. */
+/** Body prose: serif, justified, one continuous column (about 95 characters a line at full width), each paragraph after
+ *  the first indented, as in a single-column preprint. */
 export function Cols({ children }: { children: React.ReactNode }) {
-  return <div className="cols serif text-[16px] leading-[1.7] lg:columns-2 lg:gap-10 [&>*]:break-inside-avoid-column">{children}</div>;
+  return <div className="cols serif text-[17px] leading-[1.75]">{children}</div>;
 }
 
 /** A display equation, centred, with its number at the right. */
@@ -176,10 +177,10 @@ export function Cite({ id, children }: { id: string; children: React.ReactNode }
   return <a href={`#ref-${id}`} className="ref">{children}</a>;
 }
 
-/** Back matter in the journal's style: short headed statements, two columns on wide screens. */
+/** Back matter in the journal's style: short headed statements. */
 export function Statements({ items }: { items: { title: string; text: React.ReactNode }[] }) {
   return (
-    <div className="grid gap-8 lg:grid-cols-2 lg:gap-x-10">
+    <div className="grid gap-8">
       {items.map((s) => (
         <section key={s.title} className="grid gap-2">
           <h2 className="text-[22px] font-normal text-[var(--p-head)]">{s.title}</h2>
@@ -194,9 +195,9 @@ export function References({ items }: { items: { id: string; text: React.ReactNo
   return (
     <section aria-labelledby="references-h" className="grid gap-4 border-t border-[var(--p-rule)] pt-8">
       <h2 id="references-h" className="text-[22px] font-normal">References</h2>
-      <ol className="serif grid gap-2.5 text-[13px] leading-snug lg:columns-2 lg:gap-x-10 lg:block">
+      <ol className="serif grid gap-2.5 text-[14px] leading-snug">
         {items.map((r) => (
-          <li key={r.id} id={`ref-${r.id}`} className="mb-2.5 break-inside-avoid scroll-mt-24 pl-5 -indent-5">{r.text}</li>
+          <li key={r.id} id={`ref-${r.id}`} className="scroll-mt-24 pl-5 -indent-5">{r.text}</li>
         ))}
       </ol>
     </section>
