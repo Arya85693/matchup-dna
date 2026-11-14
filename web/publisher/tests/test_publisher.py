@@ -616,6 +616,34 @@ class ResearchExportTests(unittest.TestCase):
             research.same(0.6130, 0.6128, 4, "deliberately wrong")
 
 
+BIG_MATCH_PRESENT = (ROOT / "results" / "phase4" / "experiments" / "posthoc_big_match.json").exists()
+
+
+class BigMatchExportTests(unittest.TestCase):
+    """The post-hoc myth check: every figure matches its report, and only aggregates leave."""
+
+    @unittest.skipUnless(BIG_MATCH_PRESENT, "posthoc_big_match output is a local file (gitignored)")
+    def test_export_matches_the_report_and_the_committed_file(self):
+        from web.publisher import research
+        doc = research.big_match()                      # raises Mismatch if any figure differs from the report
+        committed = ROOT / "web" / "content" / "research" / "big-match.json"
+        self.assertEqual(json.loads(committed.read_text(encoding="utf-8")), json.loads(json.dumps(doc, sort_keys=True)))
+
+    def test_no_player_leaves(self):
+        text = (ROOT / "web" / "content" / "research" / "big-match.json").read_text(encoding="utf-8")
+        for private in ("named", "player_id", "Sabalenka", "Medvedev", "Zverev", "Djokovic"):
+            self.assertNotIn(private, text)
+        doc = json.loads(text)
+        self.assertEqual(doc["evidence"], "post-hoc")
+
+    def test_losing_run_is_exact(self):
+        from web.publisher.research import losing_run
+        self.assertAlmostEqual(losing_run(2, 0.6, 2), 0.16)             # both lost
+        self.assertAlmostEqual(losing_run(3, 0.5, 2), 3 / 8)            # LL?, ?LL minus LLL counted once
+        self.assertEqual(losing_run(1, 0.6, 2), 0.0)
+        self.assertAlmostEqual(losing_run(29, 0.6, 3), 0.708, places=3)
+
+
 if __name__ == "__main__":
     unittest.main()
 

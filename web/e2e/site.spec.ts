@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
-const PAGES = ["/", "/matches", "/players", "/lab", "/archive", "/methodology", "/status"];
+const PAGES = ["/", "/matches", "/players", "/lab", "/archive", "/methodology", "/methodology/big-matches", "/status"];
 
 /** Fails the test on any console error, uncaught exception or failed request. */
 function watch(page: Page) {

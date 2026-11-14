@@ -1,0 +1,243 @@
+{
+ "big_matches": 14071,
+ "calibration": [
+  {
+   "best_of": 3,
+   "kind": "big",
+   "slope": 0.735392767413777,
+   "tour": "ATP"
+  },
+  {
+   "best_of": 5,
+   "kind": "big",
+   "slope": 1.0053035285851564,
+   "tour": "ATP"
+  },
+  {
+   "best_of": 3,
+   "kind": "regular",
+   "slope": 0.7475655880040168,
+   "tour": "ATP"
+  },
+  {
+   "best_of": 5,
+   "kind": "regular",
+   "slope": 1.0637635292767484,
+   "tour": "ATP"
+  },
+  {
+   "best_of": 3,
+   "kind": "big",
+   "slope": 0.7484664363805097,
+   "tour": "WTA"
+  },
+  {
+   "best_of": 3,
+   "kind": "regular",
+   "slope": 0.8222681667735586,
+   "tour": "WTA"
+  }
+ ],
+ "evidence": "post-hoc",
+ "matches": 131649,
+ "min_big": 10,
+ "period_split": {
+  "ATP": {
+   "correlations": {
+    "big-match": {
+     "high": 0.5466952986766522,
+     "low": -0.18189229826673886,
+     "r": 0.20278991602302443
+    },
+    "clutch": {
+     "high": 0.42147017240162454,
+     "low": -0.2851752462390937,
+     "r": 0.09465651271310888
+    },
+    "regular-match": {
+     "high": 0.5395267221653929,
+     "low": -0.09705402933773662,
+     "r": 0.23595928346117098
+    }
+   },
+   "forecasts": {
+    "big-match": {
+     "beta": 1.190067851049393,
+     "log_loss_change": -0.00036081387265174403,
+     "matches": 2013,
+     "permutation_p": 0.24975024975024976,
+     "se": 0.9889674050574936,
+     "with_history": 1580
+    },
+    "clutch": {
+     "beta": 1.2035092250420243,
+     "log_loss_change": -0.0004897092314710694,
+     "matches": 2013,
+     "permutation_p": 0.16383616383616384,
+     "se": 0.857637198816479,
+     "with_history": 1580
+    }
+   },
+   "players": 29
+  },
+  "WTA": {
+   "correlations": {
+    "big-match": {
+     "high": 0.40972152123890604,
+     "low": -0.12567832433886228,
+     "r": 0.16293616395498467
+    },
+    "clutch": {
+     "high": 0.377382931135541,
+     "low": -0.24884708102116412,
+     "r": 0.07167338191105715
+    },
+    "regular-match": {
+     "high": 0.643813362241125,
+     "low": 0.016485453532586524,
+     "r": 0.4193783998971076
+    }
+   },
+   "forecasts": {
+    "big-match": {
+     "beta": 2.2941272126222243,
+     "log_loss_change": -0.0009976003404060796,
+     "matches": 1672,
+     "permutation_p": 0.11388611388611389,
+     "se": 1.2605152454882553,
+     "with_history": 1345
+    },
+    "clutch": {
+     "beta": -0.03360888495202475,
+     "log_loss_change": -6.067528340869544e-07,
+     "matches": 1672,
+     "permutation_p": 0.967032967032967,
+     "se": 0.7461587257897112,
+     "with_history": 1345
+    }
+   },
+   "players": 32
+  }
+ },
+ "periods": [
+  "2012\u20132018",
+  "2019 \u2013 May 2026"
+ ],
+ "schema_version": "1",
+ "shrink": 20,
+ "sources": [
+  {
+   "file": "results/phase4/experiments/posthoc_big_match.json",
+   "sha256": "072aacb84e9571f27c61bec122891419a82d78f0be5e479acf5eab1f85deef61"
+  },
+  {
+   "file": "results/phase4/experiments/posthoc_big_match.txt",
+   "sha256": "bf836378fe68d4ece02cda2c64c93e34a152c77ccdaa0382bd718eaadacc5395"
+  }
+ ],
+ "split_half": {
+  "ATP": {
+   "high": 0.23810199949662547,
+   "low": -0.05078965858367021,
+   "players": 149,
+   "r": 0.0936103291186268,
+   "spearman_brown": 0.17119503469589603
+  },
+  "WTA": {
+   "high": 0.2445835728736234,
+   "low": -0.12504876609033722,
+   "players": 132,
+   "r": 0.0640869408876767,
+   "spearman_brown": 0.12045433211352909
+  }
+ },
+ "spread": [
+  {
+   "implied_k": null,
+   "noise_sd": 0.11437797561213806,
+   "observed_sd": 0.11369771742288536,
+   "players": 108,
+   "ratio": 0.9881404565491209,
+   "set": "finals only",
+   "tour": "ATP",
+   "trait_sd": 0.0
+  },
+  {
+   "implied_k": 651.844449141181,
+   "noise_sd": 0.09707136994648774,
+   "observed_sd": 0.09876230664757427,
+   "players": 222,
+   "ratio": 1.0351424803242684,
+   "set": "semi-finals + finals",
+   "tour": "ATP",
+   "trait_sd": 0.018197317139117236
+  },
+  {
+   "implied_k": 147.25750269433527,
+   "noise_sd": 0.09118752153798419,
+   "observed_sd": 0.09869381208924134,
+   "players": 247,
+   "ratio": 1.1714102627472522,
+   "set": "all big matches",
+   "tour": "ATP",
+   "trait_sd": 0.037753204638363486
+  },
+  {
+   "implied_k": 1514.2452953274196,
+   "noise_sd": 0.07231222652867425,
+   "observed_sd": 0.0732643821602756,
+   "players": 813,
+   "ratio": 1.0265079455984447,
+   "set": "regular matches",
+   "tour": "ATP",
+   "trait_sd": 0.011773342252419659
+  },
+  {
+   "implied_k": 111.42088574337343,
+   "noise_sd": 0.11242277323139317,
+   "observed_sd": 0.12070086701792612,
+   "players": 82,
+   "ratio": 1.1526891122350085,
+   "set": "finals only",
+   "tour": "WTA",
+   "trait_sd": 0.0439297092847407
+  },
+  {
+   "implied_k": 6360.960291489865,
+   "noise_sd": 0.1035470620936368,
+   "observed_sd": 0.10371154837278551,
+   "players": 223,
+   "ratio": 1.0031795575935065,
+   "set": "semi-finals + finals",
+   "tour": "WTA",
+   "trait_sd": 0.005838766792495893
+  },
+  {
+   "implied_k": null,
+   "noise_sd": 0.0970094109839674,
+   "observed_sd": 0.09324929318836625,
+   "players": 251,
+   "ratio": 0.9239816831114468,
+   "set": "all big matches",
+   "tour": "WTA",
+   "trait_sd": 0.0
+  },
+  {
+   "implied_k": 137.95759133763985,
+   "noise_sd": 0.07249621901249766,
+   "observed_sd": 0.0823298455848519,
+   "players": 794,
+   "ratio": 1.2896857107241368,
+   "set": "regular matches",
+   "tour": "WTA",
+   "trait_sd": 0.03901924785176584
+  }
+ ],
+ "streak": {
+  "finals": 29,
+  "p_win": 0.6,
+  "three": 0.7079558800889674,
+  "two": 0.9773304614619361
+ },
+ "window": "2000 \u2013 May 2026"
+}

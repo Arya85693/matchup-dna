@@ -45,6 +45,7 @@ export default function Methodology() {
           <div className="grid gap-3 text-muted">
             <p>Ranking, inactivity and form improve on Elo alone, and the round-aware update helps later rounds. Official rankings were the benchmark the earlier models had to beat; in post-hoc checks, the model&apos;s probabilities did, though its edge in picking winners narrowed over time.</p>
             <p>Serve-and-return gains were not confirmed, matchup and fatigue features added nothing, and the betting market forecasts better.</p>
+            <p>A big-match factor was checked and left out: players&apos; records in semi-finals and finals differ about as much as luck alone would make them. <Link href="/methodology/big-matches" className="link">Myth check: do players choke in big matches?</Link></p>
           </div>
         </Card>
         <Card title="Limits">

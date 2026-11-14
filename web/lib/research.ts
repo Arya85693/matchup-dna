@@ -6,6 +6,7 @@
 import { z } from "zod";
 import historicalJson from "@/content/research/historical.json";
 import marketJson from "@/content/research/market.json";
+import bigMatchJson from "@/content/research/big-match.json";
 
 const Scores = z.object({ n: z.number(), log_loss: z.number(), brier: z.number(), accuracy: z.number() });
 const Bin = z.object({
@@ -75,3 +76,31 @@ export const HEADLINES = {
   heldOutLogLoss: HISTORICAL.phase4.held_out_corrected.scores.log_loss,
   heldOutMatches: HISTORICAL.phase4.held_out_corrected.scores.n,
 };
+
+/** The post-hoc myth check (docs/Myth Check - Do Players Choke in Big Matches.md). Aggregates only. */
+const Interval = z.object({ r: z.number(), low: z.number(), high: z.number() });
+const BigForecast = z.object({
+  matches: z.number(), with_history: z.number(), beta: z.number(), se: z.number(), log_loss_change: z.number(), permutation_p: z.number(),
+});
+const BigMatch = z.object({
+  schema_version: z.literal("1"),
+  evidence: z.literal("post-hoc"),
+  window: z.string(), matches: z.number(), big_matches: z.number(), shrink: z.number(), min_big: z.number(),
+  periods: z.tuple([z.string(), z.string()]),
+  calibration: z.array(z.object({ tour: z.string(), kind: z.enum(["big", "regular"]), best_of: z.number(), slope: z.number() })),
+  spread: z.array(z.object({
+    tour: z.string(), set: z.string(), players: z.number(), ratio: z.number(), observed_sd: z.number(), noise_sd: z.number(),
+    trait_sd: z.number(), implied_k: z.number().nullable(),
+  })),
+  split_half: z.record(z.string(), Interval.extend({ players: z.number(), spearman_brown: z.number() })),
+  period_split: z.record(z.string(), z.object({
+    players: z.number(),
+    correlations: z.object({ "big-match": Interval, clutch: Interval, "regular-match": Interval }),
+    forecasts: z.object({ "big-match": BigForecast, clutch: BigForecast }),
+  })),
+  streak: z.object({ finals: z.number(), p_win: z.number(), two: z.number(), three: z.number() }),
+  sources: z.array(Source),
+});
+
+export const BIG_MATCH = BigMatch.parse(bigMatchJson);
+export type BigMatchResearch = typeof BIG_MATCH;

@@ -1,6 +1,6 @@
 """The historical research figures the website shows (Phases 2-5), exported once from the saved results.
 
-    python -m web.publisher.research          writes web/content/research/{historical,market}.json
+    python -m web.publisher.research          writes web/content/research/{historical,market,big-match}.json
 
 Run by hand when the research changes, not on the twice-daily schedule. Every headline number is either recomputed from
 a saved prediction file or read from a saved results file, and then **asserted equal to the value printed in the
@@ -13,6 +13,7 @@ import csv
 import hashlib
 import json
 import math
+import re
 import sys
 from collections import defaultdict
 from pathlib import Path
@@ -175,6 +176,117 @@ PHASE2 = {  # Phase 2 - Elo Report.md, validation table lines 141-142 and differ
 }
 
 
+def losing_run(finals, p_win, run):
+    """Exact probability of at least one run of `run` straight losses in `finals` independent finals."""
+    state = [1.0] + [0.0] * (run - 1)          # probability of each current losing-run length
+    for _ in range(finals):
+        nxt = [0.0] * run
+        for length, mass in enumerate(state):
+            nxt[0] += mass * p_win
+            if length + 1 < run:
+                nxt[length + 1] += mass * (1 - p_win)
+        state = nxt
+    return 1 - sum(state)
+
+
+def big_match():
+    """The post-hoc myth check (docs/Myth Check - Do Players Choke in Big Matches.md). Aggregates only: the source
+    file also holds a few named players' figures for the report's illustration, and none of them leave."""
+    path = RESULTS / "phase4" / "experiments" / "posthoc_big_match.json"
+    s = json.loads(path.read_text(encoding="utf-8"))
+    finite = lambda v: v if isinstance(v, (int, float)) and math.isfinite(v) else None
+
+    # Report, "Calibration slopes" table.
+    slopes = s["calibration_slopes"]
+    printed = {"ATP big bo3": 0.74, "ATP big bo5": 1.01, "ATP regular bo3": 0.75, "ATP regular bo5": 1.06,
+               "WTA big bo3": 0.75, "WTA regular bo3": 0.82}
+    calibration = []
+    for key, value in printed.items():
+        tour, kind, bo = key.split()
+        calibration.append({"tour": tour, "kind": kind, "best_of": int(bo[2:]),
+                            "slope": same(slopes[key], value, 2, f"calibration slope {key}")})
+
+    # Report, test 1 table: players, ratio (and the sds in points, one decimal).
+    printed = {("ATP", "finals only"): (108, 0.99), ("ATP", "semi-finals + finals"): (222, 1.04),
+               ("ATP", "all big matches"): (247, 1.17), ("ATP", "regular matches"): (813, 1.03),
+               ("WTA", "finals only"): (82, 1.15), ("WTA", "semi-finals + finals"): (223, 1.00),
+               ("WTA", "all big matches"): (251, 0.92), ("WTA", "regular matches"): (794, 1.29)}
+    spread = []
+    for (tour, label), (players, ratio) in printed.items():
+        row = s["spread"][f"{tour} {label}"]
+        same(row["players"], players, 0, f"spread players {tour} {label}")
+        same(row["ratio"], ratio, 2, f"spread ratio {tour} {label}")
+        spread.append({"tour": tour, "set": label, "players": row["players"], "ratio": row["ratio"],
+                       "observed_sd": row["observed_sd"], "noise_sd": row["noise_sd"], "trait_sd": row["trait_sd"],
+                       "implied_k": finite(row["implied_k"])})
+
+    # Report, test 2 table.
+    printed = {"ATP": (149, 0.094, -0.051, 0.238), "WTA": (132, 0.064, -0.125, 0.245)}
+    split_half = {}
+    for tour, (players, r, low, high) in printed.items():
+        row = s["split_half"][tour]
+        same(row["players"], players, 0, f"split-half players {tour}")
+        for key, value in (("r", r), ("low", low), ("high", high)):
+            same(row[key], value, 3, f"split-half {key} {tour}")
+        split_half[tour] = {k: row[k] for k in ("players", "r", "low", "high", "spearman_brown")}
+
+    # Report, test 3 tables.
+    printed = {
+        "ATP": {"players": 29, "big-match score": (0.203, -0.182, 0.547), "clutch score": (0.095, -0.285, 0.421),
+                "regular-match score": (0.236, -0.097, 0.540),
+                "forecast with big-match score": (1.19, -0.00036, 0.250),
+                "forecast with clutch score": (1.20, -0.00049, 0.164), "matches": 2013},
+        "WTA": {"players": 32, "big-match score": (0.163, -0.126, 0.410), "clutch score": (0.072, -0.249, 0.377),
+                "regular-match score": (0.419, 0.016, 0.644),
+                "forecast with big-match score": (2.29, -0.00100, 0.114),
+                "forecast with clutch score": (-0.03, -0.00000, 0.967), "matches": 1672},
+    }
+    period_split = {}
+    for tour, want in printed.items():
+        row = s["period_split"][tour]
+        out = {"players": None, "correlations": {}, "forecasts": {}}
+        for label in ("big-match score", "clutch score", "regular-match score"):
+            c = row[label]
+            same(c["players"], want["players"], 0, f"period players {tour}")
+            for key, value in zip(("r", "low", "high"), want[label]):
+                same(c[key], value, 3, f"period {label} {key} {tour}")
+            out["players"] = c["players"]
+            out["correlations"][label.removesuffix(" score")] = {k: c[k] for k in ("r", "low", "high")}
+        for label in ("forecast with big-match score", "forecast with clutch score"):
+            f = row[label]
+            beta, change, p = want[label]
+            same(f["matches"], want["matches"], 0, f"{label} matches {tour}")
+            same(f["beta"], beta, 2, f"{label} beta {tour}")
+            same(f["log_loss_change"], change, 5, f"{label} log loss change {tour}")
+            same(f["permutation_p"], p, 3, f"{label} p {tour}")
+            out["forecasts"][label.removeprefix("forecast with ").removesuffix(" score")] = {
+                k: f[k] for k in ("matches", "with_history", "beta", "se", "log_loss_change", "permutation_p")}
+        period_split[tour] = out
+
+    # Report, "Why the story feels true": 98% and 71% for a 60% finals winner over 29 finals.
+    streak = {"finals": 29, "p_win": 0.6,
+              "two": same(losing_run(29, 0.6, 2), 0.98, 2, "two-final losing run"),
+              "three": same(losing_run(29, 0.6, 3), 0.71, 2, "three-final losing run")}
+
+    # Report, "Data and definitions": the window's match counts, read from the printed output.
+    text_path = path.with_suffix(".txt")
+    counts = re.search(r"Window 2000 - May 2026: ([\d,]+) main-tour matches, ([\d,]+) of them big", text_path.read_text(encoding="utf-8"))
+    matches, big = (int(counts.group(i).replace(",", "")) for i in (1, 2))
+    same(matches, 131649, 0, "window matches")
+    same(big, 14071, 0, "window big matches")
+
+    definitions = s["definitions"]
+    return {
+        "schema_version": "1", "evidence": "post-hoc",
+        "window": "2000 – May 2026", "matches": matches, "big_matches": big,
+        "shrink": definitions["shrink"], "min_big": definitions["min_big"],
+        "periods": ["2012–2018", "2019 – May 2026"],
+        "calibration": calibration, "spread": spread, "split_half": split_half, "period_split": period_split,
+        "streak": streak,
+        "sources": [{"file": f"results/phase4/experiments/{p.name}", "sha256": sha(p)} for p in (path, text_path)],
+    }
+
+
 def build():
     historical = {"schema_version": "1", "phase2": PHASE2, "phase3": phase3(), "phase4": phase4()}
     market = {"schema_version": "1", **phase5()}
@@ -184,13 +296,15 @@ def build():
 def main():
     try:
         historical, market = build()
+        myth = big_match()
     except Mismatch as error:
         print(f"refused: {error}")
         return 1
     OUT.mkdir(parents=True, exist_ok=True)
-    for name, doc in (("historical.json", historical), ("market.json", market)):
+    for name, doc in (("historical.json", historical), ("market.json", market), ("big-match.json", myth)):
         (OUT / name).write_text(json.dumps(doc, indent=1, sort_keys=True) + "\n", encoding="utf-8")
-    print(f"wrote {OUT.relative_to(ROOT).as_posix()}/historical.json and market.json; every headline matches its report")
+    print(f"wrote {OUT.relative_to(ROOT).as_posix()}/historical.json, market.json and big-match.json; "
+          "every headline matches its report")
     return 0
 
 
