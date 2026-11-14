@@ -126,3 +126,9 @@ commit `00f4f504968d71e50f3673c554a5e1f65ab2cce3+uncommitted`
 - `python -m matchup_dna.posthoc_rank_history` (and `posthoc_rank_disagreement` for June-October alone): saved predictions only; June-October from the corrected rebuild (erratum 1). Reproduces the long-run ranking counts in every period. Historical evidence only: 2021-2023 chose the model and later periods had been examined.
 - Winner picks where Phase 4 and the higher-ranked player differ, Phase 4's share: 2021-2023 57.3% of 2,234 (p < 0.001); 2024-May 2026 55.0% of 2,034 (p < 0.001); June-October 2026 51.9% of 310 (p 0.53); pooled 55.9% of 4,578.
 - Probabilities against a ranking-only logistic model (one feature, fitted on earlier matches only, untuned): Phase 4 log loss lower by 0.0208, 0.0162, and 0.0110 (se 0.0050, p 0.03), pooled 0.0181 (se 0.0013).
+
+## 2026-11-14 · post-hoc: big-match performance as a player trait (NOT pre-registered; added by hand)
+
+- `python -m matchup_dna.posthoc_big_match`: Sackmann tour-level files to 25 May 2026 only; canonical surface-blended Elo, recalibrated per (tour, big/regular, best-of); big = semi-finals, finals, Slam R16/QF, Masters QF, season-ending Finals; score = residual sum / (matches + 20). No model changed. Report: `docs/Myth Check - Do Players Choke in Big Matches.md`.
+- Spread beyond luck (2000 - May 2026, ratio of observed to luck variance): ATP finals 0.99, SF+F 1.04, all big 1.17; WTA finals 1.15, SF+F 1.00, all big 0.92. Split-half r: ATP +0.094 (-0.051 to +0.238), WTA +0.064 (-0.125 to +0.245).
+- Period split 2012-2018 -> 2019 - May 2026: big-match score r ATP +0.203, WTA +0.163; clutch score +0.095, +0.072; regular-match reference +0.236, +0.419. Forecast permutation p: big-match 0.250 / 0.114, clutch 0.164 / 0.967. Conclusion: no measurable big-match trait; no feature added.
