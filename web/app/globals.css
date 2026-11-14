@@ -101,3 +101,29 @@
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/*
+ * Research papers (web/app/research): journal layout in the site's own palette. The sheet is the card colour; section
+ * headings and the first chart series are the pear accent, the second series the neutral grey, as in the site's other
+ * two-series charts. Contrast on --p-bg (card): text 12.9, muted 7.1, dim 5.2, accent 9.0 : 1.
+ */
+.paper {
+  --p-bg: var(--color-card);
+  --p-text: var(--color-text);
+  --p-muted: var(--color-muted);
+  --p-dim: var(--color-dim);
+  --p-rule: var(--color-border);
+  --p-rule-strong: var(--color-border-strong);
+  --p-soft: var(--color-card-hover);
+  --p-head: var(--color-accent);
+  --p-th: var(--color-border-strong);
+  --p-s1: var(--color-accent);
+  --p-s2: var(--color-neutral);
+  background: var(--p-bg);
+  color: var(--p-text);
+}
+.paper .serif { font-family: var(--font-serif), Georgia, "Times New Roman", serif; }
+.paper .cols p + p { text-indent: 1.4em; }
+.paper .cols p { text-align: justify; hyphens: auto; }
+.paper a.ref { color: var(--p-head); text-decoration: underline; text-decoration-color: rgba(209, 226, 49, 0.35); text-underline-offset: 2px; }
+.paper a.ref:hover { text-decoration-color: var(--p-head); }

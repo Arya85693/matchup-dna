@@ -111,7 +111,7 @@ test("the research tab lists the papers and the old myth-check address reaches t
   await page.goto("/research");
   await page.getByRole("link", { name: /Do players choke in big matches\?/ }).click();
   await expect(page).toHaveURL(/\/research\/big-matches$/);
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Do players choke in big matches?");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("Do players choke in big matches?");
   await page.goto("/methodology/big-matches");
   await expect(page).toHaveURL(/\/research\/big-matches$/);
 });

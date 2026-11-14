@@ -9,6 +9,7 @@ export type Paper = {
   subtitle: string;
   date: string;          // ISO date of the current version
   version: string;
+  number: number;        // the working-paper number, in order of first publication
   evidence: "post-hoc" | "pre-registered";
   abstract: string;      // one paragraph, plain text, for the index card
   keywords: string[];
@@ -22,6 +23,7 @@ export const PAPERS: Paper[] = [
     subtitle: "Persistence of big-match performance in professional tennis, 2000–2026",
     date: "2026-11-14",
     version: "1.0",
+    number: 1,
     evidence: "post-hoc",
     abstract:
       "Using 131,649 tour-level matches, we test whether some players consistently win semi-finals, finals and late " +
