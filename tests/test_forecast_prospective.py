@@ -73,6 +73,55 @@ class CountingTests(unittest.TestCase):
         self.assertEqual(rows["tournament_start"][0]["y"], 0)
 
 
+def espn_prediction(uid, provider_match_id, ids):
+    """A forecast of an ESPN fixture whose players carry ESPN ids, as the live engine stores them."""
+    p = prediction(uid, 0.501, "2026-11-09T08:00:00Z")
+    p["inputs"]["fixture"].update(provider="espn", provider_match_id=provider_match_id)
+    p["inputs"]["players"]["a"]["provider_id"], p["inputs"]["players"]["b"]["provider_id"] = ids
+    return p
+
+
+def espn_record(provider_match_id, home, away, retrieved, winner_side=None):
+    from matchup_dna.forecasting.records import MatchRecord
+    status = "completed" if winner_side else "scheduled"
+    return MatchRecord(provider="espn", provider_match_id=provider_match_id, tour="ATP", circuit="tour",
+                       tournament="T", round="RR", home_id=home[0], home_name=home[1], away_id=away[0],
+                       away_name=away[1], status=status, retrieved_at=retrieved, winner_side=winner_side,
+                       score="6-2 6-1" if winner_side else None)
+
+
+class ReplacementMatchTests(unittest.TestCase):
+    """Amendment 2. ESPN's 187384 was Andreeva v Muchova when it was forecast and Andreeva v Shnaider when it was
+    played; the result of the match played (Andreeva won) was attached to the forecast and scored as an upset."""
+
+    def build(self, played_away):
+        store = store_with([espn_prediction("M-0", "187384", ("3039", "9820"))], [])
+        store.add_source_record(espn_record("187384", ("9820", "Andreeva"), ("3039", "Muchova"),
+                                            "2026-11-12T00:18:52Z"), "r", T0)
+        store.add_source_record(espn_record("187384", ("9820", "Andreeva"), played_away, "2026-11-13T21:19:18Z",
+                                            winner_side="home"), "r", T0)
+        store.add_outcome("M-0", "espn", "187384", "completed", 2, "6-2 6-1", 3,
+                          "2026-11-13T21:19:18Z", "2026-11-13T21:19:54Z", "r")
+        return store
+
+    def test_a_result_from_a_replacement_match_is_not_scored(self):
+        rows, excluded = prospective.rows_by_kind(self.build(("8017", "Shnaider")))
+        self.assertEqual(rows.get("tournament_start", []), [])
+        self.assertEqual(excluded, {prospective.REPLACED: 1})
+
+    def test_the_same_players_are_scored_as_before(self):
+        rows, excluded = prospective.rows_by_kind(self.build(("3039", "Muchova")))
+        self.assertEqual(len(rows["tournament_start"]), 1)
+        self.assertEqual(rows["tournament_start"][0]["y"], 0)
+        self.assertEqual(excluded, {})
+
+    def test_results_from_another_provider_or_without_ids_are_not_judged(self):
+        store = store_with([prediction("M-0", 0.6, "2026-11-09T08:00:00Z")], [("M-0", "completed", 1)])
+        rows, excluded = prospective.rows_by_kind(store)
+        self.assertEqual(len(rows["tournament_start"]), 1)
+        self.assertEqual(excluded, {})
+
+
 class MetricTests(unittest.TestCase):
     def rows(self, ps, ys, week="2026-11-09"):
         return [{"p": p, "y": y, "week": week, "match_uid": f"M{i}"} for i, (p, y) in enumerate(zip(ps, ys))]

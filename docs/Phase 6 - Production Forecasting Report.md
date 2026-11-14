@@ -149,6 +149,15 @@ The protocol's contents are fixed in `prospective.protocol_contents`; `protocol 
 | Forbidden | Choosing any model, feature, rule, threshold or calibration from P1 outcomes while calling P1 untouched. A changed model is a new version, evaluated on a window after its own freeze |
 | Expected size | At most about 3,000 tournament-start matches and 1,500 later-round pairs, and only with daily runs. The R0 gap's minimum detectable value is about 0.007, against Phase 4's 0.005–0.007: **P1 alone may be inconclusive for R0**, and the report will say so |
 
+### Amendments
+
+Each amendment is a committed file in `experiments/` that names the code it replaces. Forecasts from the earlier code still count, and no stored forecast is ever changed. The full reason, fix and disclosures are in each file.
+
+| No. | Written | Defect | Fix | Effect |
+|---|---|---|---|---|
+| 1 | 10 Nov 2026 | Players were wrongly held back as "still in an earlier draw" because the TennisIsMyLife ongoing file had stopped updating during the Paris Masters | `espn.integrate` works out who is still playing again after adding ESPN results (`espn.py`, `history.py`, `prospective.py`) | Matches the defect held back get forecasts; no feature, model or counting rule changed |
+| 2 | 14 Nov 2026 | ESPN reused match number 187384 when Muchová was replaced by Shnaider at the WTA Finals, so the result of Andreeva v Shnaider was scored as Andreeva beating Muchová | `prospective.outcome_rows` excludes a result whose provider record names players other than the forecast's (`prospective.py` only) | One counted forecast excluded. Interim tournament start record: 32 to 31 scored, favourite won 19/32 to 19/31. The P1 outcome was seen while diagnosing this, and the file says so |
+
 ## The prospective record is running
 
 | Step | When (UTC) | Record |

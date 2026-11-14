@@ -13,7 +13,9 @@ What the protocol fixes (PROTOCOL below), before the first counted forecast:
 - which forecast counts: for each match and model, the FIRST one stored, if it was issued at least MIN_LEAD before
   the scheduled start known at the time (a later re-issue is reported as a sensitivity check, never substituted);
 - which matches count: settled without conflicting reports, completed (not retired, walkover or cancelled), best of 3
-  or 5. That is the research rule for a rated match;
+  or 5. That is the research rule for a rated match. The result must be of the match that was forecast: one a
+  provider attached from a record naming other players (a replacement match under a reused match number) is not
+  scored (amendment 2);
 - the metrics, the slices, the clusters for uncertainty, and the reporting rule.
 
 Forecasts issued before the freeze (the pilot of 8 November 2026) are reported separately and never pooled.
@@ -226,6 +228,39 @@ def counted_predictions(store, issued_from=None, issued_to=None, rule="first"):
     return chosen
 
 
+REPLACED = "players changed before the match (the result is from a replacement match)"
+
+
+def result_from_other_players(store, prediction, settlement):
+    """True if a result was attached from a provider record naming players other than the forecast's.
+
+    Providers can reuse a match number when a player withdraws and is replaced: ESPN's 187384 was Andreeva v Muchova
+    when it was forecast and Andreeva v Shnaider when it was played (13 November 2026), and results are attached by
+    match number. Each result row is traced to the provider record it came from (same provider and match number, the
+    last retrieved at or before the result), and that record's two provider player ids are compared with the ids the
+    forecast stored. Rows from another provider, and forecasts or records without those ids, are not judged."""
+    inputs = prediction["content"]["inputs"]
+    fixture, players = inputs["fixture"], inputs["players"]
+    ours = {players["a"].get("provider_id"), players["b"].get("provider_id")}
+    if not fixture.get("provider") or None in ours:
+        return False
+    ours = {str(pid) for pid in ours}
+    for row in settlement["rows"]:
+        if row["source"] != fixture["provider"] or row.get("provider_match_id") is None:
+            continue
+        record = store.db.execute(
+            "SELECT payload_json FROM source_records WHERE provider = ? AND tour = ? AND provider_match_id = ? "
+            "AND retrieved_at <= ? ORDER BY retrieved_at DESC, record_id DESC LIMIT 1",
+            (row["source"], fixture["tour"], str(row["provider_match_id"]), row["retrieved_at"])).fetchone()
+        if record is None:
+            continue
+        payload = json.loads(record["payload_json"])
+        theirs = {payload.get("home_id"), payload.get("away_id")}
+        if None not in theirs and {str(pid) for pid in theirs} != ours:
+            return True
+    return False
+
+
 def outcome_rows(store, chosen):
     """Counted forecasts joined to settled, completed results. Returns (rows, exclusion counts)."""
     settled = store.settled()
@@ -237,6 +272,9 @@ def outcome_rows(store, chosen):
             continue
         if settlement["state"] == "conflict":
             excluded["sources disagree on the result (left for review)"] += 1
+            continue
+        if result_from_other_players(store, prediction, settlement):
+            excluded[REPLACED] += 1
             continue
         if settlement["status"] != "completed":
             excluded[f"not a completed match ({settlement['status']})"] += 1
