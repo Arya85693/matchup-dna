@@ -119,7 +119,12 @@ const META: MetaItem[] = [
   { label: "Status", value: <>Post-hoc and descriptive. Not pre-registered. Not peer reviewed.</> },
   { label: "Analysis", value: <>Version 1 run 14 November 2026, definitions fixed in the script before the run. Version 2 robustness analyses written after the version 1 results were known (Section 4.6).</> },
   { label: "Data", value: <>Jeff Sackmann, tennis_atp and tennis_wta, to 25 May 2026 (CC BY-NC-SA 4.0).</> },
-  { label: "Reproduce", value: <span className="font-mono text-[11px]">python -m matchup_dna.posthoc_big_match<br />python -m matchup_dna.posthoc_big_match_robustness</span> },
+  { label: "Reproduce", value: (
+    <span className="grid gap-1.5 font-mono text-[11px] [overflow-wrap:anywhere]">
+      <span>python -m matchup_dna.<wbr />posthoc_big_match</span>
+      <span>python -m matchup_dna.<wbr />posthoc_big_match_robustness</span>
+    </span>
+  ) },
   { label: "Citation", value: <>Matchup DNA Research ({meta.date.slice(0, 4)}). {meta.title} {meta.subtitle}. Matchup DNA Working Paper {meta.number}, version {meta.version}.</> },
   { label: "Related", value: <><Link href="/methodology" className="ref">How the forecasts are made</Link><br /><Link href="/lab" className="ref">Model Lab</Link></> },
 ];

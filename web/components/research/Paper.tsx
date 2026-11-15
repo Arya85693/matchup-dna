@@ -42,7 +42,7 @@ export type MetaItem = { label: string; value: React.ReactNode };
 export function FrontMatter({ meta, children }: { meta: MetaItem[]; children: React.ReactNode }) {
   return (
     <div className="mt-10 grid gap-10 lg:grid-cols-[210px_minmax(0,1fr)] lg:gap-12">
-      <aside className="order-2 lg:order-1">
+      <aside className="order-2 min-w-0 lg:order-1">
         <dl className="grid gap-4 text-[11.5px] leading-snug text-[var(--p-text)]">
           {meta.map((m) => (
             <div key={m.label}>
