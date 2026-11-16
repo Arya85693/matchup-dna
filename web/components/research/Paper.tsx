@@ -69,12 +69,12 @@ export function TitleBlock({ paper, authors, affiliation }: { paper: Paper; auth
   );
 }
 
-/** A structured abstract: each part starts with its label in bold, as in the journal format. */
+/** A structured abstract under a visible heading: each part starts with its label in bold, as in the journal format. */
 export function Abstract({ parts, keywords }: { parts: { label: string; text: React.ReactNode }[]; keywords: string[] }) {
   return (
     <section aria-labelledby="abstract" className="mt-8">
-      <h2 id="abstract" className="sr-only">Abstract</h2>
-      <div className="grid gap-2 text-[15px] leading-[1.6]">
+      <h2 id="abstract" className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--p-dim)]">Abstract</h2>
+      <div className="mt-3 grid gap-3 text-[15px] leading-[1.65]">
         {parts.map((p) => <p key={p.label}><strong className="font-semibold">{p.label}:</strong> {p.text}</p>)}
       </div>
       <p className="mt-6 text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--p-dim)]">Keywords</p>
@@ -116,7 +116,7 @@ export function Cols({ children }: { children: React.ReactNode }) {
 }
 
 /** A display equation, centred, with its number at the right. */
-export function Eq({ number, children }: { number: number; children: React.ReactNode }) {
+export function Eq({ number, children }: { number: number | string; children: React.ReactNode }) {
   return (
     <div className="flex items-center gap-4 overflow-x-auto py-1" role="math">
       <p className="serif min-w-0 flex-1 whitespace-nowrap text-center text-[17px] italic">{children}</p>
@@ -126,7 +126,7 @@ export function Eq({ number, children }: { number: number; children: React.React
 }
 
 /** A boxed figure with its label and caption below, as in the journal format. */
-export function Figure({ number, caption, children }: { number: number; caption: React.ReactNode; children: React.ReactNode }) {
+export function Figure({ number, caption, children }: { number: number | string; caption: React.ReactNode; children: React.ReactNode }) {
   return (
     <figure className="m-0 border border-[var(--p-rule-strong)] px-4 pb-4 pt-6 sm:px-7">
       {children}
@@ -142,7 +142,7 @@ export type Align = "left" | "right" | "center";
 
 /** A table with its caption above and a dark header row, as in the journal format. */
 export function Table({ number, caption, head, rows, align, note }: {
-  number: number; caption: React.ReactNode; head: string[]; rows: React.ReactNode[][]; align?: Align[]; note?: React.ReactNode;
+  number: number | string; caption: React.ReactNode; head: string[]; rows: React.ReactNode[][]; align?: Align[]; note?: React.ReactNode;
 }) {
   const side = (i: number) => ({ left: "text-left", right: "text-right", center: "text-center" })[align?.[i] ?? (i === 0 ? "left" : "right")];
   return (
