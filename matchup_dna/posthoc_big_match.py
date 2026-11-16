@@ -40,8 +40,27 @@ Tests, all stated here before the run:
    permutations of the 2012-2018 scores among players, which respects that one player appears in many matches.
 
 The players the brief named (and a few others) are listed with actual against expected wins, for illustration.
+
+Version 3 corrections (16 November 2026, after an audit; the version 1 and 2 results used the definitions above as
+implemented then):
+
+- Window end. Sackmann's last edition in the snapshot is Roland Garros 2026 (tourney_date 20260525). Its later rounds
+  were played in June 2026, which the project keeps sealed, but the old window (to 20260531 by tourney_date) included
+  them. The window and the later period now end on 20260524, so no edition that ran into June is used.
+- Team events and exhibitions coded as ordinary tour events (level A) are left out, as the definitions always said:
+  ATP Cup, United Cup, World Team Cup (Dusseldorf, round robin, 2000-2012), Laver Cup. So are the Next Gen ATP Finals
+  (an under-21 event with experimental scoring) and WTA 125 events, which are below the main tour.
+- The season-ending Finals are identified by event, not by level code: the code F also covers the WTA Tournament of
+  Champions (2009-2014) and WTA Elite Trophy (2015-2019), second-tier year-end events now treated as ordinary tour
+  events (their semi-finals and finals are big, their group matches regular), and the 2015 WTA Finals and 2023 ATP
+  Finals carry other codes.
+- The WTA tier counted alongside ATP Masters quarter-finals is now set by event and year (WTA_TOP_TIER), because the
+  level codes are not consistent: Premier Mandatory events are coded P in 2016 and 2020-2022, and from 2023 the code
+  PM covers the whole WTA 1000 tier. The tier is the highest below the Grand Slams in each era: Tier I to 2008,
+  Premier Mandatory and Premier 5 from 2009 to 2020, WTA 1000 from 2021.
 """
 import json
+import re
 import math
 import zlib
 from collections import defaultdict
@@ -59,14 +78,45 @@ TOUR_LEVELS = {
     "ATP": {"G", "M", "A", "F", "O"},
     "WTA": {"G", "PM", "P", "I", "W", "T1", "T2", "T3", "T4", "T5", "F", "O"},
 }
-MASTERS = {"ATP": {"M"}, "WTA": {"PM", "T1"}}
 DRAW_ROUNDS = {"R128", "R64", "R32", "R16", "QF", "SF", "F", "RR"}
+
+# Version 3 (see the docstring). Names as spelled in Sackmann's files.
+EXCLUDED_NAMES = re.compile(r"atp cup|united cup|laver cup|next ?gen|\b125\b", re.IGNORECASE)
+SEASON_FINALS = {
+    "ATP": {"Masters Cup", "Tour Finals"},
+    "WTA": {"WTA Tour Championships", "WTA Championships", "WTA Finals", "Singapore", "Shenzhen Finals",
+            "Guadalajara Finals", "Fort Worth Finals", "Cancun Finals", "Riyadh Finals"},
+}
+_MANDATORY = ("Indian Wells", "Miami", "Madrid", "Beijing")
+_CANADA = ("Toronto", "Montreal")
+WTA_TOP_TIER = {
+    # 2009-2020: Premier Mandatory + Premier 5 (events actually played). 2021 on: WTA 1000.
+    2009: {*_MANDATORY, "Dubai", "Rome", "Cincinnati", *_CANADA, "Tokyo"},
+    2010: {*_MANDATORY, "Dubai", "Rome", "Cincinnati", *_CANADA, "Tokyo"},
+    2011: {*_MANDATORY, "Dubai", "Rome", "Cincinnati", *_CANADA, "Tokyo"},
+    2012: {*_MANDATORY, "Doha", "Rome", "Cincinnati", *_CANADA, "Tokyo"},
+    2013: {*_MANDATORY, "Doha", "Rome", "Cincinnati", *_CANADA, "Tokyo"},
+    2014: {*_MANDATORY, "Doha", "Rome", "Cincinnati", *_CANADA, "Wuhan"},
+    2015: {*_MANDATORY, "Dubai", "Rome", "Cincinnati", *_CANADA, "Wuhan"},
+    2016: {*_MANDATORY, "Doha", "Rome", "Cincinnati", *_CANADA, "Wuhan"},
+    2017: {*_MANDATORY, "Dubai", "Rome", "Cincinnati", *_CANADA, "Wuhan"},
+    2018: {*_MANDATORY, "Doha", "Rome", "Cincinnati", *_CANADA, "Wuhan"},
+    2019: {*_MANDATORY, "Dubai", "Rome", "Cincinnati", *_CANADA, "Wuhan"},
+    2020: {"Doha", "Rome", "Cincinnati"},
+    2021: {"Dubai", "Miami", "Madrid", "Rome", *_CANADA, "Cincinnati", "Indian Wells"},
+    2022: {"Doha", "Indian Wells", "Miami", "Madrid", "Rome", *_CANADA, "Cincinnati", "Guadalajara 2"},
+    2023: {"Dubai", "Indian Wells", "Miami", "Madrid", "Rome", *_CANADA, "Cincinnati", "Guadalajara", "Beijing"},
+    2024: {"Doha", "Dubai", "Indian Wells", "Miami", "Madrid", "Rome", *_CANADA, "Cincinnati", "Beijing", "Wuhan"},
+    2025: {"Doha", "Dubai", "Indian Wells", "Miami", "Madrid", "Rome", *_CANADA, "Cincinnati", "Beijing", "Wuhan"},
+    2026: {"Doha", "Dubai", "Indian Wells", "Miami", "Madrid", "Rome"},
+}
 
 SHRINK = 20
 MIN_BIG = 10
-WINDOW = (20000101, 20260531)
+LAST_DAY = 20260524           # the last tourney_date used: Roland Garros 2026 (20260525) ran into the sealed June
+WINDOW = (20000101, LAST_DAY)
 PERIOD_1 = (20120101, 20181231)
-PERIOD_2 = (20190101, 20260531)
+PERIOD_2 = (20190101, LAST_DAY)
 PERMUTATIONS = 1000
 BOOTSTRAPS = 2000
 SEED = 20261114
@@ -81,16 +131,42 @@ NAMED = (
 
 # ---------------------------------------------------------------- which matches count
 
+def excluded_event(match):
+    """Team events, exhibitions, the Next Gen Finals and WTA 125 events, whatever their level code."""
+    name = match["tourney_name"].strip()
+    if EXCLUDED_NAMES.search(name):
+        return True
+    return match["tour"] == "ATP" and name == "Dusseldorf" and match["tourney_date"] <= 20121231  # World Team Cup
+
+
+def is_finals(match):
+    """The season-ending Finals (ATP Finals, WTA Finals), identified by event name rather than level code."""
+    name = match["tourney_name"].strip()
+    if name not in SEASON_FINALS[match["tour"]]:
+        return False
+    return name != "Singapore" or match["tourney_level"] == "F"   # the WTA Finals were "Singapore" in 2016-2018
+
+
+def top_tier(match):
+    """The highest tier below the Grand Slams: ATP Masters; WTA Tier I to 2008, then WTA_TOP_TIER by year."""
+    if match["tour"] == "ATP":
+        return match["tourney_level"] == "M"
+    year = match["tourney_date"] // 10000
+    if year <= 2008:
+        return match["tourney_level"] == "T1"
+    return match["tourney_name"].strip() in WTA_TOP_TIER.get(year, ())
+
+
 def classify(match):
     """"big", "regular", or None (not a main-tour draw match)."""
     tour, level, round_name = match["tour"], match["tourney_level"], match["round"]
-    if level not in TOUR_LEVELS.get(tour, ()) or round_name not in DRAW_ROUNDS:
+    if level not in TOUR_LEVELS.get(tour, ()) or round_name not in DRAW_ROUNDS or excluded_event(match):
         return None
-    if level == "F" or round_name in ("SF", "F"):
+    if is_finals(match) or round_name in ("SF", "F"):
         return "big"
     if level == "G" and round_name in ("R16", "QF"):
         return "big"
-    if level in MASTERS[tour] and round_name == "QF":
+    if top_tier(match) and round_name == "QF":
         return "big"
     return "regular"
 

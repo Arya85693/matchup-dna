@@ -7,8 +7,8 @@ from matchup_dna.posthoc_big_match import (calibrate, classify, fit_one, player_
                                            sigmoid, spread)
 
 
-def match(round_name, level="A", tour="ATP"):
-    return {"tour": tour, "tourney_level": level, "round": round_name}
+def match(round_name, level="A", tour="ATP", name="Somewhere", date=20150105):
+    return {"tour": tour, "tourney_level": level, "round": round_name, "tourney_name": name, "tourney_date": date}
 
 
 def row(a, b, p_a, y, kind="big", tour="ATP", best_of=3, round_name="SF"):
@@ -27,14 +27,36 @@ class ClassifyTests(unittest.TestCase):
         self.assertEqual(classify(match("R32", "G")), "regular")
         self.assertEqual(classify(match("QF", "M")), "big")
         self.assertEqual(classify(match("R16", "M")), "regular")
-        self.assertEqual(classify(match("QF", "PM", "WTA")), "big")
         self.assertEqual(classify(match("QF", "A")), "regular")
 
-    def test_finals_round_robin_is_big_and_team_events_are_left_out(self):
-        self.assertEqual(classify(match("RR", "F")), "big")
+    def test_wta_top_tier_is_set_by_event_and_year_not_level_code(self):
+        # Premier Mandatory events coded P in 2016 still count; a WTA 500 coded PM does not.
+        self.assertEqual(classify(match("QF", "P", "WTA", "Indian Wells", 20160307)), "big")
+        self.assertEqual(classify(match("QF", "PM", "WTA", "Indian Wells", 20150309)), "big")
+        self.assertEqual(classify(match("QF", "P", "WTA", "Rome", 20150511)), "big")          # Premier 5
+        self.assertEqual(classify(match("QF", "P", "WTA", "Charleston", 20150406)), "regular")  # Premier
+        self.assertEqual(classify(match("QF", "P", "WTA", "Doha", 20210301)), "regular")        # a 500 that year
+        self.assertEqual(classify(match("QF", "T1", "WTA", "Zurich", 20051017)), "big")         # Tier I
+
+    def test_finals_by_event_name(self):
+        self.assertEqual(classify(match("RR", "F", name="Masters Cup", date=20051114)), "big")
+        self.assertEqual(classify(match("RR", "A", name="Tour Finals", date=20231113)), "big")   # coded A in 2023
+        self.assertEqual(classify(match("RR", "W", "WTA", "WTA Finals", 20151026)), "big")       # coded W in 2015
+        # Second-tier year-end events are ordinary events: group matches regular, the final big.
+        self.assertEqual(classify(match("RR", "F", "WTA", "Zhuhai", 20161101)), "regular")
+        self.assertEqual(classify(match("F", "F", "WTA", "Zhuhai", 20161101)), "big")
+
+    def test_team_events_exhibitions_and_lower_events_are_left_out(self):
         self.assertIsNone(classify(match("F", "D")))
         self.assertIsNone(classify(match("BR", "O")))
         self.assertIsNone(classify(match("SF", "M", "WTA")))
+        self.assertIsNone(classify(match("SF", "A", name="Atp Cup", date=20200106)))
+        self.assertIsNone(classify(match("F", "A", name="United Cup", date=20240101)))
+        self.assertIsNone(classify(match("RR", "A", name="Laver Cup", date=20190920)))
+        self.assertIsNone(classify(match("RR", "A", name="Dusseldorf", date=20100517)))   # World Team Cup
+        self.assertIsNone(classify(match("F", "F", name="NextGen Finals", date=20171106)))
+        self.assertIsNone(classify(match("SF", "F", name="Next Gen Finals", date=20241216)))
+        self.assertIsNone(classify(match("F", "W", "WTA", "Buenos Aires 125", 20241125)))
 
 
 class ScoreTests(unittest.TestCase):

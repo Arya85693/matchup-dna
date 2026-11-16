@@ -1,3 +1,10 @@
+> **Superseded (16 November 2026).** This report records versions 1 and 2 of the analysis and is kept for the record.
+> An audit found errors that change most of its figures: the window included Roland Garros 2026, whose later rounds
+> were played in the sealed June period; team events, the Laver Cup and the Next Gen Finals were counted as tour events;
+> WTA tier codes were inconsistent; and Holm's correction covered only the variance ratios. The current analysis,
+> results and paper are version 3: see `docs/research/big-matches/README.md` and the Research tab. The numbers below
+> are version 1 and 2 numbers and should not be quoted.
+
 # Matchup DNA — Myth Check: Do Players Choke in Big Matches?
 
 **Status:** Version 1 complete 14 November 2026; version 2 (robustness, power and sensitivity, at the end of this report) added the same day after a review. **Post-hoc and descriptive.** This analysis was not pre-registered. It was run after a question about "big-match players", and it was not used to choose, change or tune any model. No frozen protocol, live forecast or held-out result is affected. Every version 2 analysis was written after the version 1 results were known.

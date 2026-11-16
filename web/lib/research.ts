@@ -77,7 +77,8 @@ export const HEADLINES = {
   heldOutMatches: HISTORICAL.phase4.held_out_corrected.scores.n,
 };
 
-/** The post-hoc myth check (docs/Myth Check - Do Players Choke in Big Matches.md). Aggregates only. */
+/** Working paper 1 ("Do players choke in big matches?"), version 3. Written by web/publisher/research.py from the four
+ *  analysis outputs; the paper page reads every figure from here. Aggregates only, plus one illustrative player table. */
 const Interval = z.object({ r: z.number(), low: z.number(), high: z.number() });
 const BigForecast = z.object({
   matches: z.number(), with_history: z.number(), beta: z.number(), se: z.number(), log_loss_change: z.number(), permutation_p: z.number(),
@@ -85,14 +86,17 @@ const BigForecast = z.object({
 const Fit = z.object({ beta: z.number(), se: z.number(), p: z.number() });
 const Robustness = z.object({
   sims: z.object({ null: z.number(), power: z.number(), permutations: z.number(), game_permutations: z.number() }),
-  slope_tests: z.array(z.object({
-    tour: z.string(), best_of: z.number(), big: z.number(), big_se: z.number(), regular: z.number(), regular_se: z.number(), z: z.number(), p: z.number(),
+  family: z.array(z.string()),
+  null: z.array(z.object({
+    tour: z.string(), test: z.string(), observed: z.number(), critical: z.number(), p: z.number(),
+    holm: z.number().optional(), holm_tour: z.number().optional(),
   })),
-  null: z.array(z.object({ tour: z.string(), test: z.string(), observed: z.number(), critical: z.number(), p: z.number() })),
-  holm: z.array(z.object({ tour: z.string(), set: z.string(), p: z.number() })),
   power: z.object({
     taus: z.array(z.number()), evens: z.array(z.number()),
-    rows: z.array(z.object({ tour: z.string(), test: z.string(), power: z.array(z.number()), bound: z.number().nullable(), bound_points: z.number().nullable() })),
+    rows: z.array(z.object({
+      tour: z.string(), test: z.string(), power: z.array(z.number()), bound: z.number().nullable(), bound_points: z.number().nullable(),
+      bound_low_points: z.number().nullable(), bound_high_points: z.number().nullable(),
+    })),
   }),
   games: z.array(z.object({
     tour: z.string(), matches: z.number(), per_match_sd: z.number(),
@@ -116,7 +120,6 @@ const Robustness = z.object({
     wins: z.object({ players: z.number(), ratio: z.number(), p: z.number() }),
     games: z.object({ players: z.number(), ratio: z.number(), p: z.number() }),
   })),
-  sources: z.array(Source),
 });
 const PeriodRecord = z.object({ big: z.number(), won: z.number(), expected: z.number(), score: z.number(), clutch: z.number() });
 const PlayerRecord = z.object({ name: z.string(), early: PeriodRecord, late: PeriodRecord });
@@ -127,14 +130,32 @@ const Players = z.object({
     means: z.record(z.string(), z.object({ score: Shift, clutch: Shift })),
     top_still_positive: z.number(), bottom_still_negative: z.number(),
   })),
-  sources: z.array(Source),
+});
+const SlopeDiff = z.object({
+  key: z.string(), big: z.number(), big_se: z.number(), big_n: z.number(), regular: z.number(), regular_se: z.number(),
+  regular_n: z.number(), difference: z.number(), wald_z: z.number(), wald_p: z.number(),
+  cluster_se: z.number().optional(), cluster_z: z.number().optional(), cluster_p: z.number().optional(),
+  cluster_low: z.number().optional(), cluster_high: z.number().optional(), editions: z.number().optional(),
+});
+const ModelScore = z.object({
+  model: z.string(), log_loss: z.number(), brier: z.number(),
+  log_loss_diff: z.number().optional(), log_loss_low: z.number().optional(), log_loss_high: z.number().optional(),
+  log_loss_share_better: z.number().optional(),
+  brier_diff: z.number().optional(), brier_low: z.number().optional(), brier_high: z.number().optional(),
+  brier_share_better: z.number().optional(),
+});
+const Forecast = z.object({
+  first_eval_year: z.number(), first_fit_year: z.number(), recent_years: z.number(), bootstraps: z.number(),
+  models: z.record(z.string(), z.string()),
+  calibration: z.object({ window: z.array(SlopeDiff), periods: z.array(SlopeDiff.extend({ period: z.string() })) }),
+  evaluation: z.array(z.object({ tour: z.string(), subset: z.string(), matches: z.number(), editions: z.number(), models: z.array(ModelScore) })),
+  by_year: z.array(z.object({ year: z.number(), matches: z.number(), M0: z.number(), big: z.number(), clutch: z.number() })),
+  betas: z.record(z.string(), z.record(z.string(), z.array(z.object({ year: z.number(), beta: z.number() })))),
 });
 const BigMatch = z.object({
-  schema_version: z.literal("2"),
+  schema_version: z.literal("3"),
   evidence: z.literal("post-hoc"),
-  robustness: Robustness,
-  players: Players,
-  window: z.string(), matches: z.number(), big_matches: z.number(), shrink: z.number(), min_big: z.number(),
+  window: z.string(), last_day: z.string(), matches: z.number(), big_matches: z.number(), shrink: z.number(), min_big: z.number(),
   periods: z.tuple([z.string(), z.string()]),
   calibration: z.array(z.object({ tour: z.string(), kind: z.enum(["big", "regular"]), best_of: z.number(), slope: z.number() })),
   spread: z.array(z.object({
@@ -148,6 +169,10 @@ const BigMatch = z.object({
     forecasts: z.object({ "big-match": BigForecast, clutch: BigForecast }),
   })),
   streak: z.object({ finals: z.number(), p_win: z.number(), two: z.number(), three: z.number() }),
+  robustness: Robustness,
+  players: Players,
+  forecast: Forecast,
+  provenance: z.object({ data_files: z.number(), data_sha256: z.string(), code_commit_at_run: z.string().nullable(), analysis_code_committed: z.boolean().nullable() }),
   sources: z.array(Source),
 });
 

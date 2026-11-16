@@ -10,7 +10,8 @@
     "typecheck": "next typegen && tsc --noEmit",
     "test": "node --test --experimental-strip-types --no-warnings lib/*.test.ts scripts/*.test.mjs",
     "upload": "node scripts/upload-snapshot.mjs",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "paper:pdf": "node scripts/paper-pdf.mjs"
   },
   "dependencies": {
     "aws4fetch": "1.0.20",

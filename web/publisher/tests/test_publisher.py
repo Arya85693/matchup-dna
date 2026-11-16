@@ -629,12 +629,22 @@ class BigMatchExportTests(unittest.TestCase):
         committed = ROOT / "web" / "content" / "research" / "big-match.json"
         self.assertEqual(json.loads(committed.read_text(encoding="utf-8")), json.loads(json.dumps(doc, sort_keys=True)))
 
-    def test_no_player_leaves(self):
-        text = (ROOT / "web" / "content" / "research" / "big-match.json").read_text(encoding="utf-8")
-        for private in ("named", "player_id", "Sabalenka", "Medvedev", "Zverev", "Djokovic"):
-            self.assertNotIn(private, text)
-        doc = json.loads(text)
+    def test_only_the_illustrative_player_table_names_players(self):
+        """Since version 2.2 the paper shows one table of ten players per tour (sums over public results). No other
+        part of the export carries a name or an id, and that table carries only aggregate fields."""
+        doc = json.loads((ROOT / "web" / "content" / "research" / "big-match.json").read_text(encoding="utf-8"))
         self.assertEqual(doc["evidence"], "post-hoc")
+        players = doc.pop("players")
+        rest = json.dumps(doc)
+        for private in ("named", "player_id", "name", "Sabalenka", "Medvedev", "Zverev", "Djokovic"):
+            self.assertNotIn(private, rest)
+        for tour in players["tours"]:
+            listed = tour["top"] + tour["bottom"]
+            self.assertEqual(len(listed), 10)
+            for p in listed:
+                self.assertEqual(set(p), {"name", "early", "late"})
+                for period in ("early", "late"):
+                    self.assertEqual(set(p[period]), {"big", "won", "expected", "score", "clutch"})
 
     def test_losing_run_is_exact(self):
         from web.publisher.research import losing_run

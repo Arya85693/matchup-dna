@@ -103,9 +103,9 @@
 }
 
 /*
- * Research papers (web/app/research): journal layout in the site's own palette. The sheet is the card colour; section
- * headings and the first chart series are the pear accent, the second series the neutral grey, as in the site's other
- * two-series charts. Contrast on --p-bg (card): text 12.9, muted 7.1, dim 5.2, accent 9.0 : 1.
+ * Research papers (web/app/research): a plain single-column working paper in one serif face, on the site's card
+ * colour. Chart series: the pear accent and the neutral grey on screen; dark blue and orange in print (a pair that
+ * passes the colour-vision checks and survives greyscale). Contrast on --p-bg (card): text 12.9, muted 7.1, dim 5.2 : 1.
  */
 .paper {
   --p-bg: var(--color-card);
@@ -115,15 +115,50 @@
   --p-rule: var(--color-border);
   --p-rule-strong: var(--color-border-strong);
   --p-soft: var(--color-card-hover);
-  --p-head: var(--color-accent);
-  --p-th: var(--color-border-strong);
+  --p-head: var(--color-text);
+  --p-th: var(--color-card-hover);
   --p-s1: var(--color-accent);
   --p-s2: var(--color-neutral);
   background: var(--p-bg);
   color: var(--p-text);
 }
-.paper .serif { font-family: var(--font-serif), Georgia, "Times New Roman", serif; }
+.paper.serif, .paper .serif { font-family: var(--font-serif), Georgia, "Times New Roman", serif; }
 .paper .cols p + p { text-indent: 1.4em; }
 .paper .cols p { text-align: justify; hyphens: auto; }
-.paper a.ref { color: var(--p-head); text-decoration: underline; text-decoration-color: rgba(209, 226, 49, 0.35); text-underline-offset: 2px; }
-.paper a.ref:hover { text-decoration-color: var(--p-head); }
+.paper .cols ul { margin: 0.4em 0 0.4em 1.6em; list-style: disc; }
+.paper a.ref { color: inherit; text-decoration: underline; text-decoration-color: var(--p-rule-strong); text-underline-offset: 2px; }
+.paper a.ref:hover { text-decoration-color: var(--p-text); }
+
+/* The paper as a printed A4 working paper (web/scripts/paper-pdf.mjs prints the article on its own). */
+@media print {
+  @page { size: A4; margin: 24mm 22mm 22mm 22mm; }
+  html, body { background: #fff !important; }
+  .print-hide { display: none !important; }
+  .paper {
+    --p-bg: #ffffff; --p-text: #111111; --p-muted: #333333; --p-dim: #555555; --p-rule: #c8c8c8;
+    --p-rule-strong: #777777; --p-soft: #f4f4f4; --p-head: #111111; --p-th: #f0f0f0; --p-s1: #1f4e9a; --p-s2: #d0661c;
+    max-width: none !important; margin: 0 !important; padding: 0 !important; border: 0 !important; border-radius: 0 !important;
+  }
+  .paper, .paper * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .paper code, .paper .font-mono { font-family: ui-monospace, Consolas, monospace !important; }
+  .paper .cols { font-size: 15.5px !important; line-height: 1.55 !important; }
+  .paper .title-block { margin-top: 70px; }
+  .paper .abstract { margin-top: 44px; }
+  /* Chrome splits CSS grids across pages badly (overlapping text), so page-level containers become blocks. */
+  .paper .paper-body, .paper section, .paper section > div.grid, .paper figure.grid, .paper .statements, .paper ol.grid {
+    display: block !important;
+  }
+  .paper .paper-body > * + * { margin-top: 30px !important; }
+  .paper section > * + * { margin-top: 13px !important; }
+  .paper section > div.grid > * + * { margin-top: 11px !important; }
+  .paper figure.grid > * + * { margin-top: 7px !important; }
+  .paper .statements > * + * { margin-top: 16px !important; }
+  .paper ol.grid > li + li { margin-top: 6px; }
+  .paper [role="region"] { overflow: visible !important; }
+  .paper table { font-size: 12.5px !important; min-width: 0 !important; }
+  .paper td, .paper th { padding: 3px 7px !important; }
+  .paper figure, .paper .eq, .paper tr { break-inside: avoid; }
+  .paper h2, .paper h3, .paper figcaption { break-after: avoid; }
+  .paper p { orphans: 3; widows: 3; }
+  .paper .page-break { break-before: page; }
+}

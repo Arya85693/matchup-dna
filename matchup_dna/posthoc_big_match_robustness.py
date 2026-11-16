@@ -32,6 +32,23 @@ H. Calibration slopes: is the big-match slope different from the regular-match s
 I. ATP clutch spread within one format (best of 3 only, best of 5 only), added after sections A-H showed a nominal ATP
    clutch excess: ATP big matches are mostly best of 5 and regular ones mostly best of 3, so a player who is simply
    better over five sets would look clutch. Own random stream, so sections A-H are unchanged.
+
+Version 3 changes (16 November 2026, after an audit):
+- The match definitions and window are version 1's corrected definitions (see matchup_dna.posthoc_big_match).
+- Multiple testing. Version 2 applied Holm's correction only to the eight spread ratios, so the clutch spread and the
+  persistence tests were never corrected. The family is now the nine statistics per tour that test for a player trait
+  (three big-match spread ratios, the clutch spread, the split-half r, two carry-over r and two forecast z; the
+  regular-match spread is a reference for Elo's general misfit, not a trait test). Holm is applied across all 18 (both
+  tours) as the primary correction, and within each tour as a secondary one. This family was defined after the
+  version 1 and 2 results were known. Game margins, within-tournament ratings, format and sensitivity are robustness
+  checks of the same hypotheses and are not corrected.
+- Upper bounds: tau 0.35 is added to the grid, and each bound carries a Monte Carlo interval from resampling the
+  simulations (BOUND_RESAMPLES), so the effect of 400 simulations per tau on the bound is visible.
+- Game margins: residuals are permuted within strata of (group, decile of |Elo log-odds|), and the noise variance is
+  each stratum's mean squared residual, because a close match has a more variable game share than a lopsided one.
+- The persistence "forecast" test fits beta on the same later-period matches it scores, so it is a retrospective
+  association test (its permutation p accounts for the in-sample fit). The out-of-sample evaluation is in
+  matchup_dna.posthoc_big_match_forecast.
 """
 import json
 import math
@@ -50,16 +67,21 @@ OUTPUT = RESULTS_DIR / "phase4" / "experiments" / "posthoc_big_match_robustness.
 SUMMARY = RESULTS_DIR / "phase4" / "experiments" / "posthoc_big_match_robustness.json"
 
 TOURS = ("ATP", "WTA")
-TAUS = (0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4)
+TAUS = (0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4)
 NULL_SIMS = 2000
 POWER_SIMS = 400
 GAME_PERMUTATIONS = 1000
 PERMUTATIONS = 1000
 BOOTSTRAPS = 2000
 SEED = 20261115
-ALT_PERIODS = ((20080101, 20151231), (20160101, 20260531))
+BOUND_RESAMPLES = 1000
+GAME_STRATA = 10
+ALT_PERIODS = ((20080101, 20151231), (20160101, v1.LAST_DAY))
 MAIN_PERIODS = (v1.PERIOD_1, v1.PERIOD_2)
 SETS = (("finals only", "F"), ("semi-finals + finals", "SF+F"), ("all big matches", "big"), ("regular matches", "regular"))
+# The trait tests (the multiple-testing family); "ratio regular matches" is a reference statistic.
+TRAIT_TESTS = ("ratio finals only", "ratio semi-finals + finals", "ratio all big matches", "clutch ratio", "split-half r",
+               "period r big", "period r clutch", "forecast z big", "forecast z clutch")
 
 sigmoid, logit, fit_one = v1.sigmoid, v1.logit, v1.fit_one
 
@@ -285,18 +307,27 @@ def window_tests(d, y, z, tour_mask, big_definition="big", min_n=v1.MIN_BIG):
 
 # ---------------------------------------------------------------- game margins
 
-def share_expectation(d, tour_mask, big):
+def share_expectation(d, tour_mask, big, bins=GAME_STRATA):
     """Expected share of games for side A: fractional logit on the Elo log-odds, one slope per group.
-    Returns (residual, variance) arrays where variance is the group's mean squared residual."""
+    Returns (residual, variance, stratum). Strata are (group, decile of |Elo log-odds|), and a match's residual
+    variance is its stratum's mean squared residual: close matches have more variable game shares."""
     has = ~np.isnan(d["share"])
     group = groups(d, big)
     residual, variance = np.full(len(group), np.nan), np.full(len(group), np.nan)
+    stratum = np.full(len(group), -1)
     for g in np.unique(group[tour_mask & has]):
         chosen = tour_mask & has & (group == g)
         slope, _ = fit_one(d["z"][chosen], d["share"][chosen])
         residual[chosen] = d["share"][chosen] - sigmoid(slope * d["z"][chosen])
-        variance[chosen] = np.mean(residual[chosen] ** 2)
-    return residual, variance
+        index = np.flatnonzero(chosen)
+        closeness = np.abs(d["z"][index])
+        edges = np.quantile(closeness, np.linspace(0, 1, bins + 1)[1:-1])
+        cell = np.searchsorted(edges, closeness, side="right")
+        stratum[index] = int(g) * bins + cell
+        for c in np.unique(cell):
+            members = index[cell == c]
+            variance[members] = np.mean(residual[members] ** 2)
+    return residual, variance, stratum
 
 
 def game_sets(d, has):
@@ -311,11 +342,10 @@ def game_ratios(d, residual, variance, has, min_n=v1.MIN_BIG):
     return found
 
 
-def permuted_games(d, residual, variance, has, rng, reps=GAME_PERMUTATIONS):
+def permuted_games(d, residual, variance, has, stratum, rng, reps=GAME_PERMUTATIONS):
     """Null distributions of every game-margin spread ratio (and the clutch ratio) when residuals are shuffled among
-    matches within each (tour, big or regular, best of) group."""
-    group = groups(d, d["big"])
-    members = [np.flatnonzero(has & (group == g)) for g in np.unique(group[has])]
+    matches within each stratum (tour, big or regular, best of, decile of |Elo log-odds|)."""
+    members = [np.flatnonzero(has & (stratum == c)) for c in np.unique(stratum[has])]
     draws = []
     for _ in range(reps):
         shuffled = residual.copy()
@@ -400,9 +430,9 @@ def format_clutch(d, mask, rng, sims=NULL_SIMS):
     wins["p"] = tail_p(np.array(null), wins["ratio"])
 
     has = mask & ~np.isnan(d["share"])
-    residual, variance = share_expectation(d, mask, big)
+    residual, variance, stratum = share_expectation(d, mask, big)
     games_found = game_ratios(d, residual, variance, has)["clutch"]
-    games_found["p"] = tail_p(permuted_games(d, residual, variance, has, rng)["clutch"], games_found["ratio"])
+    games_found["p"] = tail_p(permuted_games(d, residual, variance, has, stratum, rng)["clutch"], games_found["ratio"])
     return {"big_matches": int((mask & big).sum()), "regular_matches": int((mask & ~big).sum()), "wins": wins,
             "games": games_found}
 
@@ -490,35 +520,60 @@ def main():
         summary["null"][tour] = {"observed": observed, "p": pvalues,
                                  "critical": {k: float(np.nanpercentile(null[k], 95)) for k in keys},
                                  "clutch": w["clutch"]}
-        out(f"   {tour} exact null tests (one-sided, share of no-trait simulations at least as large):")
+        out(f"   {tour} simulation (parametric bootstrap) null tests (one-sided, share of no-trait simulations at least as large):")
         for k in keys:
             out(f"      {k:<34} observed {observed[k]:+.3f}  null 95th pct {summary['null'][tour]['critical'][k]:+.3f}"
                 f"  p {pvalues[k]:.3f}")
 
         power = {k: [] for k in keys}
         below = {k: [float(np.mean(null[k][~np.isnan(null[k])] <= observed[k]))] for k in keys}
+        kept = {k: [null[k][~np.isnan(null[k])]] for k in keys}
         for tau in TAUS:
             sims = [simulate(d, mask, p_base, tau, rng) for _ in range(POWER_SIMS)]
             for k in keys:
                 values = np.array([s[k] for s in sims])
                 power[k].append(float(np.mean(values > summary["null"][tour]["critical"][k])))
                 below[k].append(float(np.mean(values <= observed[k])))
+                kept[k].append(values[~np.isnan(values)])
         grid = (0.0,) + TAUS
         bounds = {k: upper_bound(grid, below[k]) for k in keys}
-        summary["power"][tour] = {"taus": list(TAUS), "power": power, "below": below, "upper_bound": bounds}
+        # Monte Carlo uncertainty of each bound: resample the simulations at every grid point and recompute.
+        bound_mc = {}
+        for k in keys:
+            draws = []
+            for _ in range(BOUND_RESAMPLES):
+                resampled = [float(np.mean(v[rng.integers(0, len(v), len(v))] <= observed[k])) for v in kept[k]]
+                draws.append(upper_bound(grid, resampled))
+            found = np.array([x for x in draws if x is not None])
+            bound_mc[k] = {"low": float(np.percentile(found, 2.5)) if len(found) else None,
+                           "high": float(np.percentile(found, 97.5)) if len(found) else None,
+                           "none_share": 1 - len(found) / BOUND_RESAMPLES}
+        summary["power"][tour] = {"taus": list(TAUS), "power": power, "below": below, "upper_bound": bounds,
+                                  "bound_mc": bound_mc}
         out(f"   {tour} power at each tau (tau {', '.join(f'{t:.2f}' for t in TAUS)}; "
             f"evens edge {', '.join(f'{evens(t):.1f}' for t in TAUS)} points):")
         for k in keys:
             bound = bounds[k]
-            text = "none in grid" if bound is None else f"{bound:.3f} ({evens(bound):.1f} points)"
+            mc = bound_mc[k]
+            low = "-" if mc["low"] is None else f"{evens(mc['low']):.1f}"
+            high = "-" if mc["high"] is None else f"{evens(mc['high']):.1f}"
+            text = "none in grid" if bound is None else (
+                f"{bound:.3f} ({evens(bound):.1f} points; Monte Carlo 95% {low} to {high} points)")
             out(f"      {k:<20} power {' '.join(f'{v:.2f}' for v in power[k])}   95% upper bound on tau {text}")
     out()
 
-    # B. Holm across the spread sets
-    flat = [(tour, label) for tour in TOURS for label, _ in SETS]
-    adjusted = holm([summary["null"][t]["p"][f"ratio {label}"] for t, label in flat])
-    summary["holm"] = {f"{t} {label}": a for (t, label), a in zip(flat, adjusted)}
-    out("   Holm-adjusted spread p-values: " + "; ".join(f"{t} {label} {a:.3f}" for (t, label), a in zip(flat, adjusted)))
+    # B. Holm: the trait family (nine statistics per tour), across both tours (primary) and within each tour.
+    flat = [(tour, test) for tour in TOURS for test in TRAIT_TESTS]
+    adjusted = holm([summary["null"][t]["p"][test] for t, test in flat])
+    summary["holm"] = {"family": list(TRAIT_TESTS),
+                       "both_tours": {f"{t}|{test}": a for (t, test), a in zip(flat, adjusted)}, "by_tour": {}}
+    for tour in TOURS:
+        within_tour = holm([summary["null"][tour]["p"][test] for test in TRAIT_TESTS])
+        summary["holm"]["by_tour"].update({f"{tour}|{test}": a for test, a in zip(TRAIT_TESTS, within_tour)})
+    out(f"   Holm, family of {len(flat)} trait statistics (both tours); within-tour Holm in brackets:")
+    for (t, test), a in zip(flat, adjusted):
+        out(f"      {t} {test:<28} raw {summary['null'][t]['p'][test]:.3f}  adjusted {a:.3f} "
+            f"({summary['holm']['by_tour'][t + '|' + test]:.3f})")
     out()
 
     # E. game margins
@@ -526,10 +581,10 @@ def main():
     for tour in TOURS:
         mask = d["tour"] == tour
         has = mask & ~np.isnan(d["share"])
-        residual, variance = share_expectation(d, mask, d["big"])
+        residual, variance, stratum = share_expectation(d, mask, d["big"])
         found = {"matches": int(has.sum()), "missing": int(mask.sum() - has.sum()),
                  "per_match_sd": float(np.sqrt(np.nanmean(residual[has] ** 2)))}
-        ratios, null = game_ratios(d, residual, variance, has), permuted_games(d, residual, variance, has, rng)
+        ratios, null = game_ratios(d, residual, variance, has), permuted_games(d, residual, variance, has, stratum, rng)
         for key in ratios:
             ratios[key]["p"] = tail_p(null[key], ratios[key]["ratio"])
         found["clutch"] = ratios.pop("clutch")
@@ -540,7 +595,7 @@ def main():
         found["split_half"]["spearman_brown"] = 2 * r / (1 + r)
 
         def from_games(period_mask, big):
-            res, var = share_expectation(d, period_mask, big)
+            res, var, _ = share_expectation(d, period_mask, big)
             return np.nan_to_num(res), np.nan_to_num(var)
 
         found["period"] = period_tests(d, y, z, mask, MAIN_PERIODS, d["big"], rng=rng, permutations=PERMUTATIONS,
@@ -623,7 +678,7 @@ def main():
         summary["format"][f"ATP bo{bo}"] = found
         w, g = found["wins"], found["games"]
         out(f"   best of {bo}: {found['big_matches']:,} big and {found['regular_matches']:,} regular matches")
-        out(f"      wins:  clutch ratio {w['ratio']:.2f} ({w['players']} players), exact p {w['p']:.3f}")
+        out(f"      wins:  clutch ratio {w['ratio']:.2f} ({w['players']} players), simulation p {w['p']:.3f}")
         out(f"      games: clutch ratio {g['ratio']:.2f} ({g['players']} players), permutation p {g['p']:.3f}")
     out()
 
