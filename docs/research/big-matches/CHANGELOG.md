@@ -1,3 +1,57 @@
+# Change log — working paper 1, version 3.1 → 4.0 (16 November 2026)
+
+These are the corrections that `ATTRIBUTION.md` left for a separate step, plus two wording errors found in an external
+review.
+
+- **Split-half intervals made deterministic (audit C4).** `matchup_dna/posthoc_big_match.py` now iterates over
+  `sorted(...)` players. Before, the order of the bootstrap draws depended on `PYTHONHASHSEED`.
+  - Rerun under hash seeds 1 and 7, the main analysis gave byte-identical output.
+  - Against v3.1, only the split-half interval bounds changed: ATP −0.02 to +0.27 → **−0.03 to +0.26**; WTA −0.143 to
+    +0.228 → −0.138 to +0.226, still −0.14 to +0.23 when rounded. r and Spearman–Brown differ only in the 16th
+    decimal place.
+  - The robustness, player and forecast scripts were not rerun. They do not use this function, and the audit found
+    their outputs byte-identical on rerun.
+  - The publisher re-exported `big-match.json` and confirmed every headline figure. The 32 analysis tests pass.
+- **§7 reproducibility statement.** It no longer refers to uncommitted code on `4882aa0`. It now says the code is in
+  the same commit as the paper, with fixed seeds and no dependence on set ordering.
+- **§4.7 format sentence corrected.** It said "ATP big matches are mostly best of five", which was wrong: 22% of ATP
+  big matches are best of five, against 18% of regular matches. The sentence now gives these shares, and a build check
+  enforces them.
+- **WTA calibration over time.** "Has widened since 2018" (abstract) and "the widening since 2018" (§5.2) became
+  "largest in 2018–2026", because the paper reports three period estimates, not a trend test.
+- **Acknowledgements section added** before the References, in the author's wording.
+- **Version** 4.0, with a version-history line in §7. PDF regenerated: 20 pages.
+
+# Change log — working paper 1, version 3.0 → 3.1 (16 November 2026)
+
+An attribution revision based on `ORIGINALITY_AUDIT.md`; see `ATTRIBUTION.md` for the reasoning and the sources checked.
+No analysis was rerun and no reported number changed. A comparison of every number in the v3.0 and v3.1 PDFs found
+only three new values: Sackmann's 1,043 categories and two DOIs.
+
+- **§2 Related Research.**
+  - Klaassen & Magnus (2001) and Cohen-Zada et al. (2017) are summarised in new wording, because the old sentences
+    followed the abstracts too closely.
+  - New paragraph on player-level pressure measures: Kovalchik & Ingram (2016) and Kovalchik & Reid (2020).
+  - Jetter & Walker (2015) now include their group-level Grand Slam ("clutch-player") finding.
+  - Gorgi et al. (2019) added (no Grand Slam widening of the ATP strength gap).
+  - New paragraph on the closest precedents: Sackmann (2019a) on round-by-round results against Elo, and Sackmann
+    (2025) on split-half persistence in best-of-five matches.
+  - The baseball paragraph adds James (2004), Birnbaum (2005) and Tango et al. (2007), and now says the framework
+    "builds on established approaches" instead of "the closest methodological precedent".
+  - Efron & Morris: "error" is now "mean squared error".
+  - New closing paragraph stating the paper's applied contribution.
+- **§3.3 Expected results.** Describes the blend: overall and surface ratings weighted equally, the weight being the
+  best of 0.25/0.5/0.75/1 by 1990–2009 log loss in the project's model development. A similar blend was described by
+  Sackmann (2019b).
+- **§3.4** cites Efron & Morris (1975) for empirical Bayes. **§3.5** relates the variance ratio to Tango et al.
+  (2007). **§3.7** notes that Birnbaum (2005) used similar power simulations.
+- **References.**
+  - Nine added.
+  - URLs or DOIs added for Cramer, Holm and Papke & Wooldridge.
+  - Brown, L. D. now comes before Brown, W.
+  - The Sackmann data entry uses the licensor's attribution title and links the licence.
+- **Version** 3.1 (`web/lib/papers.ts`), with a version-history line in §7. PDF regenerated.
+
 # Change log — working paper 1, version 2.2 → 3.0 (16 November 2026)
 
 See `AUDIT.md` for the reasons behind each change.

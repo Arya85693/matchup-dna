@@ -1,6 +1,6 @@
 # Do Players Choke in Big Matches? — research materials
 
-Working paper 1 of Matchup DNA, version 3.0 (16 November 2026). Author: Aryamaan Roy Choudhury. Post-hoc, not peer
+Working paper 1 of Matchup DNA, version 4.0 (16 November 2026). Author: Aryamaan Roy Choudhury. Post-hoc, not peer
 reviewed. The paper is on the website's Research tab (`/research/big-matches`, source
 `web/app/research/big-matches/page.tsx`) and as a PDF (`web/public/research/big-matches.pdf`).
 
@@ -10,7 +10,9 @@ This folder:
 |---|---|
 | `README.md` | This file: question, method, findings, limitations, and how to reproduce everything. |
 | `AUDIT.md` | The version 3 audit: what was checked, what was wrong, what was fixed. |
-| `CHANGELOG.md` | What changed from version 2.2 to 3.0, statistically, editorially and numerically. |
+| `CHANGELOG.md` | What changed from version 2.2 to 3.0 (statistical, editorial, numerical) and from 3.0 to 3.1 (attribution) and 3.1 to 4.0 (corrections). |
+| `ORIGINALITY_AUDIT.md` | The originality, citation and attribution audit of version 3.0. |
+| `ATTRIBUTION.md` | How version 3.1 acts on that audit: citations added, established methods, contributions, open items. |
 | `SUMMARY.md` | A short summary for the website and a portfolio, and a resume bullet. |
 | `AUTHOR_CHECKLIST.md` | What the author should understand and check personally before publishing. |
 

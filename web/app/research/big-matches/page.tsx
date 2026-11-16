@@ -121,7 +121,10 @@ ensure(wtaM0.log_loss_low! > 0, "separate WTA big-match calibration improves out
 ensure(includesZero(atpM0.log_loss_low!, atpM0.log_loss_high!), "the ATP calibration split makes no clear difference");
 ensure(wtaCal.cluster_p! < 0.05 && wtaCal.wald_p < 0.05, "the WTA slope difference holds under clustering");
 ensure(calP(lastPeriod, "WTA bo3").difference < calP("2009-2017", "WTA bo3").difference
-  && calP("2009-2017", "WTA bo3").difference < calP("2000-2008", "WTA bo3").difference, "the WTA gap widens over the three periods");
+  && calP("2009-2017", "WTA bo3").difference < calP("2000-2008", "WTA bo3").difference, "the WTA gap is largest in the latest of the three periods");
+const bo5Share = (key: "big_matches" | "regular_matches") => byFormat(5)[key] / (byFormat(3)[key] + byFormat(5)[key]);
+ensure(bo5Share("big_matches") > bo5Share("regular_matches") && bo5Share("big_matches") < 0.5,
+  "best of five is a larger share of ATP big than regular matches, but a minority of both");
 ensure(calW("ATP bo3").cluster_p! > 0.05 && calW("ATP bo5").cluster_p! > 0.05, "ATP big and regular slopes do not differ");
 ensure(ps("WTA").correlations["regular-match"].r > ps("WTA").correlations.clutch.r, "WTA regular-match form persists more than clutch");
 ensure(ps("WTA").forecasts.clutch.permutation_p > 0.5, "the WTA clutch score shows no association");
@@ -219,7 +222,7 @@ export default function BigMatchesPaper() {
         exclude a modest trait: under the simulation model, a trait whose standard deviation is worth up to about
         {" "}{pts(atpBound)} (ATP) or {pts(wtaBound)} (WTA) percentage points at even odds remains consistent with the
         results. One tour-level pattern does hold up: Elo is more overconfident in WTA big matches than in regular WTA
-        matches (calibration slope {two(wtaCal.big)} against {two(wtaCal.regular)}), the gap has widened since 2018, and
+        matches (calibration slope {two(wtaCal.big)} against {two(wtaCal.regular)}), the gap is largest in 2018–2026, and
         calibrating WTA big matches separately improved out-of-sample forecasts slightly. The evidence does not support
         adding a player-specific big-match adjustment to Matchup DNA&apos;s forecasting model.
       </Abstract>
@@ -256,33 +259,64 @@ export default function BigMatchesPaper() {
         {/* ───────────────────────── 2 Related research ───────────────────────── */}
         <Section id="related" number="2" title="Related Research">
           <Cols>
-            <p>Most quantitative work on pressure in tennis uses point-level data. <Cite id="klaassen">Klaassen and Magnus
-              (2001)</Cite> found that points at Wimbledon are not exactly independent and identically distributed (servers
-              win slightly fewer important points, and winning the previous point helps), but that the departures are small
-              enough for an i.i.d. model to remain a good approximation. <Cite id="gonzalez">González-Díaz et al.
+            <p>Most quantitative work on pressure in tennis uses point-level data. For modelling purposes, treating points as
+              i.i.d. is usually adequate: <Cite id="klaassen">Klaassen and Magnus (2001)</Cite> detected departures in
+              Wimbledon data, with servers slightly less successful on important points and some carry-over from one point to
+              the next, but the departures were small. <Cite id="gonzalez">González-Díaz et al.
               (2012)</Cite> found persistent differences between players in how they perform on important points at the US
               Open, and that these differences are associated with career success. <Cite id="cohenzada">Cohen-Zada et al.
-              (2017)</Cite> report that men&apos;s performance falls at the more important stages of matches, while the
-              evidence for women is mixed and the declines they do find are smaller. <Cite id="paserman">Paserman
+              (2017)</Cite> compare men and women directly: the decline under rising stakes within a match is consistent only
+              for men, women&apos;s results are inconsistent, and where women&apos;s performance does fall, the fall is about
+              half as large. <Cite id="paserman">Paserman
               (2023)</Cite> finds that both men and women play less aggressively on important points, and <Cite id="harris">Harris
               et al. (2021)</Cite> find that double faults and unforced errors become more likely as situational pressure
               rises.</p>
+            <p>Two studies measure pressure performance for individual players. <Cite id="kovalchikingram">Kovalchik and
+              Ingram (2016)</Cite> modelled player-specific responses to the score and to pressure situations in about three
+              million ATP and WTA points from 2011–2015; allowing for these responses improved predictions of the 2015
+              men&apos;s Grand Slam matches, while for women the player-specific model did no better than one with average
+              effects. <Cite id="kovalchikreid">Kovalchik and Reid (2020)</Cite> weighted players&apos; serve and return
+              statistics by the importance of each point; in 2011 Grand Slam matches these &quot;clutch averages&quot;
+              generally separated winners from losers, and predicted the winner from first-set statistics, better than
+              unweighted averages.</p>
             <p>These studies ask whether pressure changes how points are played. This paper asks a coarser question that
               matters for match forecasts: whether such differences add up to persistent differences in big-match results.
               Results also depend on form. <Cite id="jetter">Jetter and Walker (2015)</Cite> find that recent wins predict
-              the next match, and players reach big matches partly by being in form, so a test of pressure has to separate
-              the two.</p>
-            <p>The closest methodological precedent is the search for clutch hitters in baseball. <Cite id="cramer">Cramer
-              (1977)</Cite> found that players&apos; clutch hitting in 1969 did not predict their clutch hitting in
-              1970. <Cite id="efron">Efron and Morris (1975)</Cite> showed that shrinking early-season batting averages toward
-              the group mean predicted the rest of the season with less than half the error of the raw averages, and <Cite id="brown2008">Brown
-              (2008)</Cite> compared empirical Bayes methods for predicting batting averages within a season. I use the same
-              two ideas, persistence tests and shrinkage, on big-match results.</p>
+              the next match, and that top-ranked players do better at Grand Slams than elsewhere, a clutch effect for the
+              group of top players rather than for individuals. Players reach big matches partly by being in form, so a test
+              of pressure has to separate the two. <Cite id="gorgi">Gorgi et al. (2019)</Cite> allowed the
+              strength gap between ATP players to widen at Grand Slams and found no evidence that it does once the
+              best-of-five format is modelled, a tour-level question that Section 4.1 asks of Elo&apos;s calibration on both
+              tours.</p>
+            <p>The question has also been examined with match results and Elo expectations outside the academic
+              literature. <Cite id="sackmann2019a">Sackmann (2019a)</Cite> compared ATP players&apos; results in each round,
+              from first matches to finals, with Elo&apos;s predictions and found significant departures in 29 of about
+              1,043 player-and-round categories, no more than chance would produce. <Cite id="sackmann2025">Sackmann
+              (2025)</Cite> compared men&apos;s best-of-five Grand Slam results with Elo expectations and found virtually no
+              correlation between the first and second halves of players&apos; records. These are the closest precedents for
+              this paper&apos;s question and approach.</p>
+            <p>The statistical framework builds on established approaches from research on clutch hitting in
+              baseball. <Cite id="cramer">Cramer (1977)</Cite> found that players&apos; clutch hitting in 1969 did not
+              predict their clutch hitting in 1970. <Cite id="james">James (2004)</Cite> argued that a persistence test that
+              finds nothing says little unless it could have detected a real effect, and <Cite id="birnbaum">Birnbaum
+              (2005)</Cite> estimated the power of Cramer&apos;s test by simulating hitters with clutch talent of known
+              size. Comparing the observed spread of players&apos; records with the spread chance would produce, and treating
+              any excess as true differences, is a standard approach in that literature (<Cite id="tango">Tango et al., 2007</Cite>). <Cite id="efron">Efron and Morris (1975)</Cite> showed that shrinking early-season
+              batting averages toward the group mean predicted the rest of the season with less than half the mean squared
+              error of the raw averages, and <Cite id="brown2008">Brown
+              (2008)</Cite> compared empirical Bayes methods for predicting batting averages within a season. The variance
+              ratios, consistency tests, power analysis and shrinkage used here are related to these approaches.</p>
             <p>The expectation for each match comes from Elo ratings (<Cite id="elo">Elo, 1978</Cite>), which <Cite id="kovalchik">Kovalchik
               (2016)</Cite> found to be among the more accurate published methods for predicting ATP results. Laboratory
               studies of choking, in which pressure such as competition, money or an audience worsened skilled performance
               (<Cite id="baumeister">Baumeister, 1984</Cite>), motivate the question but measure something different:
               short tasks, not results over a professional career.</p>
+            <p>Relative to this work, the paper&apos;s contribution is applied. It brings calibrated Elo residuals, variance
+              and persistence tests, simulation-based null distributions with multiple-testing correction, and simulated
+              power and bounds together in one analysis of {count(r.matches)} ATP and WTA matches; it evaluates past
+              big-match and clutch scores chronologically out of sample on {count(bothEval.matches)} big matches; it compares
+              Elo&apos;s calibration in big and regular matches on both tours; and it uses the results to decide whether
+              Matchup DNA&apos;s forecasting model should include a big-match adjustment.</p>
           </Cols>
         </Section>
 
@@ -333,8 +367,11 @@ export default function BigMatchesPaper() {
 
           <Subsection number="3.3" title="Expected results">
             <Cols>
-              <p>Each player&apos;s strength is the project&apos;s surface-blended Elo rating, taken at the start of each
-                tournament week, so no match is predicted with ratings that include its own result or any other result from that
+              <p>Player strength is estimated using the project&apos;s surface-blended Elo rating, which combines a
+                player&apos;s overall rating and their rating on the match surface with equal weights. In the project&apos;s
+                model development, the equal weight gave the lowest log loss on 1990–2009 matches among weights of 0.25, 0.5,
+                0.75 and 1. A similar blending approach has previously been described by <Cite id="sackmann2019b">Sackmann
+                (2019b)</Cite>. Ratings are taken at the start of each tournament week, so no match is predicted with ratings that include its own result or any other result from that
                 week. Raw Elo probabilities are too confident in best-of-three matches and roughly right in best-of-five, and most
                 best-of-five matches are Grand Slam matches, many of them big. I therefore rescale Elo&apos;s log-odds with one
                 slope <i>b</i><sub>g</sub> per group <i>g</i> = (tour, big or regular, best of three or five), fitted by maximum
@@ -351,7 +388,7 @@ export default function BigMatchesPaper() {
               <p>A player&apos;s big-match score divides the sum of their big-match residuals by the number of big matches plus
                 {" "}{r.shrink} (equation 3). This is fixed shrinkage toward zero: a player with {r.shrink} big matches is weighted
                 halfway between their own record and zero. The constant was set before the version 1 run as a round number; it
-                was not estimated from the data, so the score resembles an empirical Bayes estimate without being one. Section
+                was not estimated from the data, so the score resembles an empirical Bayes estimate (<Cite id="efron">Efron and Morris, 1975</Cite>) without being one. Section
                 4.6 reports constants of 10, 50 and 100, and the out-of-sample evaluation adds an empirical Bayes score whose
                 shrinkage is estimated from earlier data. The clutch score subtracts the same score computed on regular matches
                 (equation 4), so a player Elo under-rates in every match, such as a fast-improving young player, is not counted as
@@ -366,7 +403,8 @@ export default function BigMatchesPaper() {
               <p><i>Variation beyond chance.</i> For players with at least {r.min_big} matches of a kind, I compare the variance
                 of their mean residuals with the average variance that binomial chance would produce given their match
                 probabilities. A variance ratio of 1 means players differ by exactly as much as chance predicts; any excess
-                estimates the variance of a persistent trait. I compute it for finals, for semi-finals and finals, for all big
+                estimates the variance of a persistent trait, as in the decomposition of observed into true and random variance
+                used in baseball research (<Cite id="tango">Tango et al., 2007</Cite>). I compute it for finals, for semi-finals and finals, for all big
                 matches, for regular matches as a reference for Elo&apos;s general misfit, and for the difference between each
                 player&apos;s big- and regular-match mean residuals (the clutch spread).</p>
               <p><i>Consistency.</i> The split-half test assigns every edition of a tournament to one of two halves (by a hash
@@ -415,7 +453,8 @@ export default function BigMatchesPaper() {
                 family was defined in version 3, after the earlier results were known; within-tour adjustments are in Appendix
                 Table A1. Version 2 corrected only the variance ratios. The robustness checks in Section 4.7 re-test the same
                 hypotheses and are not corrected separately.</p>
-              <p><i>Power and bounds.</i> I add a known trait to the simulations: each player receives θ ~ N(0, τ²) on the
+              <p><i>Power and bounds.</i> Similar simulations were used by <Cite id="birnbaum">Birnbaum (2005)</Cite> to
+                measure the power of persistence tests for clutch hitting. I add a known trait to the simulations: each player receives θ ~ N(0, τ²) on the
                 log-odds scale in big matches only, constant over the career (equation 6). For each τ from 0.05 to 0.4,
                 {" "}{count(rb.sims.power)} simulated data sets give each test&apos;s power and the probability of a statistic at or
                 below the observed one. The 95% upper bound on τ is the smallest τ at which that probability falls below 5%,
@@ -610,7 +649,9 @@ export default function BigMatchesPaper() {
                 {" "}{two(gameSet("ATP", "regular matches").ratio)} ATP and {two(gameSet("WTA", "regular matches").ratio)} WTA), which
                 points to playing style. The clutch spread on game margins is {two(game("ATP").clutch.ratio)} on the ATP tour (p =
                 {" "}{pv(game("ATP").clutch.p)}) and {two(game("WTA").clutch.ratio)} on the WTA tour (p = {pv(game("WTA").clutch.p)}).</p>
-              <p><i>Format.</i> ATP big matches are mostly best of five and regular ones mostly best of three. Comparing big and
+              <p><i>Format.</i> Best-of-five matches make up a larger share of ATP big matches than of regular ones
+                ({pct(bo5Share("big_matches"))} against {pct(bo5Share("regular_matches"))}), so a difference between big and
+                regular matches could partly reflect format. Comparing big and
                 regular ATP matches within one format (Appendix Table A8), the clutch spread is {two(byFormat(3).wins.ratio)} in
                 best-of-three matches (p = {pv(byFormat(3).wins.p)}; games {two(byFormat(3).games.ratio)}, p = {pv(byFormat(3).games.p)}) and
                 {" "}{two(byFormat(5).wins.ratio)} in best-of-five (p = {pv(byFormat(5).wins.p)}).</p>
@@ -651,7 +692,7 @@ export default function BigMatchesPaper() {
                 matches, would predict. This study cannot tell apart the possible explanations. Players who reach late rounds are
                 selected for being in form that week, which narrows the true gap between them relative to their start-of-week
                 ratings. The players in big matches are stronger on average, and Elo&apos;s rating gaps near the top of the WTA may
-                be less informative than elsewhere. The widening since 2018 coincides with changes in the WTA calendar and tier
+                be less informative than elsewhere. The larger gap in 2018–2026 coincides with changes in the WTA calendar and tier
                 structure, including the larger WTA 1000 tier, but nothing here shows that either caused it. Pressure on favourites
                 is one possibility among these, and the data do not single it out.</p>
             </Cols>
@@ -703,44 +744,68 @@ export default function BigMatchesPaper() {
               companion modules {code("posthoc_big_match_robustness")}, {code("posthoc_big_match_players")} and {code("posthoc_big_match_forecast")}; {code("python -m web.publisher.research")} exports
               the figures shown here and refuses if a quoted headline figure differs from the analysis output. The SHA-256 fingerprints of
               the {r.provenance.data_files} input files are recorded in the forecast output (combined fingerprint
-              {" "}{r.provenance.data_sha256.slice(0, 16)}…).{r.provenance.analysis_code_committed === false && <> The results in this
-              version were produced from analysis code that had not yet been committed, on top of commit
-              {" "}{(r.provenance.code_commit_at_run ?? "").slice(0, 7)}; rerunning the commands on the commit that contains this
-              paper should reproduce them, because every random seed is fixed.</>} Step-by-step instructions are in docs/research/big-matches/README.md in the
+              {" "}{r.provenance.data_sha256.slice(0, 16)}…). The analysis code is in the project repository in the same commit
+              as this version of the paper. Every random seed is fixed and no result depends on the order in which Python
+              iterates over sets, so rerunning the commands on that commit with the same input files should reproduce the
+              reported results. Step-by-step instructions are in docs/research/big-matches/README.md in the
               project repository.</> },
             { title: "Version history", text: <>
               1.0 (14 November 2026): the three trait tests. 2.0 (14 November 2026): simulation tests, power and bounds, the clutch
               spread, game margins, within-tournament ratings, sensitivity and a format check. 2.1–2.2 (15 November 2026): rewritten
-              text and the player tables. 3.0 ({paperDate(meta.date)}): an audit found that versions 1 and 2 included Roland Garros
+              text and the player tables. 3.0 (16 November 2026): an audit found that versions 1 and 2 included Roland Garros
               2026, whose later rounds were played in the reserved June period; counted team events, the Laver Cup and the Next Gen
               Finals as tour events; used inconsistent WTA tier codes; and applied Holm&apos;s correction only to the variance ratios.
               These are corrected, which changes the sample from 131,649 to {count(r.matches)} matches and moves most figures. Version 3
               also adds the out-of-sample evaluation and the clustered calibration test, describes the old forecast test as a
               retrospective association test, reports variance ratios as such, and corrects several descriptions of the cited
-              literature.</> },
+              literature. 3.1 (16 November 2026): related research expanded to include earlier match-level analyses,
+              player-level pressure measures and the baseball literature on persistence tests and power; the surface-blended
+              Elo described and related to earlier work; two summaries of cited studies reworded; reference details
+              completed. The analysis and results are unchanged. 4.0 ({paperDate(meta.date)}): the split-half bootstrap
+              no longer depends on Python&apos;s set ordering, which had made its intervals vary between runs; the ATP interval
+              changes from −0.02 to +0.27 to {signed(sh("ATP").low, 2)} to {signed(sh("ATP").high, 2)}, and the WTA interval is
+              unchanged at two decimals. The reproducibility statement is updated, the description of the ATP format mix is
+              corrected, the WTA calibration pattern over time is described without implying a tested trend, and an
+              acknowledgement is added.</> },
           ]} />
         </Section>
 
+        <section aria-labelledby="acknowledgements-h" className="statements grid gap-2">
+          <h2 id="acknowledgements-h" className="text-[23px] font-semibold sm:text-[25px]">Acknowledgements</h2>
+          <p className="text-[15.5px] leading-[1.6]">Claude Code (Anthropic) was used to assist with the implementation of
+            statistical analyses, generation of figures and tables, and drafting and editing of the manuscript. The author
+            takes responsibility for the content, reported results, and any remaining errors.</p>
+        </section>
+
         <References items={[
           { id: "baumeister", text: <>Baumeister, R. F. (1984). Choking under pressure: Self-consciousness and paradoxical effects of incentives on skillful performance. <i>Journal of Personality and Social Psychology</i>, 46(3), 610–620. https://doi.org/10.1037/0022-3514.46.3.610</> },
-          { id: "brown", text: <>Brown, W. (1910). Some experimental results in the correlation of mental abilities. <i>British Journal of Psychology</i>, 3(3), 296–322. https://doi.org/10.1111/j.2044-8295.1910.tb00207.x</> },
+          { id: "birnbaum", text: <>Birnbaum, P. (2005). Clutch hitting and the Cramer test. <i>By the Numbers</i>, 15(1). Reprinted in <i>Baseball Research Journal</i>, 37 (2008). https://sabr.org/journal/article/clutch-hitting-and-the-cramer-test/</> },
           { id: "brown2008", text: <>Brown, L. D. (2008). In-season prediction of batting averages: A field test of empirical Bayes and Bayes methodologies. <i>Annals of Applied Statistics</i>, 2(1), 113–152. https://doi.org/10.1214/07-AOAS138</> },
+          { id: "brown", text: <>Brown, W. (1910). Some experimental results in the correlation of mental abilities. <i>British Journal of Psychology</i>, 3(3), 296–322. https://doi.org/10.1111/j.2044-8295.1910.tb00207.x</> },
           { id: "cohenzada", text: <>Cohen-Zada, D., Krumer, A., Rosenboim, M., and Shapir, O. M. (2017). Choking under pressure and gender: Evidence from professional tennis. <i>Journal of Economic Psychology</i>, 61, 176–190. https://doi.org/10.1016/j.joep.2017.04.005</> },
-          { id: "cramer", text: <>Cramer, R. D. (1977). Do clutch hitters exist? <i>Baseball Research Journal</i>, 6. Society for American Baseball Research.</> },
+          { id: "cramer", text: <>Cramer, R. D. (1977). Do clutch hitters exist? <i>Baseball Research Journal</i>, 6. Society for American Baseball Research. https://sabr.org/journal/article/do-clutch-hitters-exist/</> },
           { id: "efron1979", text: <>Efron, B. (1979). Bootstrap methods: Another look at the jackknife. <i>Annals of Statistics</i>, 7(1), 1–26. https://doi.org/10.1214/aos/1176344552</> },
           { id: "efron", text: <>Efron, B., and Morris, C. (1975). Data analysis using Stein&apos;s estimator and its generalizations. <i>Journal of the American Statistical Association</i>, 70(350), 311–319. https://doi.org/10.1080/01621459.1975.10479864</> },
           { id: "elo", text: <>Elo, A. E. (1978). <i>The Rating of Chessplayers, Past and Present</i>. New York: Arco.</> },
           { id: "gonzalez", text: <>González-Díaz, J., Gossner, O., and Rogers, B. W. (2012). Performing best when it matters most: Evidence from professional tennis. <i>Journal of Economic Behavior &amp; Organization</i>, 84(3), 767–781. https://doi.org/10.1016/j.jebo.2012.09.021</> },
+          { id: "gorgi", text: <>Gorgi, P., Koopman, S. J., and Lit, R. (2019). The analysis and forecasting of tennis matches by using a high dimensional dynamic model. <i>Journal of the Royal Statistical Society Series A</i>, 182(4), 1393–1409. https://doi.org/10.1111/rssa.12464</> },
           { id: "harris", text: <>Harris, D. J., Vine, S. J., Eysenck, M. W., and Wilson, M. R. (2021). Psychological pressure and compounded errors during elite-level tennis. <i>Psychology of Sport and Exercise</i>, 56, 101987. https://doi.org/10.1016/j.psychsport.2021.101987</> },
-          { id: "holm", text: <>Holm, S. (1979). A simple sequentially rejective multiple test procedure. <i>Scandinavian Journal of Statistics</i>, 6(2), 65–70.</> },
+          { id: "holm", text: <>Holm, S. (1979). A simple sequentially rejective multiple test procedure. <i>Scandinavian Journal of Statistics</i>, 6(2), 65–70. https://www.jstor.org/stable/4615733</> },
+          { id: "james", text: <>James, B. (2004). Underestimating the fog. <i>Baseball Research Journal</i>, 33. Society for American Baseball Research. https://sabr.org/research/article/underestimating-the-fog/</> },
           { id: "jetter", text: <>Jetter, M., and Walker, J. K. (2015). Game, set, and match: Do women and men perform differently in competitive situations? <i>Journal of Economic Behavior &amp; Organization</i>, 119, 96–108. https://doi.org/10.1016/j.jebo.2015.07.017</> },
           { id: "klaassen", text: <>Klaassen, F. J. G. M., and Magnus, J. R. (2001). Are points in tennis independent and identically distributed? Evidence from a dynamic binary panel data model. <i>Journal of the American Statistical Association</i>, 96(454), 500–509. https://doi.org/10.1198/016214501753168217</> },
           { id: "kovalchik", text: <>Kovalchik, S. A. (2016). Searching for the GOAT of tennis win prediction. <i>Journal of Quantitative Analysis in Sports</i>, 12(3), 127–138. https://doi.org/10.1515/jqas-2015-0059</> },
+          { id: "kovalchikingram", text: <>Kovalchik, S., and Ingram, M. (2016). Hot heads, cool heads, and tacticians: Measuring the mental game in tennis. MIT Sloan Sports Analytics Conference, Research Papers Competition (paper 1464). https://martiningram.github.io/papers/hot-heads-cool-heads.pdf</> },
+          { id: "kovalchikreid", text: <>Kovalchik, S. A., and Reid, M. (2020). Measuring clutch performance in professional tennis. <i>Statistica Applicata – Italian Journal of Applied Statistics</i>, 30(2), 255–268. https://doi.org/10.26398/IJAS.0030-011</> },
           { id: "lakens", text: <>Lakens, D. (2017). Equivalence tests: A practical primer for t tests, correlations, and meta-analyses. <i>Social Psychological and Personality Science</i>, 8(4), 355–362. https://doi.org/10.1177/1948550617697177</> },
-          { id: "papke", text: <>Papke, L. E., and Wooldridge, J. M. (1996). Econometric methods for fractional response variables with an application to 401(k) plan participation rates. <i>Journal of Applied Econometrics</i>, 11(6), 619–632.</> },
+          { id: "papke", text: <>Papke, L. E., and Wooldridge, J. M. (1996). Econometric methods for fractional response variables with an application to 401(k) plan participation rates. <i>Journal of Applied Econometrics</i>, 11(6), 619–632. https://doi.org/10.1002/(SICI)1099-1255(199611)11:6&lt;619::AID-JAE418&gt;3.0.CO;2-1</> },
           { id: "paserman", text: <>Paserman, M. D. (2023). Gender differences in performance in competitive environments? Evidence from professional tennis players. <i>Journal of Economic Behavior &amp; Organization</i>, 212, 590–609. https://doi.org/10.1016/j.jebo.2023.05.042</> },
-          { id: "sackmann", text: <>Sackmann, J. (2026). tennis_atp and tennis_wta [data sets]. Tennis Abstract. Licensed CC BY-NC-SA 4.0. Read from a June 2026 snapshot (archive mirror github.com/Aneeshers/tennis-sackmann-archive); the original repositories at github.com/JeffSackmann were unavailable on 16 November 2026.</> },
+          { id: "sackmann2019a", text: <>Sackmann, J. (2019a, February 20). Dominic Thiem, Tennys Sandgren, and playing your way in. <i>Tennis Abstract</i>. https://www.tennisabstract.com/blog/2019/02/20/dominic-thiem-tennys-sandgren-and-playing-your-way-in/</> },
+          { id: "sackmann2019b", text: <>Sackmann, J. (2019b, December 3). An introduction to tennis Elo. <i>Tennis Abstract</i>. https://www.tennisabstract.com/blog/2019/12/03/an-introduction-to-tennis-elo/</> },
+          { id: "sackmann2025", text: <>Sackmann, J. (2025, January 17). Matteo Berrettini and best-of-five puzzles. <i>Tennis Abstract</i>. https://www.tennisabstract.com/blog/2025/01/17/matteo-berrettini-and-best-of-five-puzzles/</> },
+          { id: "sackmann", text: <>Sackmann, J. (2026). Tennis databases, files, and algorithms: tennis_atp and tennis_wta [data sets]. Jeff Sackmann / Tennis Abstract. Licensed CC BY-NC-SA 4.0 (https://creativecommons.org/licenses/by-nc-sa/4.0/). Read from a June 2026 snapshot (archive mirror github.com/Aneeshers/tennis-sackmann-archive); the original repositories at github.com/JeffSackmann were unavailable on 16 November 2026.</> },
           { id: "spearman", text: <>Spearman, C. (1910). Correlation calculated from faulty data. <i>British Journal of Psychology</i>, 3(3), 271–295. https://doi.org/10.1111/j.2044-8295.1910.tb00206.x</> },
+          { id: "tango", text: <>Tango, T. M., Lichtman, M. G., and Dolphin, A. E. (2007). <i>The Book: Playing the Percentages in Baseball</i>. Washington, DC: Potomac Books.</> },
         ]} />
 
         {/* ───────────────────────── Appendix A ───────────────────────── */}
