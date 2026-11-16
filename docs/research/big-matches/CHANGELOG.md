@@ -20,7 +20,16 @@ review.
 - **WTA calibration over time.** "Has widened since 2018" (abstract) and "the widening since 2018" (§5.2) became
   "largest in 2018–2026", because the paper reports three period estimates, not a trend test.
 - **Acknowledgements section added** before the References, in the author's wording.
-- **Version** 4.0, with a version-history line in §7. PDF regenerated: 20 pages.
+- **Editorial fixes, all in v4.0, from an external review:**
+  - The introduction says "Version 3.0 corrected…" instead of "This version (3.0) also corrects…".
+  - Running-text p-values now read "p < 0.001", not "p = < 0.001". A `pEq` helper applies this to all 14 places.
+  - §4.4 says "no player score produced a statistically reliable improvement", because some variants have tiny
+    favourable point estimates.
+  - No number changed.
+- **§7 version history shortened** to a correction note: what v3.0 fixed, what changed in 3.1 and 4.0, and a pointer to
+  this file. The detailed per-version list now lives only here. The disclosures in the text about when each test was
+  added stay.
+- **Version** 4.0. PDF regenerated: 19 pages.
 
 # Change log — working paper 1, version 3.0 → 3.1 (16 November 2026)
 
