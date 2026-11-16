@@ -322,7 +322,8 @@ def split_half(rows, probabilities, rng, min_n=MIN_BIG):
         found = player_stats([r for r, _ in chosen], [p for _, p in chosen], "big")
         halves[half].update(found)
     pairs = []
-    for player in set(halves[0]) & set(halves[1]):
+    # Sorted so the bootstrap draws do not depend on Python's per-process string hashing (PYTHONHASHSEED).
+    for player in sorted(set(halves[0]) & set(halves[1])):
         first, second = halves[0][player], halves[1][player]
         if first[0] >= min_n and second[0] >= min_n:
             pairs.append(((first[1] - first[2]) / first[0], (second[1] - second[2]) / second[0]))

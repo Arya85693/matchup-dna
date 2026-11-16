@@ -2846,11 +2846,11 @@
  "sources": [
   {
    "file": "results/phase4/experiments/posthoc_big_match.json",
-   "sha256": "ff5ed859845c8c8b7bca6200994befb85b84019b28b4b87475e0cb61bfd30a40"
+   "sha256": "ba770f0435c5f321dc187a97fd3781d4a6f8118a00d8829f473db4a85c253f0a"
   },
   {
    "file": "results/phase4/experiments/posthoc_big_match.txt",
-   "sha256": "d5534f477e071951f1d4c8391fc014506e7510b7dc21c6d00f05ae4e41e1e2da"
+   "sha256": "0d4838daa3a2eda2d263af91928e9b27042ccbf4fcaa1b023c2ea0801ed16c92"
   },
   {
    "file": "results/phase4/experiments/posthoc_big_match_robustness.json",
@@ -2875,18 +2875,18 @@
  ],
  "split_half": {
   "ATP": {
-   "high": 0.266307436632072,
-   "low": -0.01861030674121263,
+   "high": 0.2638035051571251,
+   "low": -0.03118342981685263,
    "players": 148,
-   "r": 0.12068041731908503,
-   "spearman_brown": 0.21536990466520195
+   "r": 0.12068041731908495,
+   "spearman_brown": 0.2153699046652018
   },
   "WTA": {
-   "high": 0.22762306808181987,
-   "low": -0.14347433349383715,
+   "high": 0.22576819096674863,
+   "low": -0.13777317573878162,
    "players": 133,
-   "r": 0.043635470802247125,
-   "spearman_brown": 0.08362205391256844
+   "r": 0.04363547080224716,
+   "spearman_brown": 0.08362205391256851
   }
  },
  "spread": [
