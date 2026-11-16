@@ -27,7 +27,7 @@ export const PAPERS: Paper[] = [
     evidence: "post-hoc",
     abstract:
       "Commentators often say that some tennis players choke in big matches while others raise their game. Using " +
-      "131,649 tour-level matches from 2000 to May 2026, we test whether players consistently win semi-finals, " +
+      "131,649 tour-level matches from 2000 to May 2026, I test whether players consistently win semi-finals, " +
       "finals and the late rounds of Grand Slams and Masters events more or less often than their strength predicts. " +
       "Players' big-match records differ by about as much as luck alone would produce, and a player's record in " +
       "2012–2018 does not predict their record in 2019–2026 beyond ordinary form. The data rule out a large choking " +
