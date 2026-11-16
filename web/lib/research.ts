@@ -118,10 +118,22 @@ const Robustness = z.object({
   })),
   sources: z.array(Source),
 });
+const PeriodRecord = z.object({ big: z.number(), won: z.number(), expected: z.number(), score: z.number(), clutch: z.number() });
+const PlayerRecord = z.object({ name: z.string(), early: PeriodRecord, late: PeriodRecord });
+const Shift = z.object({ early: z.number(), late: z.number() });
+const Players = z.object({
+  tours: z.array(z.object({
+    tour: z.string(), players: z.number(), shown: z.number(), top: z.array(PlayerRecord), bottom: z.array(PlayerRecord),
+    means: z.record(z.string(), z.object({ score: Shift, clutch: Shift })),
+    top_still_positive: z.number(), bottom_still_negative: z.number(),
+  })),
+  sources: z.array(Source),
+});
 const BigMatch = z.object({
   schema_version: z.literal("2"),
   evidence: z.literal("post-hoc"),
   robustness: Robustness,
+  players: Players,
   window: z.string(), matches: z.number(), big_matches: z.number(), shrink: z.number(), min_big: z.number(),
   periods: z.tuple([z.string(), z.string()]),
   calibration: z.array(z.object({ tour: z.string(), kind: z.enum(["big", "regular"]), best_of: z.number(), slope: z.number() })),

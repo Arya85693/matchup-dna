@@ -248,3 +248,43 @@ The excess remains within best-of-three matches alone, so five-set fitness does 
 - **All post-hoc**, with many statistics per tour; one or two nominal p-values below 0.05 are expected by chance.
 - **Simulation assumptions:** without a trait, results are independent given their calibrated probabilities. General form violates this, which inflates the big-match (not the clutch) statistics. The power analysis assumes a normal trait, constant over a career, in big matches only.
 - **Game-share expectation** is a single slope per group; **within-tournament ratings** cover 94.3% of big matches.
+
+## Version 2.1: what happened to the most extreme records
+
+Added 15 November 2026 for the paper's readability revision (`python -m matchup_dna.posthoc_big_match_players`). Post-hoc and illustrative: no test. The players are those behind the period-split correlations (at least 10 big matches in both 2012–2018 and 2019 – May 2026), ranked by their 2012–2018 big-match score, with the same per-period calibration and shrinkage as Test 3. The five highest and five lowest on each tour are shown. Score = shrunk residual per match, in win-probability points; expected = calibrated expected wins.
+
+**ATP** (29 players)
+
+| Group | Player | 2012–18 big | Won | Expected | Score | 2019–26 big | Won | Expected | Score |
+|---|---|--:|--:|--:|--:|--:|--:|--:|--:|
+| Highest | Karen Khachanov | 18 | 11 | 5.9 | +13.3 | 52 | 21 | 22.0 | −1.4 |
+| Highest | Stan Wawrinka | 114 | 66 | 54.4 | +8.7 | 17 | 5 | 7.1 | −5.8 |
+| Highest | Stefanos Tsitsipas | 16 | 10 | 7.2 | +7.7 | 126 | 68 | 66.3 | +1.2 |
+| Highest | Nikoloz Basilashvili | 12 | 6 | 3.7 | +7.3 | 14 | 9 | 5.6 | +10.0 |
+| Highest | John Isner | 78 | 42 | 35.3 | +6.8 | 24 | 9 | 12.9 | −8.8 |
+| Lowest | Pablo Carreno Busta | 33 | 14 | 15.3 | −2.5 | 35 | 14 | 17.6 | −6.5 |
+| Lowest | Kei Nishikori | 119 | 60 | 66.2 | −4.5 | 12 | 3 | 6.8 | −12.0 |
+| Lowest | Benoit Paire | 27 | 7 | 9.4 | −5.0 | 12 | 6 | 5.4 | +2.0 |
+| Lowest | Adrian Mannarino | 20 | 6 | 8.5 | −6.2 | 29 | 15 | 13.5 | +3.1 |
+| Lowest | Gael Monfils | 59 | 23 | 29.1 | −7.8 | 31 | 16 | 17.2 | −2.3 |
+
+Group means, 2012–18 → 2019–26: top: score +8.7 → −1.0, clutch +4.9 → 0.0; bottom: score −5.2 → −3.1, clutch −9.1 → −1.2; upper half: score +6.2 → −0.3, clutch +2.0 → −0.5; lower half: score −2.3 → −3.7, clutch −6.3 → −3.0. Highest five still above zero later: 2; lowest five still below zero: 3.
+
+**WTA** (32 players)
+
+| Group | Player | 2012–18 big | Won | Expected | Score | 2019–26 big | Won | Expected | Score |
+|---|---|--:|--:|--:|--:|--:|--:|--:|--:|
+| Highest | Anastasia Pavlyuchenkova | 43 | 27 | 21.5 | +8.7 | 25 | 10 | 11.1 | −2.5 |
+| Highest | Kiki Bertens | 34 | 20 | 15.4 | +8.6 | 24 | 14 | 12.8 | +2.7 |
+| Highest | Sloane Stephens | 48 | 26 | 20.3 | +8.4 | 15 | 7 | 7.3 | −0.9 |
+| Highest | Katerina Siniakova | 14 | 7 | 4.9 | +6.3 | 18 | 8 | 8.2 | −0.6 |
+| Highest | Serena Williams | 140 | 121 | 111.1 | +6.2 | 20 | 14 | 13.6 | +1.0 |
+| Lowest | Belinda Bencic | 18 | 7 | 8.0 | −2.6 | 50 | 30 | 25.3 | +6.8 |
+| Lowest | Petra Martic | 10 | 2 | 3.0 | −3.2 | 23 | 8 | 10.7 | −6.4 |
+| Lowest | Shuai Zhang | 19 | 7 | 8.4 | −3.7 | 16 | 6 | 6.3 | −0.9 |
+| Lowest | Anett Kontaveit | 16 | 5 | 7.4 | −6.7 | 32 | 20 | 18.2 | +3.4 |
+| Lowest | Sorana Cirstea | 13 | 1 | 4.5 | −10.5 | 29 | 12 | 14.0 | −4.0 |
+
+Group means, 2012–18 → 2019–26: top: score +7.6 → −0.1, clutch +6.2 → +2.3; bottom: score −5.3 → −0.2, clutch −8.7 → −1.0; upper half: score +5.1 → +0.8, clutch +0.9 → +0.2; lower half: score −2.0 → −1.1, clutch −6.1 → −1.4. Highest five still above zero later: 2; lowest five still below zero: 3.
+
+**Reading.** The highest five on both tours, and the lowest five on the WTA tour, end the later period close to zero (group means −1.0, −0.1 and −0.2 points). The ATP lowest five move less than halfway back (−5.2 to −3.1), and the ATP lower half as a whole stays below zero, with a clutch score that also stays negative (−6.3 to −3.0). That is the same weak, non-significant persistence measured in Test 3 (clutch r +0.095). Individual movements often have plain explanations, such as injury, age or a rising career, which is why a past big-match record is a poor guide to the next one.

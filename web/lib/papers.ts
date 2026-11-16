@@ -22,7 +22,7 @@ export const PAPERS: Paper[] = [
     title: "Do players choke in big matches?",
     subtitle: "Persistence of big-match performance in professional tennis, 2000–2026",
     date: "2026-11-15",
-    version: "2.1",
+    version: "2.2",
     number: 1,
     evidence: "post-hoc",
     abstract:

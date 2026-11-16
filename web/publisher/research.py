@@ -5,7 +5,9 @@
 Run by hand when the research changes, not on the twice-daily schedule. Every headline number is either recomputed from
 a saved prediction file or read from a saved results file, and then **asserted equal to the value printed in the
 published report** (to the report's precision). A mismatch stops the export. Each output names its source files and
-their sha256, so the figures are traceable. Only aggregates leave: no match-level rows, no player data, no prices.
+their sha256, so the figures are traceable. Only aggregates leave: no match-level rows, no prices, and no player data
+except one illustrative table in working paper 1 (big-match wins against expectation for twenty named players, each a
+sum over public tour results).
 
 Phase 2 has no machine-readable result file; its figures are copied from the report with their line references.
 """
@@ -190,8 +192,9 @@ def losing_run(finals, p_win, run):
 
 
 def big_match():
-    """The post-hoc myth check (docs/Myth Check - Do Players Choke in Big Matches.md). Aggregates only: the source
-    file also holds a few named players' figures for the report's illustration, and none of them leave."""
+    """The post-hoc myth check (docs/Myth Check - Do Players Choke in Big Matches.md). The source file also holds a few
+    named players' figures for the report's illustration, and none of them leave; the paper's player table comes from
+    big_match_players() instead."""
     path = RESULTS / "phase4" / "experiments" / "posthoc_big_match.json"
     s = json.loads(path.read_text(encoding="utf-8"))
     finite = lambda v: v if isinstance(v, (int, float)) and math.isfinite(v) else None
@@ -277,7 +280,7 @@ def big_match():
 
     definitions = s["definitions"]
     return {
-        "schema_version": "2", "evidence": "post-hoc", "robustness": big_match_robustness(),
+        "schema_version": "2", "evidence": "post-hoc", "robustness": big_match_robustness(), "players": big_match_players(),
         "window": "2000 – May 2026", "matches": matches, "big_matches": big,
         "shrink": definitions["shrink"], "min_big": definitions["min_big"],
         "periods": ["2012–2018", "2019 – May 2026"],
@@ -456,6 +459,77 @@ def check_v2_rest(games, within, sensitivity):
             for part in path.split("."):
                 found = found[int(part)] if part.isdigit() else found[part]
         same(found, value, places, f"{section} {tour} {path}")
+
+
+# Version 2.1 report ("what happened to the most extreme records"): per tour, the players in printed order with
+# (2012-18 big, won, expected, score in points, 2019-26 big, won, expected, score in points), then the printed group
+# means in points: group -> (score early, score late, clutch early, clutch late).
+PRINTED_PLAYERS = {
+    "ATP": {"players": 29, "rows": [
+        ("Karen Khachanov", 18, 11, 5.9, 13.3, 52, 21, 22.0, -1.4),
+        ("Stan Wawrinka", 114, 66, 54.4, 8.7, 17, 5, 7.1, -5.8),
+        ("Stefanos Tsitsipas", 16, 10, 7.2, 7.7, 126, 68, 66.3, 1.2),
+        ("Nikoloz Basilashvili", 12, 6, 3.7, 7.3, 14, 9, 5.6, 10.0),
+        ("John Isner", 78, 42, 35.3, 6.8, 24, 9, 12.9, -8.8),
+        ("Pablo Carreno Busta", 33, 14, 15.3, -2.5, 35, 14, 17.6, -6.5),
+        ("Kei Nishikori", 119, 60, 66.2, -4.5, 12, 3, 6.8, -12.0),
+        ("Benoit Paire", 27, 7, 9.4, -5.0, 12, 6, 5.4, 2.0),
+        ("Adrian Mannarino", 20, 6, 8.5, -6.2, 29, 15, 13.5, 3.1),
+        ("Gael Monfils", 59, 23, 29.1, -7.8, 31, 16, 17.2, -2.3)],
+        "means": {"top": (8.7, -1.0, 4.9, 0.0), "bottom": (-5.2, -3.1, -9.1, -1.2),
+                  "upper half": (6.2, -0.3, 2.0, -0.5), "lower half": (-2.3, -3.7, -6.3, -3.0)}},
+    "WTA": {"players": 32, "rows": [
+        ("Anastasia Pavlyuchenkova", 43, 27, 21.5, 8.7, 25, 10, 11.1, -2.5),
+        ("Kiki Bertens", 34, 20, 15.4, 8.6, 24, 14, 12.8, 2.7),
+        ("Sloane Stephens", 48, 26, 20.3, 8.4, 15, 7, 7.3, -0.9),
+        ("Katerina Siniakova", 14, 7, 4.9, 6.3, 18, 8, 8.2, -0.6),
+        ("Serena Williams", 140, 121, 111.1, 6.2, 20, 14, 13.6, 1.0),
+        ("Belinda Bencic", 18, 7, 8.0, -2.6, 50, 30, 25.3, 6.8),
+        ("Petra Martic", 10, 2, 3.0, -3.2, 23, 8, 10.7, -6.4),
+        ("Shuai Zhang", 19, 7, 8.4, -3.7, 16, 6, 6.3, -0.9),
+        ("Anett Kontaveit", 16, 5, 7.4, -6.7, 32, 20, 18.2, 3.4),
+        ("Sorana Cirstea", 13, 1, 4.5, -10.5, 29, 12, 14.0, -4.0)],
+        "means": {"top": (7.6, -0.1, 6.2, 2.3), "bottom": (-5.3, -0.2, -8.7, -1.0),
+                  "upper half": (5.1, 0.8, 0.9, 0.2), "lower half": (-2.0, -1.1, -6.1, -1.4)}},
+}
+
+
+def big_match_players():
+    """Version 2.1 illustration (matchup_dna.posthoc_big_match_players): the five highest and five lowest 2012-2018
+    big-match scores on each tour and the same players' 2019 - May 2026 records. Every figure is checked against the
+    report's printed table."""
+    path = RESULTS / "phase4" / "experiments" / "posthoc_big_match_players.json"
+    s = json.loads(path.read_text(encoding="utf-8"))
+    tours = []
+    for tour, want in PRINTED_PLAYERS.items():
+        found = s["tours"][tour]
+        same(found["players"], want["players"], 0, f"players {tour}")
+        listed = found["top"] + found["bottom"]
+        if [p["name"] for p in listed] != [row[0] for row in want["rows"]]:
+            raise Mismatch(f"player table {tour}: the order of names differs from the report")
+        rows = []
+        for p, (name, *values) in zip(listed, want["rows"]):
+            for period, (big, won, expected, score) in (("early", values[:4]), ("late", values[4:])):
+                got = p[period]
+                same(got["big"], big, 0, f"{name} {period} big matches")
+                same(got["won"], won, 0, f"{name} {period} wins")
+                same(got["expected"], expected, 1, f"{name} {period} expected wins")
+                same(100 * got["score"], score, 1, f"{name} {period} score")
+            rows.append({"name": name, **{period: {k: p[period][k] for k in ("big", "won", "expected", "score", "clutch")}
+                                          for period in ("early", "late")}})
+        means = {}
+        for group, printed in want["means"].items():
+            m = found["means"][group]
+            got = (m["score"]["early"], m["score"]["late"], m["clutch"]["early"], m["clutch"]["late"])
+            for value, shown, what in zip(got, printed, ("score early", "score late", "clutch early", "clutch late")):
+                same(100 * value + 0.0, shown, 1, f"{tour} {group} mean {what}")
+            means[group] = {"score": m["score"], "clutch": m["clutch"]}
+        tours.append({"tour": tour, "players": found["players"], "shown": s["definitions"]["shown"],
+                      "top": rows[:len(found["top"])], "bottom": rows[len(found["top"]):], "means": means,
+                      "top_still_positive": found["top_still_positive"],
+                      "bottom_still_negative": found["bottom_still_negative"]})
+    return {"tours": tours, "sources": [{"file": f"results/phase4/experiments/{p.name}", "sha256": sha(p)}
+                                        for p in (path, path.with_suffix(".txt"))]}
 
 
 def build():

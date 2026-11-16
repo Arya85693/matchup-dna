@@ -155,7 +155,7 @@ export function Table({ number, caption, head, rows, align, note }: {
         <table className="serif w-full min-w-[520px] border-collapse border border-[var(--p-rule)] text-[14px]">
           <thead>
             <tr className="bg-[var(--p-th)] text-[var(--p-text)]">
-              {head.map((h, i) => <th key={h} scope="col" className={`px-3.5 py-2.5 font-sans text-[13px] font-medium ${side(i)}`}>{h}</th>)}
+              {head.map((h, i) => <th key={i} scope="col" className={`px-3.5 py-2.5 font-sans text-[13px] font-medium ${side(i)}`}>{h}</th>)}
             </tr>
           </thead>
           <tbody>
