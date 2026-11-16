@@ -72,7 +72,7 @@ export function GroupedBars({ groups, domain, ticks, format, reference, referenc
 }) {
   return (
     <div className="grid gap-4 [--lead:150px] [--tail:44px] max-sm:[--lead:92px]" role="img" aria-label={ariaLabel}>
-      <Legend items={[...tourLegend, ...(reference !== undefined ? [{ label: referenceLabel ?? "", swatch: <Dash /> }] : [])]} />
+      <Legend items={tourLegend} />
       <div className="relative grid gap-4 pt-5">
         <div className="pointer-events-none absolute inset-y-0 grid w-full grid-cols-[var(--lead)_minmax(0,1fr)_var(--tail)] gap-3">
           <span /><div className="relative">{reference !== undefined && <RefLine value={reference} domain={domain} label={referenceLabel} />}</div><span />
@@ -108,7 +108,7 @@ export function Dumbbell({ rows, domain, ticks, format, aLabel, bLabel, referenc
 }) {
   return (
     <div className="grid gap-4 [--lead:150px] [--tail:88px] max-sm:[--lead:92px] max-sm:[--tail:76px]" role="img" aria-label={ariaLabel}>
-      <Legend items={[...tourLegend, { label: aLabel, swatch: <Dot color="var(--p-text)" /> }, { label: bLabel, swatch: <Dot color="var(--p-text)" hollow /> }, { label: referenceLabel, swatch: <Dash /> }]} />
+      <Legend items={[...tourLegend, { label: aLabel, swatch: <Dot color="var(--p-text)" /> }, { label: bLabel, swatch: <Dot color="var(--p-text)" hollow /> }]} />
       <div className="relative grid gap-5 pt-5">
         <div className="pointer-events-none absolute inset-y-0 grid w-full grid-cols-[var(--lead)_minmax(0,1fr)_var(--tail)] gap-3">
           <span /><div className="relative"><RefLine value={reference} domain={domain} label={referenceLabel} /></div><span />
@@ -145,7 +145,7 @@ export function Forest({ groups, domain, ticks, format, reference, referenceLabe
 }) {
   return (
     <div className="grid gap-4 [--lead:150px] [--tail:150px] max-sm:[--lead:92px] max-sm:[--tail:52px]" role="img" aria-label={ariaLabel}>
-      <Legend items={[...tourLegend, { label: "95% interval", swatch: <span className="inline-block h-[2px] w-4 bg-[var(--p-text)]" aria-hidden="true" /> }, { label: referenceLabel, swatch: <Dash /> }]} />
+      <Legend items={[...tourLegend, { label: "95% interval", swatch: <span className="inline-block h-[2px] w-4 bg-[var(--p-text)]" aria-hidden="true" /> }]} />
       <div className="relative grid gap-5 pt-5">
         <div className="pointer-events-none absolute inset-y-0 grid w-full grid-cols-[var(--lead)_minmax(0,1fr)_var(--tail)] gap-3">
           <span /><div className="relative"><RefLine value={reference} domain={domain} label={referenceLabel} /></div><span />
