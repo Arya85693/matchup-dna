@@ -113,10 +113,12 @@ function MainRecord({ model, record, pool, counts }: { model: "tournament_start"
       <section className="grid gap-5 border-t border-border pt-10">
         <SectionHead title="Scores so far">
           {model === "tournament_start"
-            ? "Log loss with a 95% interval, Brier score and how often the favourite won, on every scored match."
-            : "Compared with tournament start on the same later-round matches. Below zero favours round-aware."}
+            ? "Log loss with a 95% interval, Brier score and how often the favourite won, on every scored match, with the Elo-only forecast on the same matches for reference."
+            : "Compared with tournament start on the same later-round matches. Below zero favours round-aware. The Elo-only forecast on the same matches is shown for reference."}
         </SectionHead>
-        {model === "tournament_start" ? <TournamentStartScores ts={record.tournament_start.all} /> : <RoundAwareScores record={record} />}
+        {model === "tournament_start"
+          ? <TournamentStartScores ts={record.tournament_start.all} elo={record.tournament_start.surface_elo_benchmark} />
+          : <RoundAwareScores record={record} />}
       </section>
 
       <section className="grid gap-5 border-t border-border pt-10">
@@ -170,13 +172,21 @@ function ItfRecord({ itf, record, pool, counts }: { itf: ItfLive; record: Itf["r
   );
 }
 
-function TournamentStartScores({ ts }: { ts: TrackRecord["tournament_start"]["all"] }) {
+/** The Elo-only forecast scored on the same matches: the start-of-week surface Elo probability stored with each
+ *  forecast, as the ITF record shows beside M1. Shown only when it covers exactly the model's scored matches. */
+function eloOnly(elo: TrackRecord["tournament_start"]["surface_elo_benchmark"] | undefined, n: number) {
+  const value = elo && elo.n === n ? num(elo, "log_loss") : null;
+  return { label: "Elo-only log loss", value: value !== null ? f4(value) : "–", note: "Same matches" };
+}
+
+function TournamentStartScores({ ts, elo }: { ts: TrackRecord["tournament_start"]["all"]; elo: TrackRecord["tournament_start"]["surface_elo_benchmark"] }) {
   if (ts.n === 0) {
     return <p className="text-[13px] text-dim">No completed match has a counted forecast yet. No score is shown until one does.</p>;
   }
   return (
     <FigureStrip items={[
       { label: "Log loss", value: f4(num(ts, "log_loss") ?? 0), note: num(ts, "log_loss_low") !== null ? `95%: ${f4(num(ts, "log_loss_low")!)} to ${f4(num(ts, "log_loss_high")!)}` : matchCount(ts.n) },
+      eloOnly(elo, ts.n),
       { label: "Brier", value: f4(num(ts, "brier") ?? 0) },
       { label: "Favourite won", value: pc(num(ts, "accuracy") ?? 0) },
       { label: "Matches", value: ts.n },
@@ -207,6 +217,7 @@ function RoundAwareScores({ record }: { record: TrackRecord }) {
       { label: "Difference", value: sgn4(gap), note: `95%: ${sgn4(low)} to ${sgn4(high)}` },
       { label: "Round-aware log loss", value: f4(num(record.round_aware.all, "log_loss") ?? 0) },
       { label: "Tournament start", value: f4(num(record.tournament_start_on_same_matches, "log_loss") ?? 0), note: "Log loss, same matches" },
+      eloOnly(record.round_aware.surface_elo_benchmark, record.round_aware.all.n),
       { label: "Matches", value: pair.n, note: `${num(pair, "weeks") ?? 0} weeks` },
     ]} />
   );

@@ -195,6 +195,12 @@ class SnapshotTests(unittest.TestCase):
         a = [r for r in rows if r["model_kind"] == "tournament_start"]
         self.assertAlmostEqual(record["tournament_start"]["all"]["log_loss"],
                                float(prospective.match_log_loss([a[0]["p"]], [a[0]["y"]])[0]), places=12)
+        b = [r for r in rows if r["model_kind"] == "round_aware"]
+        for kind, scored in (("tournament_start", a), ("round_aware", b)):
+            benchmark = record[kind]["surface_elo_benchmark"]
+            self.assertEqual(benchmark["n"], len(scored))
+            self.assertAlmostEqual(benchmark["log_loss"], float(prospective.match_log_loss(
+                [r["elo_probability"] for r in scored], [r["y"] for r in scored]).mean()), places=12)
 
     def test_archive_lists_every_forecast_once(self):
         archive = self.read(self.publish(), "archive.json")

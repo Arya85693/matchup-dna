@@ -441,7 +441,9 @@ def track_record(snap, now):
         "tournament_start": {"all": _metrics(a), "ATP": _metrics([r for r in a if r["tour"] == "ATP"]),
                              "WTA": _metrics([r for r in a if r["tour"] == "WTA"]),
                              "surface_elo_benchmark": _metrics([dict(r, p=r["elo_probability"]) for r in a])},
-        "round_aware": {"all": _metrics(b)},
+        # Both models store the same start-of-week surface Elo probability, so this is Elo alone on the round-aware
+        # model's own (later-round) matches.
+        "round_aware": {"all": _metrics(b), "surface_elo_benchmark": _metrics([dict(r, p=r["elo_probability"]) for r in b])},
         "round_aware_minus_tournament_start": prospective.paired(b, a),
         "tournament_start_on_same_matches": _metrics([r for r in a if r["match_uid"] in later]),
     })

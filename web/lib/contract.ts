@@ -186,7 +186,8 @@ export const TrackRecordSchema = z.object({
     excluded: z.array(z.object({ reason: z.string(), n: z.number().int() })),
   }),
   tournament_start: z.object({ all: Metrics, ATP: Metrics, WTA: Metrics, surface_elo_benchmark: Metrics }),
-  round_aware: z.object({ all: Metrics }),
+  // surface_elo_benchmark: Elo alone on the round-aware matches. Optional: snapshots published before 19 November 2026 lack it.
+  round_aware: z.object({ all: Metrics, surface_elo_benchmark: Metrics.optional() }),
   round_aware_minus_tournament_start: Metrics,
   tournament_start_on_same_matches: Metrics,
 });
