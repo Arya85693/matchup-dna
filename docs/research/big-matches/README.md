@@ -1,6 +1,6 @@
 # Do Players Choke in Big Matches? — research materials
 
-Working paper 1 of Matchup DNA, version 4.0 (16 November 2026). Author: Aryamaan Roy Choudhury. Post-hoc, not peer
+Working paper 1 of Matchup DNA, version 4.1 (21 November 2026). Author: Aryamaan Roy Choudhury. Post-hoc, not peer
 reviewed. The paper is on the website's Research tab (`/research/big-matches`, source
 `web/app/research/big-matches/page.tsx`) and as a PDF (`web/public/research/big-matches.pdf`).
 
@@ -10,11 +10,12 @@ This folder:
 |---|---|
 | `README.md` | This file: question, method, findings, limitations, and how to reproduce everything. |
 | `AUDIT.md` | The version 3 audit: what was checked, what was wrong, what was fixed. |
-| `CHANGELOG.md` | What changed from version 2.2 to 3.0 (statistical, editorial, numerical) and from 3.0 to 3.1 (attribution) and 3.1 to 4.0 (corrections). |
+| `CHANGELOG.md` | What changed from version 2.2 to 3.0 (statistical, editorial, numerical) and from 3.0 to 3.1 (attribution) 3.1 to 4.0 (corrections) and 4.0 to 4.1 (editorial and typesetting; no number changed). |
 | `ORIGINALITY_AUDIT.md` | The originality, citation and attribution audit of version 3.0. |
 | `ATTRIBUTION.md` | How version 3.1 acts on that audit: citations added, established methods, contributions, open items. |
 | `SUMMARY.md` | A short summary for the website and a portfolio, and a resume bullet. |
 | `AUTHOR_CHECKLIST.md` | What the author should understand and check personally before publishing. |
+| `archive/` | Earlier PDFs kept for comparison (`big-matches-v4.0.pdf`). |
 
 ## The question
 
@@ -126,6 +127,12 @@ npm run build
 npx next start -p 3123          # leave running
 npm run paper:pdf               # in a second terminal: writes public/research/big-matches.pdf
 ```
+
+The print layout lives in the `@media print` block of `web/app/globals.css`. Figures and short tables are kept whole,
+so where each one sits relative to the surrounding paragraphs in `page.tsx` decides how full each page is. The v4.1
+placement was chosen against the production build; if the text changes, check the PDF for pages that end well short of
+the bottom margin and move the figure or table that was pushed over by one paragraph. Build the site first: the dev
+server lays the page out slightly differently.
 
 ## Status
 

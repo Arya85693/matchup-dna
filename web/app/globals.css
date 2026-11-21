@@ -129,36 +129,66 @@
 .paper a.ref { color: inherit; text-decoration: underline; text-decoration-color: var(--p-rule-strong); text-underline-offset: 2px; }
 .paper a.ref:hover { text-decoration-color: var(--p-text); }
 
-/* The paper as a printed A4 working paper (web/scripts/paper-pdf.mjs prints the article on its own). */
+/*
+ * The paper as a printed A4 working paper (web/scripts/paper-pdf.mjs prints the article on its own at scale 0.86, so
+ * 16px here is about 10.3 pt on paper). Body text about 10.3 pt on 1.5 leading over a 160 mm measure; tables and
+ * figure labels about 8–9 pt. Headings get more space above than below so that each belongs to the text it introduces.
+ */
 @media print {
-  @page { size: A4; margin: 24mm 22mm 22mm 22mm; }
+  @page { size: A4; margin: 22mm 24mm 22mm 24mm; }
   html, body { background: #fff !important; }
   .print-hide { display: none !important; }
   .paper {
     --p-bg: #ffffff; --p-text: #111111; --p-muted: #333333; --p-dim: #555555; --p-rule: #c8c8c8;
-    --p-rule-strong: #777777; --p-soft: #f4f4f4; --p-head: #111111; --p-th: #f0f0f0; --p-s1: #1f4e9a; --p-s2: #d0661c;
+    --p-rule-strong: #777777; --p-soft: #f5f5f5; --p-head: #111111; --p-th: #ffffff; --p-s1: #1f4e9a; --p-s2: #d0661c;
     max-width: none !important; margin: 0 !important; padding: 0 !important; border: 0 !important; border-radius: 0 !important;
   }
   .paper, .paper * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  .paper code, .paper .font-mono { font-family: ui-monospace, Consolas, monospace !important; }
-  .paper .cols { font-size: 15.5px !important; line-height: 1.55 !important; }
-  .paper .title-block { margin-top: 70px; }
-  .paper .abstract { margin-top: 44px; }
+  .paper code, .paper .font-mono { font-family: ui-monospace, Consolas, monospace !important; font-size: 0.86em !important; }
+  .paper .cols { font-size: 16px !important; line-height: 1.5 !important; }
+  .paper .cols p + p, .paper figure + .cols > p:first-child, .paper .eq + .cols > p:first-child { text-indent: 1.5em; }
+  .paper .title-block { margin-top: 40px; }
+  .paper .title-block h1 { font-size: 36px !important; }
+  .paper .abstract { margin-top: 36px; max-width: 600px !important; }
+  .paper .abstract > div { font-size: 15px !important; line-height: 1.5 !important; }
+  .paper .abstract > p { font-size: 13.5px !important; }
   /* Chrome splits CSS grids across pages badly (overlapping text), so page-level containers become blocks. */
   .paper .paper-body, .paper section, .paper section > div.grid, .paper figure.grid, .paper .statements, .paper ol.grid {
     display: block !important;
   }
-  .paper .paper-body > * + * { margin-top: 30px !important; }
-  .paper section > * + * { margin-top: 13px !important; }
-  .paper section > div.grid > * + * { margin-top: 11px !important; }
-  .paper figure.grid > * + * { margin-top: 7px !important; }
-  .paper .statements > * + * { margin-top: 16px !important; }
-  .paper ol.grid > li + li { margin-top: 6px; }
+  .paper h2 { font-size: 22px !important; line-height: 1.2 !important; }
+  .paper h3 { font-size: 17px !important; }
+  .paper .paper-body > * + * { margin-top: 34px !important; }
+  .paper section > * + * { margin-top: 12px !important; }
+  .paper section > .subsection + .subsection, .paper section > .cols + .subsection { margin-top: 24px !important; }
+  .paper section > div.grid > * + * { margin-top: 12px !important; }
+  .paper section > div.grid > h3 + * { margin-top: 8px !important; }
+  .paper section > div.grid > .ptable, .paper section > div.grid > figure:not(.ptable), .paper section > div.grid > .note { margin-top: 18px !important; }
+  .paper section > div.grid > * + .cols { margin-top: 16px !important; }
+  .paper figure.grid > * + * { margin-top: 8px !important; }
+  .paper .statements > * + * { margin-top: 14px !important; }
+  .paper .statements h3 { font-size: 15.5px !important; }
+  .paper .statements > section > div, .paper .acknowledgements p { font-size: 14.5px !important; line-height: 1.5 !important; }
+  .paper .references ol { font-size: 13px !important; line-height: 1.4 !important; }
+  .paper ol.grid > li + li { margin-top: 5px; }
+  .paper .note { font-size: 14.5px !important; line-height: 1.5 !important; break-inside: avoid; }
+  .paper figcaption { font-size: 13.5px !important; line-height: 1.4 !important; }
+  .paper .ptable > p { font-size: 12.5px !important; break-before: avoid; }
   .paper [role="region"] { overflow: visible !important; }
-  .paper table { font-size: 12.5px !important; min-width: 0 !important; }
-  .paper td, .paper th { padding: 3px 7px !important; }
-  .paper figure, .paper .eq, .paper tr { break-inside: avoid; }
-  .paper h2, .paper h3, .paper figcaption { break-after: avoid; }
+  .paper table { font-size: 13px !important; line-height: 1.32 !important; min-width: 0 !important; }
+  .paper th, .paper td { padding-left: 6px !important; padding-right: 6px !important; }
+  .paper th:first-child, .paper td:first-child { padding-left: 0 !important; }
+  .paper td:first-child.pl-6 { padding-left: 14px !important; }
+  .paper th:last-child, .paper td:last-child { padding-right: 0 !important; }
+  .paper .appendix table { font-size: 12.5px !important; line-height: 1.25 !important; }
+  /* Never leave a lone last row (or first row) of a split table on a page of its own. */
+  .paper tbody tr:last-child, .paper tbody tr:nth-last-child(2) { break-before: avoid; }
+  .paper tbody tr:first-child, .paper tbody tr:nth-child(2) { break-after: avoid; }
+  .paper figure:not(.ptable), .paper .eq, .paper tr, .paper .ptable.keep { break-inside: avoid; }
+  .paper .group-row { break-after: avoid; }
+  /* Table captions sit above their tables and stay with them; figure captions sit below and must not chain the figure
+   * to whatever follows it. */
+  .paper h2, .paper h3, .paper .ptable > figcaption { break-after: avoid; }
   .paper p { orphans: 3; widows: 3; }
   .paper .page-break { break-before: page; }
 }

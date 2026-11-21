@@ -4,7 +4,7 @@ import {
   Dumbbell, Forest, GroupedBars, PowerCurves, StudyFlow, type BarGroup, type ForestGroup, type PowerPanel,
 } from "@/components/research/charts";
 import {
-  Abstract, BackLink, Body, Cite, Cols, Eq, Figure, Footer, References, Section, Sheet, Statements, Subsection, Table,
+  Abstract, BackLink, Body, Cite, Cols, Eq, Figure, Footer, Frac, References, Section, Sheet, Statements, Subsection, Table,
   TitleBlock,
 } from "@/components/research/Paper";
 import { paper, paperDate } from "@/lib/papers";
@@ -41,8 +41,20 @@ const pts = (x: number) => x.toFixed(1);
 const milli = (x: number) => signed(1000 * x, 2);              // log-loss differences, in thousandths
 const diffCell = (d: number, low: number, high: number) =>
   Math.abs(1000 * low) < 0.005 && Math.abs(1000 * high) < 0.005 ? "0.00 (identical)" : `${milli(d)} (${milli(low)} to ${milli(high)})`;
-const v = (name: string, sub?: string) => <>{name}{sub && <sub>{sub}</sub>}</>;
+/** A variable in a display equation: italic name, italic index subscript, optional upright superscript. */
+const v = (name: string, sub?: string, sup?: string) => {
+  if (sub && sup) {  // stack the superscript above the subscript, as in typeset mathematics
+    return <><i>{name}</i><span className="inline-flex flex-col align-middle text-[0.72em] leading-[1.05]"><span>{sup}</span><i>{sub}</i></span></>;
+  }
+  return <><i>{name}</i>{sub && <sub><i>{sub}</i></sub>}{sup && <sup>{sup}</sup>}</>;
+};
+const fn = (name: string) => <span className="not-italic">{name}</span>;     // an upright function name (logit, σ)
+const ci = (low: number, high: number, d = 2) => `[${signed(low, d)}, ${signed(high, d)}]`;  // a 95% interval in a table
+/** A log-loss or Brier difference split into its estimate and its interval, in thousandths, for two table columns. */
+const diffCells = (d: number, low: number, high: number): [string, string] =>
+  Math.abs(1000 * low) < 0.005 && Math.abs(1000 * high) < 0.005 ? ["0.00", "identical"] : [milli(d), ci(1000 * low, 1000 * high)];
 const interval = (c: { r: number; low: number; high: number }) => `${signed(c.r, 2)} (${signed(c.low, 2)} to ${signed(c.high, 2)})`;
+const intervalCell = (c: { r: number; low: number; high: number }) => `${signed(c.r, 2)} ${ci(c.low, c.high)}`;
 const includesZero = (low: number, high: number) => low <= 0 && high >= 0;
 
 const slope = (tour: string, kind: "big" | "regular", bo: number) =>
@@ -109,6 +121,11 @@ const minSensitivityP = Math.min(...rb.sensitivity.flatMap((s) => [s.big_p, s.cl
 const minSensitivityClutchP = Math.min(...rb.sensitivity.map((s) => s.clutch_p));
 const power015 = Math.max(...rb.power.rows.filter((p) => p.test !== "ratio regular matches").map((p) => p.power[tauIndex(0.15)]!));
 const power04 = Math.min(...TOURS.flatMap((t) => [powerAt(t, "clutch ratio", 0.4), powerAt(t, "split-half r", 0.4)]));
+// A worked reading of equation 1, for illustration only: the calibrated probability for a favourite to whom raw Elo
+// gives ILLUSTRATE, under the fitted WTA slopes.
+const ILLUSTRATE = 0.8;
+const calibrated = (slopeValue: number) => 1 / (1 + Math.exp(-slopeValue * Math.log(ILLUSTRATE / (1 - ILLUSTRATE))));
+const bothScoreDiffs = SCORE_MODELS.map((m) => model("both", m).log_loss_diff!);
 
 // The claims the text makes about these figures.
 ensure(r.matches === SAMPLE.ATP.matches + SAMPLE.WTA.matches, "the tour match counts add up");
@@ -136,10 +153,14 @@ ensure(model("ATP", "clutch").log_loss_low! < 0 && model("ATP", "clutch").log_lo
 ensure(TOURS.every((t) => (spread(t, "all big matches").implied_k ?? Infinity) > 100 && (spread(t, "finals only").implied_k ?? Infinity) > 100),
   "where an excess appears, the implied k is above 100");
 ensure(meanOf("ATP", "top").score.late < 0.01 && meanOf("WTA", "top").score.late < 0.01, "the highest fives end near or below zero");
+ensure(bigSets.every((s) => nullRow(s.tour, `ratio ${s.set}`).p >= 0.05), "no big-match variance ratio is significant even before correction");
+ensure(bothScoreDiffs.some((d) => d > 0) && bothScoreDiffs.some((d) => d < 0), "the player-score point estimates are mixed in sign");
+ensure(wtaCal.big < wtaCal.regular && wtaCal.regular < 1, "both WTA slopes are below 1, the big-match slope more so");
+ensure(bigDiff > 0 && clutchDiff > 0, "the two primary player scores are both fractionally worse than the baseline");
 
 // ---------------------------------------------------------------- figures
 const SPREAD_GROUPS: BarGroup[] = SETS.map(([set, label]) => ({
-  label, note: set === "regular matches" ? "reference" : undefined,
+  label, note: set === "regular matches" ? "reference" : undefined, divider: set === "regular matches",
   bars: TOURS.map((tour) => ({ series: tour, value: spread(tour, set).ratio })),
 }));
 const CALIBRATION_ROWS = [
@@ -150,7 +171,7 @@ const CALIBRATION_ROWS = [
 const FOREST_GROUPS: ForestGroup[] = [
   { label: "Split-half", note: "two halves of 2000–2026", rows: TOURS.map((t) => ({ series: t, value: sh(t).r, low: sh(t).low, high: sh(t).high })) },
   ...([["big-match", "Big-match score"], ["clutch", "Clutch score"], ["regular-match", "Regular-match score"]] as const).map(([key, label]) => ({
-    label, note: key === "regular-match" ? "reference" : "2012–18 to 2019–26",
+    label, note: key === "regular-match" ? "reference" : "2012–18 to 2019–26", divider: key === "big-match" || key === "regular-match",
     rows: TOURS.map((t) => { const c = ps(t).correlations[key]; return { series: t, value: c.r, low: c.low, high: c.high }; }),
   })),
 ];
@@ -161,7 +182,7 @@ const OOS_LABELS: [string, string, string?][] = [
   ["big_recent", "Big-match score, 5 years"], ["clutch_recent", "Clutch score, 5 years"],
 ];
 const OOS_GROUPS: ForestGroup[] = OOS_LABELS.map(([name, label, note]) => ({
-  label, note,
+  label, note, divider: name === "big",
   rows: TOURS.map((t) => { const m = model(t, name); return { series: t, value: 1000 * m.log_loss_diff!, low: 1000 * m.log_loss_low!, high: 1000 * m.log_loss_high! }; }),
 }));
 const PRIMARY: [string, string, string][] = [
@@ -187,17 +208,20 @@ const SENS_LABEL: Record<string, string> = {
 type PlayerRow = (typeof r.players.tours)[number]["top"][number];
 const points = (x: number) => signed(100 * x, 1);
 function meanOf(tour: string, group: string) { return playersOf(tour).means[group]!; }
-const PLAYER_HEAD = ["", "Player", "2012–18 big", "Won (exp.)", "Score", "2019–26 big", "Won (exp.)", "Score"];
-const PLAYER_ALIGN: ("left" | "right")[] = ["left", "left", "right", "right", "right", "right", "right", "right"];
+const PLAYER_HEAD = ["Player", "Big", "Won", "Expected", "Score", "Big", "Won", "Expected", "Score"];
+const PLAYER_SPANS = [{ label: "2012–2018", from: 1, to: 4 }, { label: "2019 – May 2026", from: 5, to: 8 }];
 const playerRows = (tour: string): React.ReactNode[][] => {
   const t = playersOf(tour);
-  const row = (group: string) => (p: PlayerRow, i: number) => [
-    i === 0 ? group : "", p.name, p.early.big, `${p.early.won.toFixed(0)} (${p.early.expected.toFixed(1)})`, points(p.early.score),
-    p.late.big, `${p.late.won.toFixed(0)} (${p.late.expected.toFixed(1)})`, points(p.late.score)];
-  const mean = (group: "top" | "bottom") => ["", <i key="m">Mean of the five</i>, "", "", points(t.means[group]!.score.early), "", "", points(t.means[group]!.score.late)];
-  return [...t.top.map(row("Highest five")), mean("top"), ...t.bottom.map(row("Lowest five")), mean("bottom")];
+  const row = (p: PlayerRow) => [p.name, p.early.big, p.early.won.toFixed(0), p.early.expected.toFixed(1), points(p.early.score),
+    p.late.big, p.late.won.toFixed(0), p.late.expected.toFixed(1), points(p.late.score)];
+  const mean = (group: "top" | "bottom") => [<i key="m">Mean of the five</i>, "", "", "", <i key="e">{points(t.means[group]!.score.early)}</i>, "", "", "", <i key="l">{points(t.means[group]!.score.late)}</i>];
+  return [...t.top.map(row), mean("top"), ...t.bottom.map(row), mean("bottom")];
 };
-const code = (text: string) => <code className="font-mono text-[13px]">{text}</code>;
+const playerGroups = (tour: string) => [
+  { at: 0, label: "Highest five big-match scores in 2012–2018" },
+  { at: playersOf(tour).top.length + 1, label: "Lowest five big-match scores in 2012–2018" },
+];
+const code = (text: string) => <code className="font-mono text-[13px] [overflow-wrap:anywhere]">{text}</code>;
 
 export default function BigMatchesPaper() {
   return (
@@ -210,22 +234,21 @@ export default function BigMatchesPaper() {
       <TitleBlock paper={meta} author={AUTHOR} affiliation="Independent Research · Matchup DNA" />
 
       <Abstract keywords={meta.keywords}>
-        Matchup DNA forecasts professional tennis matches with a model built on Elo ratings. I ask whether a player&apos;s record in big
-        matches (semi-finals, finals, the late rounds of Grand Slams and of the top non-Slam tier, and the season-ending
-        Finals) contains information the ratings miss. Using {count(r.matches)} ATP and WTA main-tour matches from 2000 to
-        May 2026, {count(r.big_matches)} of them big matches, I compare each result with a calibrated Elo forecast. Across
-        players, big-match results vary about as much as binomial chance predicts (observed-to-chance variance ratios of
-        {" "}{two(minBigRatio)} to {two(maxBigRatio)}), the two halves of a career&apos;s big matches agree only weakly
-        (split-half r = {two(sh("ATP").r)} ATP, {two(sh("WTA").r)} WTA), and none of {family.length} trait statistics is
-        significant after Holm correction. In a chronological out-of-sample evaluation on {count(bothEval.matches)} big
-        matches from 2012 to 2026, adding a player&apos;s past big-match or clutch score to the calibrated baseline changed
-        log loss by {signed(bigDiff, 5)} and {signed(clutchDiff, 5)}, with 95% intervals that include zero. The data do not
-        exclude a modest trait: under the simulation model, a trait whose standard deviation is worth up to about
-        {" "}{pts(atpBound)} (ATP) or {pts(wtaBound)} (WTA) percentage points at even odds remains consistent with the
-        results. One tour-level pattern does hold up: Elo is more overconfident in WTA big matches than in regular WTA
-        matches (calibration slope {two(wtaCal.big)} against {two(wtaCal.regular)}), the gap is largest in 2018–2026, and
-        calibrating WTA big matches separately improved out-of-sample forecasts slightly. The evidence does not support
-        adding a player-specific big-match adjustment to Matchup DNA&apos;s forecasting model.
+        Do some professional tennis players perform better or worse in big matches than their ratings predict, and would
+        knowing this improve match forecasts? I examine {count(r.matches)} ATP and WTA main-tour matches from 2000 to May
+        2026, {count(r.big_matches)} of them big matches (semi-finals, finals, late Grand Slam and top-tier rounds, and the
+        season-ending Finals), and compare every result with a calibrated Elo forecast.
+        Players&apos; big-match records vary about as much as binomial chance predicts (observed-to-chance variance ratios
+        of {two(minBigRatio)} to {two(maxBigRatio)}), the two halves of a player&apos;s record agree only weakly (split-half
+        r = {two(sh("ATP").r)} ATP, {two(sh("WTA").r)} WTA), and none of {family.length} trait statistics is significant
+        after Holm correction. In a chronological out-of-sample evaluation on {count(bothEval.matches)} big matches from
+        {" "}{fc.first_eval_year} to 2026, adding a player&apos;s past big-match or clutch score changed log loss by
+        {" "}{signed(bigDiff, 5)} and {signed(clutchDiff, 5)}, with 95% intervals that include zero. This does not show that
+        choking is absent: under the simulation model, a trait worth up to about {pts(atpBound)} (ATP) or {pts(wtaBound)} (WTA)
+        percentage points at even odds remains consistent with the data. One tour-level pattern does hold up: Elo is more
+        overconfident about favourites in WTA big matches than in regular WTA matches (calibration slope {two(wtaCal.big)}
+        {" "}against {two(wtaCal.regular)}), and calibrating WTA big matches separately slightly improved out-of-sample forecasts. The
+        evidence does not support a player-specific big-match adjustment in Matchup DNA&apos;s forecasting model.
       </Abstract>
 
       <Body>
@@ -247,9 +270,11 @@ export default function BigMatchesPaper() {
               forecasts of later big matches, using only information available at the time? And how large a trait could
               these tests have missed? A fifth question concerns favourites in general rather than particular players: is
               Elo calibrated differently in big matches?</p>
-            <p>In short, big-match records look mostly like chance, past records do not improve out-of-sample forecasts, and
-              a modest trait cannot be ruled out. The one effect that holds up is at the tour level: in WTA big matches,
-              Elo overstates the favourite&apos;s chances by more than it does in regular WTA matches.</p>
+            <p>In brief, big-match records look mostly like chance, past records do not improve out-of-sample forecasts, and
+              a modest trait cannot be ruled out. The one effect that holds up is at the tour level: in WTA big matches, Elo
+              overstates the favourite&apos;s chances by more than it does in regular WTA matches. Section 2 reviews related
+              research, Section 3 describes the data and methods, Section 4 reports the results, and Sections 5 and 6
+              discuss their limits and what they mean for Matchup DNA.</p>
             <p>This is a post-hoc study. Version 1 fixed its definitions in code before it was run, but the question came
               up after recent results had been seen, and later versions added tests after earlier results were known. Version
               3.0 corrected several errors found in an audit of versions 1 and 2; these and later changes are listed in the
@@ -261,17 +286,16 @@ export default function BigMatchesPaper() {
         <Section id="related" number="2" title="Related Research">
           <Cols>
             <p>Most quantitative work on pressure in tennis uses point-level data. For modelling purposes, treating points as
-              i.i.d. is usually adequate: <Cite id="klaassen">Klaassen and Magnus (2001)</Cite> detected departures in
-              Wimbledon data, with servers slightly less successful on important points and some carry-over from one point to
-              the next, but the departures were small. <Cite id="gonzalez">González-Díaz et al.
-              (2012)</Cite> found persistent differences between players in how they perform on important points at the US
-              Open, and that these differences are associated with career success. <Cite id="cohenzada">Cohen-Zada et al.
+              independent and identically distributed is usually adequate: <Cite id="klaassen">Klaassen and Magnus
+              (2001)</Cite> detected departures in Wimbledon data, with servers slightly less successful on important points
+              and some carry-over from one point to the next, but the departures were small. <Cite id="gonzalez">González-Díaz
+              et al. (2012)</Cite> found persistent differences between players in how they perform on important points at the
+              US Open, and that these differences are associated with career success. <Cite id="cohenzada">Cohen-Zada et al.
               (2017)</Cite> compare men and women directly: the decline under rising stakes within a match is consistent only
               for men, women&apos;s results are inconsistent, and where women&apos;s performance does fall, the fall is about
-              half as large. <Cite id="paserman">Paserman
-              (2023)</Cite> finds that both men and women play less aggressively on important points, and <Cite id="harris">Harris
-              et al. (2021)</Cite> find that double faults and unforced errors become more likely as situational pressure
-              rises.</p>
+              half as large. <Cite id="paserman">Paserman (2023)</Cite> finds that both men and women play less aggressively
+              on important points, and <Cite id="harris">Harris et al. (2021)</Cite> find that double faults and unforced
+              errors become more likely as situational pressure rises.</p>
             <p>Two studies measure pressure performance for individual players. <Cite id="kovalchikingram">Kovalchik and
               Ingram (2016)</Cite> modelled player-specific responses to the score and to pressure situations in about three
               million ATP and WTA points from 2011–2015; allowing for these responses improved predictions of the 2015
@@ -285,10 +309,9 @@ export default function BigMatchesPaper() {
               Results also depend on form. <Cite id="jetter">Jetter and Walker (2015)</Cite> find that recent wins predict
               the next match, and that top-ranked players do better at Grand Slams than elsewhere, a clutch effect for the
               group of top players rather than for individuals. Players reach big matches partly by being in form, so a test
-              of pressure has to separate the two. <Cite id="gorgi">Gorgi et al. (2019)</Cite> allowed the
-              strength gap between ATP players to widen at Grand Slams and found no evidence that it does once the
-              best-of-five format is modelled, a tour-level question that Section 4.1 asks of Elo&apos;s calibration on both
-              tours.</p>
+              of pressure has to separate the two. <Cite id="gorgi">Gorgi et al. (2019)</Cite> allowed the strength gap
+              between ATP players to widen at Grand Slams and found no evidence that it does once the best-of-five format is
+              modelled, a tour-level question that Section 4.1 asks of Elo&apos;s calibration on both tours.</p>
             <p>The question has also been examined with match results and Elo expectations outside the academic
               literature. <Cite id="sackmann2019a">Sackmann (2019a)</Cite> compared ATP players&apos; results in each round,
               from first matches to finals, with Elo&apos;s predictions and found significant departures in 29 of about
@@ -302,11 +325,12 @@ export default function BigMatchesPaper() {
               finds nothing says little unless it could have detected a real effect, and <Cite id="birnbaum">Birnbaum
               (2005)</Cite> estimated the power of Cramer&apos;s test by simulating hitters with clutch talent of known
               size. Comparing the observed spread of players&apos; records with the spread chance would produce, and treating
-              any excess as true differences, is a standard approach in that literature (<Cite id="tango">Tango et al., 2007</Cite>). <Cite id="efron">Efron and Morris (1975)</Cite> showed that shrinking early-season
-              batting averages toward the group mean predicted the rest of the season with less than half the mean squared
-              error of the raw averages, and <Cite id="brown2008">Brown
-              (2008)</Cite> compared empirical Bayes methods for predicting batting averages within a season. The variance
-              ratios, consistency tests, power analysis and shrinkage used here are related to these approaches.</p>
+              any excess as true differences, is a standard approach in that literature (<Cite id="tango">Tango et al.,
+              2007</Cite>). <Cite id="efron">Efron and Morris (1975)</Cite> showed that shrinking early-season batting
+              averages toward the group mean predicted the rest of the season with less than half the mean squared error of
+              the raw averages, and <Cite id="brown2008">Brown (2008)</Cite> compared empirical Bayes methods for predicting
+              batting averages within a season. The variance ratios, consistency tests, power analysis and shrinkage used
+              here are related to these approaches.</p>
             <p>The expectation for each match comes from Elo ratings (<Cite id="elo">Elo, 1978</Cite>), which <Cite id="kovalchik">Kovalchik
               (2016)</Cite> found to be among the more accurate published methods for predicting ATP results. Laboratory
               studies of choking, in which pressure such as competition, money or an audience worsened skilled performance
@@ -330,26 +354,46 @@ export default function BigMatchesPaper() {
                 tournaments that started between 1 January 2000 and 24 May 2026. The last edition in the snapshot, Roland
                 Garros 2026, started on 25 May and finished in June. Matches from June 2026 onwards are reserved for the
                 project&apos;s prospective evaluations, so the whole edition is left out.</p>
+            </Cols>
+            <Figure number={1} caption={<>From the source files to the three analyses, 2000 – 24 May 2026. The analyses draw on both kinds of match: regular matches are the reference for the clutch score and the variance ratios.</>}>
+              <StudyFlow
+                source={{ title: "Sackmann's ATP and WTA tour-level files (June 2026 snapshot)", detail: "Elo ratings run from 1968" }}
+                excluded={{ title: "Left out", detail: "Before 2000; Roland Garros 2026 (finished in June); team events, Laver Cup, Next Gen Finals, WTA 125s, bronze-medal matches; retirements and walkovers" }}
+                analysed={{ title: "Rated main-tour matches, 2000 – 24 May 2026", detail: `n = ${count(r.matches)}` }}
+                split={[
+                  { title: "Big matches", detail: <>n = {count(r.big_matches)}<br />Semi-finals and finals; Slam fourth rounds and quarter-finals; top-tier quarter-finals; season-ending Finals</> },
+                  { title: "Regular matches", detail: <>n = {count(r.matches - r.big_matches)}<br />All other main-tour matches</> },
+                ]}
+                tests={[
+                  { title: "Variation beyond chance", detail: <>{count(spread("ATP", "all big matches").players)} ATP and {count(spread("WTA", "all big matches").players)} WTA players (Section 4.2)</> },
+                  { title: "Consistency and carry-over", detail: <>{count(sh("ATP").players)} and {count(sh("WTA").players)} players (halves); {ps("ATP").players} and {ps("WTA").players} (periods) (Section 4.3)</> },
+                  { title: "Out-of-sample forecasts", detail: <>{count(bothEval.matches)} big matches, {fc.first_eval_year} – May 2026 (Section 4.4)</> },
+                ]}
+              />
+            </Figure>
+            <Table number={1} caption={<>The sample, 2000 – 24 May 2026. Player counts are for players meeting each test&apos;s minimum of {r.min_big} big matches.</>}
+              head={["", "ATP", "WTA", "Both tours"]}
+              groups={[{ at: 0, label: "Matches" }, { at: 3, label: `Players with at least ${r.min_big} big matches` }, { at: 6, label: "Out-of-sample evaluation" }]}
+              rows={[
+                ["All rated matches", count(SAMPLE.ATP.matches), count(SAMPLE.WTA.matches), count(r.matches)],
+                ["Big matches", count(SAMPLE.ATP.big), count(SAMPLE.WTA.big), count(r.big_matches)],
+                ["Big matches, best of five", count(byFormat(5).big_matches), "0", count(byFormat(5).big_matches)],
+                ["Over the whole record", count(spread("ATP", "all big matches").players), count(spread("WTA", "all big matches").players),
+                  count(spread("ATP", "all big matches").players + spread("WTA", "all big matches").players)],
+                ["In each half of their record", count(sh("ATP").players), count(sh("WTA").players), count(sh("ATP").players + sh("WTA").players)],
+                ["In both 2012–2018 and 2019–2026", count(ps("ATP").players), count(ps("WTA").players), count(ps("ATP").players + ps("WTA").players)],
+                [`Big matches predicted, ${fc.first_eval_year} – May 2026`, count(evaluation("ATP").matches), count(evaluation("WTA").matches), count(bothEval.matches)],
+              ]} />
+            <Cols>
               <p>Only main-tour singles events are used: the Grand Slams, the ATP Masters and the WTA&apos;s top non-Slam tier,
                 other tour-level events, the season-ending Finals and the Olympics. Team competitions (Davis Cup, Billie Jean
                 King Cup, ATP Cup, United Cup, World Team Cup), the Laver Cup, the Next Gen ATP Finals (an under-21 event with
                 shortened sets), WTA 125 events and bronze-medal matches are excluded. Only completed best-of-three and
-                best-of-five matches are rated, so retirements and walkovers are excluded too. Table 1 summarises the sample.
-                Each match is one observation; in the player-level statistics a match contributes one residual to each player,
-                with opposite signs.</p>
+                best-of-five matches are rated, so retirements and walkovers are excluded too. Figure 1 shows how the sample
+                is built and which part of it each analysis uses, and Table 1 gives the counts by tour. Each match is one
+                observation; in the player-level statistics a match contributes one residual to each player, with opposite
+                signs.</p>
             </Cols>
-            <Table number={1} caption={<>The sample, 2000 – 24 May 2026. Player counts are for players meeting each test&apos;s minimum of {r.min_big} big matches.</>}
-              head={["", "ATP", "WTA", "Both"]}
-              rows={[
-                ["Matches", count(SAMPLE.ATP.matches), count(SAMPLE.WTA.matches), count(r.matches)],
-                ["Big matches", count(SAMPLE.ATP.big), count(SAMPLE.WTA.big), count(r.big_matches)],
-                ["Big matches, best of five", count(byFormat(5).big_matches), "0", count(byFormat(5).big_matches)],
-                ["Players with 10+ big matches", count(spread("ATP", "all big matches").players), count(spread("WTA", "all big matches").players),
-                  count(spread("ATP", "all big matches").players + spread("WTA", "all big matches").players)],
-                ["… with 10+ in each half of their record", count(sh("ATP").players), count(sh("WTA").players), count(sh("ATP").players + sh("WTA").players)],
-                ["… with 10+ in both 2012–18 and 2019–26", count(ps("ATP").players), count(ps("WTA").players), count(ps("ATP").players + ps("WTA").players)],
-                [`Big matches in the out-of-sample test, ${fc.first_eval_year}–2026`, count(evaluation("ATP").matches), count(evaluation("WTA").matches), count(bothEval.matches)],
-              ]} />
           </Subsection>
 
           <Subsection number="3.2" title="Big matches">
@@ -372,71 +416,93 @@ export default function BigMatchesPaper() {
                 player&apos;s overall rating and their rating on the match surface with equal weights. In the project&apos;s
                 model development, the equal weight gave the lowest log loss on 1990–2009 matches among weights of 0.25, 0.5,
                 0.75 and 1. A similar blending approach has previously been described by <Cite id="sackmann2019b">Sackmann
-                (2019b)</Cite>. Ratings are taken at the start of each tournament week, so no match is predicted with ratings that include its own result or any other result from that
-                week. Raw Elo probabilities are too confident in best-of-three matches and roughly right in best-of-five, and most
+                (2019b)</Cite>. Ratings are taken at the start of each tournament week, so no match is predicted with ratings
+                that include its own result or any other result from that week.</p>
+              <p>Raw Elo probabilities are too confident in best-of-three matches and roughly right in best-of-five, and most
                 best-of-five matches are Grand Slam matches, many of them big. I therefore rescale Elo&apos;s log-odds with one
-                slope <i>b</i><sub>g</sub> per group <i>g</i> = (tour, big or regular, best of three or five), fitted by maximum
-                likelihood (equation 1). The residual of player <i>i</i> in match <i>m</i> is the result minus this expectation
-                (equation 2). In the descriptive tests the slopes are fitted on the analysis window itself, so the expectation
-                is in-sample. The out-of-sample evaluation (Section 3.6) fits them only on earlier years.</p>
+                slope <i>b</i><sub><i>g</i></sub> per group <i>g</i> = (tour, big or regular, best of three or five), fitted by
+                maximum likelihood (equation 1). The slope is a measure of Elo&apos;s confidence. A slope of 1 leaves Elo&apos;s
+                probabilities unchanged. A slope below 1 shrinks the log-odds toward zero and so pulls every probability toward
+                50%: the favourite&apos;s chance is reduced, which is the correction needed when Elo&apos;s favourites have won
+                less often than Elo predicted, that is, when Elo has been overconfident in that group. A slope above 1 does the
+                opposite.</p>
+              <p>The residual of player <i>i</i> in match <i>m</i> is the result minus this expectation (equation 2): positive
+                when a player did better than expected, negative when worse. In the descriptive tests the slopes are fitted on
+                the analysis window itself, so the expectation is in-sample. The out-of-sample evaluation (Section 3.6) fits
+                them only on earlier years.</p>
             </Cols>
-            <Eq number={1}>{v("P", "ij")} = σ ( {v("b", "g")} · logit {v("p", "ij")}<sup>Elo</sup> )</Eq>
-            <Eq number={2}>{v("e", "im")} = {v("y", "im")} − {v("P", "im")}, &nbsp; {v("y", "im")} ∈ {"{0, 1}"}</Eq>
+            <Eq number={1}>{v("P", "ij")} = {fn("σ")}( {v("b", "g")} · {fn("logit")} {v("p", "ij", "Elo")} )</Eq>
+            <Eq number={2}>{v("e", "im")} = {v("y", "im")} − {v("P", "im")}, &nbsp;&nbsp; {v("y", "im")} ∈ {"{0, 1}"}</Eq>
           </Subsection>
 
           <Subsection number="3.4" title="Player scores">
             <Cols>
               <p>A player&apos;s big-match score divides the sum of their big-match residuals by the number of big matches plus
                 {" "}{r.shrink} (equation 3). This is fixed shrinkage toward zero: a player with {r.shrink} big matches is weighted
-                halfway between their own record and zero. The constant was set before the version 1 run as a round number; it
-                was not estimated from the data, so the score resembles an empirical Bayes estimate (<Cite id="efron">Efron and Morris, 1975</Cite>) without being one. Section
+                halfway between their own record and zero, and players with short records are pulled most strongly toward zero.
+                The constant was set before the version 1 run as a round number; it was not estimated from the data, so the score
+                resembles an empirical Bayes estimate (<Cite id="efron">Efron and Morris, 1975</Cite>) without being one. Section
                 4.6 reports constants of 10, 50 and 100, and the out-of-sample evaluation adds an empirical Bayes score whose
                 shrinkage is estimated from earlier data. The clutch score subtracts the same score computed on regular matches
                 (equation 4), so a player Elo under-rates in every match, such as a fast-improving young player, is not counted as
                 clutch.</p>
             </Cols>
-            <Eq number={3}>{v("s", "i")} = Σ<sub>m ∈ big</sub> {v("e", "im")} / ( {v("n", "i")} + {r.shrink} )</Eq>
-            <Eq number={4}>{v("c", "i")} = {v("s", "i")}<sup>big</sup> − {v("s", "i")}<sup>regular</sup></Eq>
+            <Eq number={3}>{v("s", "i")} = <Frac num={<>Σ<sub>{v("m")} ∈ big</sub> {v("e", "im")}</>} den={<>{v("n", "i")} + {r.shrink}</>} /></Eq>
+            <Eq number={4}>{v("c", "i")} = {v("s", "i", "big")} − {v("s", "i", "regular")}</Eq>
           </Subsection>
 
           <Subsection number="3.5" title="Tests for a player trait">
             <Cols>
-              <p><i>Variation beyond chance.</i> For players with at least {r.min_big} matches of a kind, I compare the variance
-                of their mean residuals with the average variance that binomial chance would produce given their match
-                probabilities. A variance ratio of 1 means players differ by exactly as much as chance predicts; any excess
-                estimates the variance of a persistent trait, as in the decomposition of observed into true and random variance
-                used in baseball research (<Cite id="tango">Tango et al., 2007</Cite>). I compute it for finals, for semi-finals and finals, for all big
-                matches, for regular matches as a reference for Elo&apos;s general misfit, and for the difference between each
-                player&apos;s big- and regular-match mean residuals (the clutch spread).</p>
-              <p><i>Consistency.</i> The split-half test assigns every edition of a tournament to one of two halves (by a hash
-                of its identifier) and correlates the two halves&apos; mean big-match residuals across players with at least
-                {" "}{r.min_big} big matches in each. The carry-over test correlates scores from 2012–2018 with scores from
-                2019 – May 2026, refitting the calibration in each period.</p>
+              <p><i>Variation beyond chance.</i> Even if every player had exactly the same big-match ability relative to Elo,
+                their records would differ through luck alone, and by more for players with few big matches. For players with
+                at least {r.min_big} matches of a kind, I therefore compare the variance of their mean residuals with the
+                average variance that binomial chance would produce given their match probabilities. A variance ratio of 1 means
+                players differ by exactly as much as chance predicts, leaving nothing for a persistent trait to explain; a ratio
+                well above 1 would mean players differ by more than luck can account for. Any excess estimates the variance of a
+                persistent trait, as in the decomposition of observed into true and random variance used in baseball research
+                (<Cite id="tango">Tango et al., 2007</Cite>). I compute the ratio for finals, for semi-finals and finals, for all
+                big matches, for regular matches as a reference for Elo&apos;s general misfit, and for the difference between
+                each player&apos;s big- and regular-match mean residuals (the clutch spread).</p>
+              <p><i>Consistency.</i> If big-match performance were a stable characteristic, a player who beat expectations in
+                one part of their big-match record would tend to beat them in another part too, and the correlation across
+                players would be clearly positive; if records are mostly luck, it would be near zero. The split-half test
+                assigns every edition of a tournament to one of two halves (by a hash of its identifier), so that both halves
+                span the whole career, and correlates the two halves&apos; mean big-match residuals across players with at least
+                {" "}{r.min_big} big matches in each. The carry-over test asks the same question across time: it correlates
+                scores from 2012–2018 with scores from 2019 – May 2026, refitting the calibration in each period.</p>
               <p><i>Retrospective association.</i> Versions 1 and 2 called this a forecast test. It adds β(<i>s</i><sub>A</sub>
                 {" "}− <i>s</i><sub>B</sub>) to the calibrated 2019–2026 forecasts (equation 5), fits β on those same matches, and
                 asks whether log loss improves more than when the earlier scores are shuffled among players (1,000
                 permutations). Because β and the calibration are fitted on the matches being scored, this tests association
-                between the periods; it does not evaluate forecasts.</p>
+                between the periods; it does not evaluate forecasts. Section 3.6 describes the out-of-sample test that does.</p>
             </Cols>
-            <Eq number={5}>logit {v("P", "m")} = logit {v("P̂", "m")} + β ( {v("s", "A")} − {v("s", "B")} )</Eq>
+            <Eq number={5}>{fn("logit")} {v("P", "m")} = {fn("logit")} {v("P̂", "m")} + β ( {v("s", "A")} − {v("s", "B")} )</Eq>
           </Subsection>
 
           <Subsection number="3.6" title="Out-of-sample evaluation">
             <Cols>
               <p>To test forecasting directly, every big match from {fc.first_eval_year} to May 2026 is predicted using only
-                matches from earlier calendar years. For each year <i>Y</i>, the calibration slopes are fitted on all matches from
-                2000 to the end of <i>Y</i> − 1, player scores are computed from residuals of those matches, and β is fitted on
-                the big matches from {fc.first_fit_year} to <i>Y</i> − 1, each with the scores and calibration that were
-                available at the start of its own year. A player with no earlier big matches has a score of zero, so no match is
-                dropped. Evaluation starts in {fc.first_eval_year} so that every β is fitted on at least eight years of big
-                matches.</p>
+                matches from earlier calendar years, as a forecaster would have had to do at the time. For each year <i>Y</i>,
+                the calibration slopes are fitted on all matches from 2000 to the end of <i>Y</i> − 1, player scores are computed
+                from residuals of those matches, and β is fitted on the big matches from {fc.first_fit_year} to <i>Y</i> − 1,
+                each with the scores and calibration that were available at the start of its own year. A player with no earlier
+                big matches has a score of zero, so no match is dropped. Evaluation starts in {fc.first_eval_year} so that every
+                β is fitted on at least eight years of big matches.</p>
               <p>All models are scored on the same {count(bothEval.matches)} matches. M0 is Elo with one slope per tour and
                 format; M1 has separate big- and regular-match slopes and is the baseline used in the rest of the paper; the
                 player models add the big-match or clutch score to M1. Two variants test the shrinkage and the assumption that
-                a trait lasts a career: empirical Bayes scores, in which each player&apos;s mean residual is multiplied by
-                τ²/(τ² + its noise variance) with τ² estimated from earlier players, and scores built from the previous
-                {" "}{fc.recent_years} years only. Differences in log loss and Brier score are paired by match, and their 95%
-                intervals come from {count(fc.bootstraps)} bootstrap resamples (<Cite id="efron1979">Efron, 1979</Cite>) of whole tournament editions.</p>
+                a trait lasts a career. In the empirical Bayes variant, each player&apos;s mean residual is multiplied by
+                τ²/(τ² + its noise variance), where τ² is the variance of the trait estimated from earlier players (Appendix
+                B.4): a player with a long record keeps most of it, a player with a short one is pulled close to zero, and if
+                earlier players show no excess variance every score is set to zero. The other variant builds scores from the
+                previous {fc.recent_years} years only.</p>
+              <p>Forecasts are scored with two standard measures. Log loss is the average of −ln of the probability the
+                forecast gave to the player who actually won; it is lower for better forecasts and penalises confident mistakes
+                heavily. The Brier score is the mean squared difference between the forecast probability and the result (1 or 0).
+                Differences between models are paired by match, and their 95% intervals come from {count(fc.bootstraps)} bootstrap
+                resamples (<Cite id="efron1979">Efron, 1979</Cite>) of whole tournament editions. I treat a model as improving on
+                the baseline only if the interval for its difference excludes zero; point estimates whose intervals include zero
+                are reported but not read as improvements.</p>
             </Cols>
           </Subsection>
 
@@ -454,35 +520,22 @@ export default function BigMatchesPaper() {
                 family was defined in version 3, after the earlier results were known; within-tour adjustments are in Appendix
                 Table A1. Version 2 corrected only the variance ratios. The robustness checks in Section 4.7 re-test the same
                 hypotheses and are not corrected separately.</p>
-              <p><i>Power and bounds.</i> Similar simulations were used by <Cite id="birnbaum">Birnbaum (2005)</Cite> to
-                measure the power of persistence tests for clutch hitting. I add a known trait to the simulations: each player receives θ ~ N(0, τ²) on the
+              <p><i>Power and bounds.</i> A test that finds nothing is informative only if it could have found something.
+                Similar simulations were used by <Cite id="birnbaum">Birnbaum (2005)</Cite> to measure the power of persistence
+                tests for clutch hitting. I add a known trait to the simulations: each player receives θ ~ N(0, τ²) on the
                 log-odds scale in big matches only, constant over the career (equation 6). For each τ from 0.05 to 0.4,
                 {" "}{count(rb.sims.power)} simulated data sets give each test&apos;s power and the probability of a statistic at or
                 below the observed one. The 95% upper bound on τ is the smallest τ at which that probability falls below 5%,
                 found by linear interpolation between grid points, in the spirit of an equivalence test (<Cite id="lakens">Lakens,
                 2017</Cite>). I express τ as an edge at even odds: a player one standard deviation above average in the trait,
                 facing an otherwise equal and average opponent, wins 50 + 100(σ(τ) − 0.5) per cent of big matches. Resampling
-                the simulations gives a Monte Carlo range for each bound.</p>
+                the simulations gives a Monte Carlo range for each bound. A bound is therefore a statement about a trait of this
+                particular form, not about every way in which pressure might affect results (Section 5.3).</p>
               <p><i>Calibration.</i> Model-based standard errors of the calibration slopes treat matches as independent. I also
-                report a cluster bootstrap over tournament editions ({count(fc.bootstraps)} resamples).</p>
+                report a cluster bootstrap over tournament editions ({count(fc.bootstraps)} resamples), which allows for matches
+                in the same event being related.</p>
             </Cols>
-            <Eq number={6}>logit {v("P", "m")}<sup>true</sup> = logit {v("P̂", "m")} + 1<sub>big</sub>(m) · ( {v("θ", "A")} − {v("θ", "B")} )</Eq>
-            <Figure number={1} caption={<>Matches and players in each part of the analysis, 2000 – 24 May 2026.</>}>
-              <StudyFlow
-                source={{ title: "Sackmann's ATP and WTA tour-level files (June 2026 snapshot)", detail: "Elo ratings run from 1968" }}
-                excluded={{ title: "Left out", detail: "Before 2000; Roland Garros 2026 (finished in June); team events, Laver Cup, Next Gen Finals, WTA 125s, bronze-medal matches; retirements and walkovers" }}
-                analysed={{ title: "Rated main-tour matches", detail: `n = ${count(r.matches)}` }}
-                split={[
-                  { title: "Big matches", detail: <>n = {count(r.big_matches)}<br />Semi-finals, finals, Slam fourth rounds and quarter-finals, top-tier quarter-finals, Finals</> },
-                  { title: "Regular matches", detail: <>n = {count(r.matches - r.big_matches)}</> },
-                ]}
-                tests={[
-                  { title: "Variation beyond chance", detail: <>{count(spread("ATP", "all big matches").players)} ATP and {count(spread("WTA", "all big matches").players)} WTA players</> },
-                  { title: "Consistency and carry-over", detail: <>{count(sh("ATP").players)} and {count(sh("WTA").players)} players (halves); {ps("ATP").players} and {ps("WTA").players} (periods)</> },
-                  { title: "Out-of-sample forecasts", detail: <>{count(bothEval.matches)} big matches, {fc.first_eval_year} – May 2026</> },
-                ]}
-              />
-            </Figure>
+            <Eq number={6}>{fn("logit")} {v("P", "m", "true")} = {fn("logit")} {v("P̂", "m")} + 1<sub>big</sub>({v("m")}) · ( {v("θ", "A")} − {v("θ", "B")} )</Eq>
           </Subsection>
         </Section>
 
@@ -491,8 +544,10 @@ export default function BigMatchesPaper() {
           <Subsection number="4.1" title="Calibration in big matches">
             <Cols>
               <p>On the ATP tour, Elo needs the same correction in big and regular matches in both formats (Figure 2, Table 2).
-                On the WTA tour the big-match slope is lower: {three(wtaCal.big)} against {three(wtaCal.regular)}, so Elo
-                overstates the favourite&apos;s chances more in WTA big matches. The difference survives the cluster bootstrap
+                On the WTA tour the big-match slope is lower: {three(wtaCal.big)} against {three(wtaCal.regular)}. Both are below
+                1, so Elo is overconfident in WTA favourites generally, but more so in big matches. For illustration, where raw
+                Elo gives a WTA favourite {pct(ILLUSTRATE)}, the fitted slopes give {pp(calibrated(wtaCal.regular))}% in a regular
+                match and {pp(calibrated(wtaCal.big))}% in a big one. The difference survives the cluster bootstrap
                 ({pEq(wtaCal.cluster_p!)}, against {pv(wtaCal.wald_p)} for the model-based test). It is not stable over time
                 (Appendix Table A4): it is absent in 2000–2008 ({signed(calP("2000-2008", "WTA bo3").difference)}), moderate in
                 2009–2017 ({signed(calP("2009-2017", "WTA bo3").difference)}) and largest in 2018–2026
@@ -502,102 +557,131 @@ export default function BigMatchesPaper() {
                 {" "}{pts(1000 * wtaM0.log_loss_low!)} to {pts(1000 * wtaM0.log_loss_high!)}), from {wtaM0.log_loss.toFixed(4)} to
                 {" "}{model("WTA", "M1").log_loss.toFixed(4)}. On the ATP tour they made no clear difference (pooled minus
                 separate calibration: {milli(atpM0.log_loss_diff!)} thousandths, interval {milli(atpM0.log_loss_low!)} to
-                {" "}{milli(atpM0.log_loss_high!)}). The effect is small, and it concerns every WTA favourite in a big match, not
-                particular players.</p>
+                {" "}{milli(atpM0.log_loss_high!)}). The effect is small, and it is a property of the tour, not of particular
+                players: it concerns every WTA favourite in a big match, and it does not show that individual WTA favourites
+                choke (Section 5.2).</p>
             </Cols>
-            <Figure number={2} caption={<>Elo calibration slopes in big and regular matches, 2000 – May 2026. A slope of 1 means Elo&apos;s probabilities were already right; below 1, Elo was too confident in the favourite.</>}>
-              <Dumbbell rows={CALIBRATION_ROWS} domain={[0.6, 1.2]} ticks={[0.6, 0.8, 1.2]} format={two} aLabel="Big matches" bLabel="Regular matches"
-                        reference={1} referenceLabel="Elo already right" axisLabel="Calibration slope" ariaLabel="Figure 2: calibration slopes, big against regular matches" />
-            </Figure>
-            <Table number={2} caption={<>Calibration slopes with model-based standard errors, and the big-minus-regular difference with model-based (Wald) and edition-cluster bootstrap uncertainty.</>}
-              head={["Tour and format", "Big", "Regular", "Difference", "Wald p", "Cluster 95% interval", "Cluster p"]}
+            <Table number={2} caption={<>Calibration slopes with model-based standard errors, and the big-minus-regular difference with model-based (Wald) and edition-cluster bootstrap uncertainty. Lower slopes mean greater overconfidence in the favourite.</>}
+              head={["Tour and format", "Big", "Regular", "Difference", "Wald p", "95% interval", "p"]}
+              spans={[{ label: "Slope (standard error)", from: 1, to: 2 }, { label: "Big minus regular", from: 3, to: 4 }, { label: "Cluster bootstrap", from: 5, to: 6 }]}
               rows={fc.calibration.window.map((c) => [c.key.replace(" bo", ", best of "), `${three(c.big)} (${three(c.big_se)})`, `${three(c.regular)} (${three(c.regular_se)})`,
-                signed(c.difference), pv(c.wald_p), `${signed(c.cluster_low!)} to ${signed(c.cluster_high!)}`, pv(c.cluster_p!)])} />
+                signed(c.difference), pv(c.wald_p), ci(c.cluster_low!, c.cluster_high!, 3), pv(c.cluster_p!)])} />
+            <Figure number={2} caption={<>Elo calibration slopes in big and regular matches, 2000 – May 2026. A slope of 1 means Elo&apos;s probabilities were already right; below 1, Elo was too confident in the favourite and the calibration pulls its probabilities toward 50%. The values at the right are big / regular.</>}>
+              <Dumbbell rows={CALIBRATION_ROWS} domain={[0.6, 1.2]} ticks={[0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2]} format={two} aLabel="Big matches" bLabel="Regular matches"
+                        reference={1} referenceLabel="Elo already right" axisLabel="Calibration slope" valueHead="Big / regular"
+                        directions={["Elo overconfident in the favourite", "Elo underconfident"]}
+                        ariaLabel="Figure 2: calibration slopes, big against regular matches" />
+            </Figure>
           </Subsection>
 
           <Subsection number="4.2" title="Variation beyond chance">
             <Cols>
               <p>Players&apos; big-match results vary about as much as chance predicts (Figure 3, Table 3). Across the six
-                big-match sets the variance ratio runs from {two(minBigRatio)} to {two(maxBigRatio)}; the largest is for WTA finals,
-                where only {spread("WTA", "finals only").players} players qualify ({pEq(nullRow("WTA", "ratio finals only").p)}). In
+                big-match sets the variance ratio runs from {two(minBigRatio)} to {two(maxBigRatio)}, and none is
+                significantly greater than 1, even before correction for multiple testing; the largest is for WTA finals, where only
+                {" "}{spread("WTA", "finals only").players} players qualify ({pEq(nullRow("WTA", "ratio finals only").p)}). In
                 standard-deviation terms the excess is smaller still: for all ATP big matches the observed spread is
                 {" "}{pp(spread("ATP", "all big matches").observed_sd)} points against {pp(spread("ATP", "all big matches").noise_sd)} from
                 chance. Where an excess appears, the implied number of matches before a record is half signal is above 100, more
-                than most players play.</p>
-              <p>The clutch spread is {two(atpClutch.observed)} on the ATP tour ({pEq(atpClutch.p)}; Holm-adjusted
-                {" "}{pv(atpClutch.holm!)}) and {two(nullRow("WTA", "clutch ratio").observed)} on the WTA tour ({pEq(nullRow("WTA", "clutch ratio").p)}). The only clear excess in Table 3 is in regular WTA matches
-                ({two(spread("WTA", "regular matches").ratio)}, {pEq(nullRow("WTA", "ratio regular matches").p)}), which is
-                consistent with ordinary changes in form that Elo is slow to track rather than with pressure.</p>
+                than most players play. For the research question this means that, over the matches players actually play, the
+                differences between their big-match records are mostly what luck would produce.</p>
             </Cols>
-            <Figure number={3} caption={<>Variance of players&apos; mean residuals divided by the variance chance alone would produce, 2000 – May 2026; players with at least {r.min_big} matches of each kind. The dashed line at 1 is chance.</>}>
-              <GroupedBars groups={SPREAD_GROUPS} domain={[0, 1.4]} ticks={[0, 0.5, 1, 1.4]} format={two} reference={1} referenceLabel="Chance"
-                           axisLabel="Observed variance ÷ variance from chance" ariaLabel="Figure 3: variance of players' results relative to chance, by tour" />
+            <Figure number={3} caption={<>Variance of players&apos; mean residuals divided by the variance chance alone would produce, 2000 – May 2026; players with at least {r.min_big} matches of each kind. At 1 (dashed line) players differ by exactly as much as luck predicts; values above 1 would leave room for a persistent trait. Regular matches are shown as a reference for Elo&apos;s general misfit.</>}>
+              <GroupedBars groups={SPREAD_GROUPS} domain={[0, 1.4]} ticks={[0, 0.2, 0.4, 0.6, 0.8, 1, 1.2, 1.4]} format={two} reference={1} referenceLabel="Chance (ratio = 1)"
+                           axisLabel="Variance ratio: observed ÷ expected from chance" ariaLabel="Figure 3: variance of players' results relative to chance, by tour" />
             </Figure>
             <Table number={3}
-              caption={<>Spread of players&apos; mean residuals. Standard deviations are in percentage points of win probability per match; the ratio is of variances. The trait sd is the square root of the excess variance; implied <i>k</i> is the number of matches before half of a record is signal. p from {count(rb.sims.null)} simulations; Holm across the {family.length} trait statistics.</>}
-              head={["Tour and matches", "Players", "Observed sd", "Chance sd", "Variance ratio", "Trait sd", "Implied k", "p", "Holm p"]}
+              caption={<>Spread of players&apos; mean residuals. Standard deviations are in percentage points of win probability per match; the ratio is of variances. The trait sd is the square root of the excess variance; implied <i>k</i> is the number of matches before half of a record is signal. The descriptive columns estimate how large a trait would be if the excess were real; only the test columns say whether it is distinguishable from chance. p from {count(rb.sims.null)} simulations; Holm across the {family.length} trait statistics.</>}
+              head={["Matches", "Players", "Observed sd", "Chance sd", "Variance ratio", "Trait sd", <>Implied <i>k</i></>, "p", "Holm p"]}
+              spans={[{ label: "Descriptive", from: 2, to: 6 }, { label: "Simulation test", from: 7, to: 8 }]}
+              groups={TOURS.map((tour, i) => ({ at: i * SETS.length, label: tour }))}
               rows={TOURS.flatMap((tour) => SETS.map(([set, label]) => {
                 const s = spread(tour, set), n = nullRow(tour, `ratio ${set}`);
-                return [`${tour}, ${label.toLowerCase()}`, count(s.players), pp(s.observed_sd), pp(s.noise_sd), two(s.ratio), pp(s.trait_sd),
-                        s.implied_k === null ? "none" : count(Math.round(s.implied_k)), pv(n.p), n.holm === undefined ? "reference" : pv(n.holm)];
-              }))} />
+                return [set === "regular matches" ? "Regular matches (reference)" : label, count(s.players), pp(s.observed_sd), pp(s.noise_sd), two(s.ratio), pp(s.trait_sd),
+                        s.implied_k === null ? "none" : count(Math.round(s.implied_k)), pv(n.p), n.holm === undefined ? "–" : pv(n.holm)];
+              }))}
+              note={<>Regular-match ratios are a reference for Elo&apos;s general misfit and are not in the Holm family (–). &quot;None&quot;: no excess variance, so no trait is implied.</>} />
+            <Cols>
+              <p>The clutch spread is {two(atpClutch.observed)} on the ATP tour ({pEq(atpClutch.p)}; Holm-adjusted
+                {" "}{pv(atpClutch.holm!)}) and {two(nullRow("WTA", "clutch ratio").observed)} on the WTA tour ({pEq(nullRow("WTA", "clutch ratio").p)}).
+                The only clear excess in Table 3 is in regular WTA matches ({two(spread("WTA", "regular matches").ratio)},
+                {" "}{pEq(nullRow("WTA", "ratio regular matches").p)}), which is consistent with ordinary changes in form that Elo
+                is slow to track rather than with pressure.</p>
+            </Cols>
           </Subsection>
 
           <Subsection number="4.3" title="Consistency and carry-over">
             <Cols>
               <p>The two halves of players&apos; big-match records barely agree: r = {interval(sh("ATP"))} on the ATP tour and
-                {" "}{interval(sh("WTA"))} on the WTA tour (Figure 4). Applying the Spearman–Brown formula (<Cite id="spearman">Spearman, 1910</Cite>; <Cite id="brown">Brown, 1910</Cite>) to these point estimates
-                gives a full-record reliability of {two(sh("ATP").spearman_brown)} and {two(sh("WTA").spearman_brown)}. These are
-                estimates with wide uncertainty, not upper limits, and the formula assumes halves of equal length, which unequal
-                records only approximate.</p>
+                {" "}{interval(sh("WTA"))} on the WTA tour (Figure 4). Both intervals include zero. Applying the Spearman–Brown
+                formula (<Cite id="spearman">Spearman, 1910</Cite>; <Cite id="brown">Brown, 1910</Cite>), which projects the
+                agreement of two half-records to the reliability of a whole record, to these point estimates gives a full-record
+                reliability of {two(sh("ATP").spearman_brown)} and {two(sh("WTA").spearman_brown)}. These are estimates with wide
+                uncertainty, not upper limits, and the formula assumes halves of equal length, which unequal records only
+                approximate.</p>
+            </Cols>
+            <Table number={4}
+              caption={<><i>Retrospective association, not an out-of-sample test.</i> 2012–2018 scores against 2019–2026 big-match results (equation 5), with β and the calibration fitted on the same later matches that are scored. Permutation p from 1,000 shuffles of the earlier scores. The out-of-sample evaluation is in Section 4.4 and Table 5.</>}
+              head={["Tour and score", "Later big matches", "With an earlier score", "β (se)", "Log-loss change", "Permutation p"]}
+              groups={TOURS.map((tour, i) => ({ at: 2 * i, label: tour }))}
+              rows={TOURS.flatMap((tour) => (["big-match", "clutch"] as const).map((key) => {
+                const f = ps(tour).forecasts[key];
+                return [key === "big-match" ? "Big-match score" : "Clutch score", count(f.matches), count(f.with_history), `${signed(f.beta, 2)} (${two(f.se)})`, signed(f.log_loss_change, 5), pv(f.permutation_p)];
+              }))} />
+            <Cols>
               <p>Between periods, big-match scores carry over weakly ({signed(ps("ATP").correlations["big-match"].r, 2)} ATP,
                 {" "}{signed(ps("WTA").correlations["big-match"].r, 2)} WTA), and no more strongly than regular-match scores do
-                ({signed(ps("ATP").correlations["regular-match"].r, 2)} and {signed(ps("WTA").correlations["regular-match"].r, 2)}). The
-                retrospective association test (Table 4) is nominally significant for the WTA big-match score (permutation {pEq(wtaBigAssoc.permutation_p)}), but the WTA clutch score, which removes general form, shows no association
-                ({pEq(ps("WTA").forecasts.clutch.permutation_p)}). What persists between periods is a player&apos;s general
-                tendency to beat or trail their rating, which persists at least as strongly in regular matches.
+                ({signed(ps("ATP").correlations["regular-match"].r, 2)} and {signed(ps("WTA").correlations["regular-match"].r, 2)}).
+                With only {ps("ATP").players} and {ps("WTA").players} players, these correlations are imprecise, and every
+                interval in Figure 4 is wide.</p>
+              <p>The retrospective association test (Table 4), which fits β on the same later matches it scores, is nominally
+                significant for the WTA big-match score (permutation {pEq(wtaBigAssoc.permutation_p)}), but the WTA clutch score,
+                which removes general form, shows no association ({pEq(ps("WTA").forecasts.clutch.permutation_p)}). What persists
+                between periods is a player&apos;s general tendency to beat or trail their rating, which persists at least as
+                strongly in regular matches.
                 {" "}{nominal.length === 1 ? "It is the only one" : `${nominal.length}`} of the {family.length} trait statistics with a raw
                 p below 0.05 (simulation {pEq(smallestRaw.p)}), and after Holm&apos;s correction its p-value is {pv(minHolm)}.</p>
             </Cols>
-            <Figure number={4} caption={<>Agreement of player scores with 95% intervals: between the two halves of each player&apos;s big matches, and between 2012–2018 and 2019 – May 2026 for the {ps("ATP").players} ATP and {ps("WTA").players} WTA players with at least {r.min_big} big matches in both periods.</>}>
-              <Forest groups={FOREST_GROUPS} domain={[-0.4, 0.7]} ticks={[-0.4, 0, 0.4, 0.7]} format={(x) => signed(x, 2)} reference={0} referenceLabel="No agreement"
-                      axisLabel="Correlation" ariaLabel="Figure 4: agreement of player scores with 95% intervals" />
+            <Figure number={4} caption={<>Agreement of player scores, with 95% intervals: between the two halves of each player&apos;s big matches, and between 2012–2018 and 2019 – May 2026 for the {ps("ATP").players} ATP and {ps("WTA").players} WTA players with at least {r.min_big} big matches in both periods. A persistent trait would push the big-match and clutch rows clearly to the right of zero; regular-match scores are a reference.</>}>
+              <Forest groups={FOREST_GROUPS} domain={[-0.4, 0.7]} ticks={[-0.4, -0.2, 0, 0.2, 0.4, 0.6]} format={(x) => signed(x, 2)} reference={0} referenceLabel="No agreement"
+                      axisLabel="Correlation" valueHead="r (95% interval)" ariaLabel="Figure 4: agreement of player scores with 95% intervals" />
             </Figure>
-            <Table number={4}
-              caption={<>Retrospective association (equation 5): 2012–2018 scores against 2019–2026 big-match results, with β fitted on the same later matches. Permutation p from 1,000 shuffles of the earlier scores. This is not an out-of-sample test (see Section 4.4).</>}
-              head={["Tour and score", "Later big matches", "With an earlier score", "β (se)", "Log-loss change", "Permutation p"]}
-              rows={TOURS.flatMap((tour) => (["big-match", "clutch"] as const).map((key) => {
-                const f = ps(tour).forecasts[key];
-                return [`${tour}, ${key} score`, count(f.matches), count(f.with_history), `${signed(f.beta, 2)} (${two(f.se)})`, signed(f.log_loss_change, 5), pv(f.permutation_p)];
-              }))} />
           </Subsection>
 
           <Subsection number="4.4" title="Out-of-sample forecasts">
             <Cols>
-              <p>Predicting each year only from earlier years, no player score produced a statistically reliable improvement in forecasts of big matches (Table 5,
-                Figure 5). Across both tours, the big-match score changed log loss by {milli(bigDiff)} thousandths and the clutch
-                score by {milli(clutchDiff)}, against a baseline of {model("both", "M1").log_loss.toFixed(4)}. Every interval for a
-                player-score model includes zero, including the empirical Bayes and five-year variants and the subset of matches in
-                which both players had at least {r.min_big} earlier big matches (Appendix Table A3). The largest point improvement
-                of any variant is {pts(-1000 * largestScoreGain)} thousandths.</p>
+              <p>Predicting each year only from earlier years, no player score produced a statistically reliable improvement in
+                forecasts of big matches (Table 5, Figure 5). Across both tours, the big-match score changed log loss by
+                {" "}{milli(bigDiff)} thousandths and the clutch score by {milli(clutchDiff)}, against a baseline of
+                {" "}{model("both", "M1").log_loss.toFixed(4)}: changes in the fifth decimal place, both fractionally worse than the baseline.
+                Every interval for a player-score model includes zero, including the empirical Bayes and five-year variants and
+                the subset of matches in which both players had at least {r.min_big} earlier big matches (Appendix Table A3). The
+                point estimates are mixed in sign, some slightly better than the baseline and some slightly worse, and the
+                largest point improvement of any variant is {pts(-1000 * largestScoreGain)} thousandths, with an interval that
+                includes zero. By contrast, the separate WTA big-match calibration (the first row of Figure 5) has an interval
+                that excludes zero.</p>
               <p>The fitted β values help explain this. On the ATP tour the coefficient on the clutch score is negative in every
                 evaluation year (between {signed(Math.min(...atpClutchBetas), 2)} and {signed(Math.max(...atpClutchBetas), 2)}): a high
                 earlier clutch score, which partly reflects a low regular-match score, is followed by slightly worse big-match
                 results relative to the baseline, not better. The empirical Bayes WTA big-match score is zero in most years because
                 the estimated trait variance is zero, so that model reproduces the baseline.</p>
             </Cols>
-            <Table number={5}
-              caption={<>Out-of-sample log loss on every big match, {fc.first_eval_year} – May 2026, each year predicted from earlier years only. Differences are from the baseline M1 in thousandths of log loss; negative means better. 95% intervals from {count(fc.bootstraps)} resamples of tournament editions.</>}
-              head={["Model", "ATP log loss", "ATP difference (95%)", "WTA log loss", "WTA difference (95%)"]}
-              rows={(["M0", "M1", "big", "clutch", "big_eb", "clutch_eb", "big_recent", "clutch_recent"] as const).map((name) => {
-                const cell = (tour: string) => { const m = model(tour, name); return m.log_loss_diff === undefined ? "baseline" : diffCell(m.log_loss_diff, m.log_loss_low!, m.log_loss_high!); };
-                return [OOS_LABELS.find(([n]) => n === name)?.[1] ?? "M1: separate big and regular slopes", model("ATP", name).log_loss.toFixed(4), cell("ATP"), model("WTA", name).log_loss.toFixed(4), cell("WTA")];
-              })}
-              note={<>Matches: {count(evaluation("ATP").matches)} ATP, {count(evaluation("WTA").matches)} WTA. EB = empirical Bayes shrinkage; 5 years = scores from the previous {fc.recent_years} years only. Brier scores and the subset with long histories are in Appendix Table A3.</>} />
-            <Figure number={5} caption={<>Out-of-sample change in log loss relative to the baseline M1 (separate big- and regular-match calibration), in thousandths, with 95% intervals; negative is better. The first row is the model without the big-match calibration.</>}>
-              <Forest groups={OOS_GROUPS} domain={[-1.5, 1.6]} ticks={[-1.5, 0, 1.5]} format={(x) => signed(x, 2)} reference={0} referenceLabel="Baseline"
-                      axisLabel="Change in log loss (thousandths)" ariaLabel="Figure 5: out-of-sample change in log loss for each model against the baseline, by tour" />
+            <Figure number={5} caption={<>Out-of-sample change in log loss relative to the baseline M1, in thousandths, with 95% intervals; negative is better. The first row is M0 minus M1, the value of the separate big-match calibration; the other rows add a player score to M1. Intervals that cross the dashed zero line show no reliable change.</>}>
+              <Forest groups={OOS_GROUPS} domain={[-1.5, 1.6]} ticks={[-1.5, -1, -0.5, 0, 0.5, 1, 1.5]} format={(x) => signed(x, 2)} reference={0} referenceLabel="Baseline M1"
+                      axisLabel="Change in log loss (thousandths)" valueHead="Δ (95% interval)" directions={["better than M1", "worse than M1"]}
+                      ariaLabel="Figure 5: out-of-sample change in log loss for each model against the baseline, by tour" />
             </Figure>
+            <Table number={5}
+              caption={<>Out-of-sample log loss on every big match, {fc.first_eval_year} – May 2026, each year predicted from earlier years only. Δ is the difference from the baseline M1 in thousandths of log loss (negative means better), with a 95% interval from {count(fc.bootstraps)} resamples of tournament editions. No player-score interval excludes zero.</>}
+              head={["Model", "Log loss", "Δ", "95% interval", "Log loss", "Δ", "95% interval"]}
+              spans={[{ label: `ATP (${count(evaluation("ATP").matches)} matches)`, from: 1, to: 3 }, { label: `WTA (${count(evaluation("WTA").matches)} matches)`, from: 4, to: 6 }]}
+              groups={[{ at: 0, label: "Calibration" }, { at: 2, label: "Player scores added to M1" }]}
+              rows={(["M0", "M1", "big", "clutch", "big_eb", "clutch_eb", "big_recent", "clutch_recent"] as const).map((name) => {
+                const cells = (tour: string) => { const m = model(tour, name); return m.log_loss_diff === undefined ? ["baseline", ""] : diffCells(m.log_loss_diff, m.log_loss_low!, m.log_loss_high!); };
+                const label = name === "M0" ? "M0: one slope per tour and format" : name === "M1" ? "M1: separate big and regular slopes" : OOS_LABELS.find(([n]) => n === name)![1];
+                return [label, model("ATP", name).log_loss.toFixed(4), ...cells("ATP"), model("WTA", name).log_loss.toFixed(4), ...cells("WTA")];
+              })}
+              note={<>EB = empirical Bayes shrinkage; 5 years = scores from the previous {fc.recent_years} years only. For M0 the difference is M0 minus M1, so a positive value means the separate big-match calibration of M1 helped. Brier scores and the subset with long histories are in Appendix Table A3.</>} />
           </Subsection>
 
           <Subsection number="4.5" title="What the data can rule out">
@@ -605,17 +689,20 @@ export default function BigMatchesPaper() {
               <p>The tests can detect a large trait. At τ = 0.4, an edge of {pts(evensAt(0.4))} points at even odds, the
                 clutch-spread and split-half tests detect the trait {power04 >= 0.995 ? "in essentially every simulation" : `in at least ${pct(power04)} of simulations`} on
                 both tours (Figure 6). At τ = 0.15 ({pts(evensAt(0.15))} points) no test has better than a {pct(power015)} chance.</p>
+            </Cols>
+            <Figure number={6} caption={<>Power of three tests against the size of a simulated clutch trait, {count(rb.sims.power)} simulations per point: the share of simulated data sets in which each test detects the trait. The horizontal axis is the edge at even odds, in percentage points, of a player one standard deviation above average. The dashed line is 80% power. The ATP and WTA curves nearly coincide (values in Appendix Table A2). The curves hold under the simulation model of Section 3.7.</>}>
+              <PowerCurves panels={POWER_PANELS} xMax={10} xTicks={[0, 2.5, 5, 7.5, 10]} ariaLabel="Figure 6: power of the clutch-spread, split-half and association tests against the size of a clutch trait, by tour" />
+            </Figure>
+            <Cols>
               <p>The clutch spread gives the headline bounds because it is the only test that removes general form. At 95%
                 confidence the trait&apos;s standard deviation is at most {boundText("ATP", "clutch ratio")} at even odds on the ATP
                 tour, and {boundText("WTA", "clutch ratio")} on the WTA tour; the split-half test gives {boundText("ATP", "split-half r")} and
                 {" "}{boundText("WTA", "split-half r")}. These bounds hold only under the simulation model: a normally distributed trait,
-                constant over a career and confined to the defined big matches. They describe the spread of the trait across
-                players, not a maximum for any single player, and an edge of {pts(atpBound)} points (a {pts(50 + atpBound)}% chance against an
-                equal opponent) would matter for a forecast if it could be measured.</p>
+                constant over a career and confined to the defined big matches. They are not limits on every possible
+                psychological effect, and they describe the spread of the trait across players, not a maximum for any single
+                player. An edge of {pts(atpBound)} points (a {pts(50 + atpBound)}% chance against an equal opponent) would matter for
+                a forecast if it could be measured.</p>
             </Cols>
-            <Figure number={6} caption={<>Power of three tests against the size of a simulated clutch trait, {count(rb.sims.power)} simulations per point. The horizontal axis is the edge at even odds, in percentage points, of a player one standard deviation above average. The dashed line is 80% power.</>}>
-              <PowerCurves panels={POWER_PANELS} xMax={10} xTicks={[0, 2.5, 5, 7.5, 10]} ariaLabel="Figure 6: power of the clutch-spread, split-half and association tests against the size of a clutch trait, by tour" />
-            </Figure>
           </Subsection>
 
           <Subsection number="4.6" title="Players with extreme early records, and sensitivity">
@@ -627,18 +714,18 @@ export default function BigMatchesPaper() {
                 {" "}{points(meanOf("WTA", "top").score.early)} to {points(meanOf("WTA", "top").score.late)} and the lowest five from
                 {" "}{points(meanOf("WTA", "bottom").score.early)} to {points(meanOf("WTA", "bottom").score.late)}. The ATP lowest five
                 moved from {points(meanOf("ATP", "bottom").score.early)} to {points(meanOf("ATP", "bottom").score.late)}. The tables
-                illustrate regression toward zero; they are not a test, and with so few big matches per player every individual
-                record in them is dominated by chance. Changes in a player&apos;s record can have causes, such as injury or age, that
-                this analysis does not observe.</p>
+                are descriptive. They illustrate regression toward zero; they are not a test, and with so few big matches per
+                player every individual record in them is dominated by chance. Changes in a player&apos;s record can have causes,
+                such as injury or age, that this analysis does not observe.</p>
               <p>Across the {rb.sensitivity.length / 2} variants of the carry-over test per tour (shrinkage constants 10, 50 and 100,
                 minimums of 5 and 20 big matches, semi-finals and finals only, and periods split at 2016; Appendix Table A5), no
                 clutch-score association has p below {pv(minSensitivityClutchP)}, and the smallest p for either score is
                 {" "}{pv(minSensitivityP)}, which is not significant once the number of variants is considered.</p>
             </Cols>
-            <Table number={6} align={PLAYER_ALIGN} caption={<>ATP players with the highest and lowest big-match scores in 2012–2018, and their records in 2019 – May 2026. Won (exp.) is wins against calibrated expected wins; the score is equation 3 in percentage points.</>}
-              head={PLAYER_HEAD} rows={playerRows("ATP")} />
-            <Table number={7} align={PLAYER_ALIGN} caption={<>WTA players with the highest and lowest big-match scores in 2012–2018, and their records in 2019 – May 2026. Columns as in Table 6.</>}
-              head={PLAYER_HEAD} rows={playerRows("WTA")} />
+            <Table number={6} caption={<>ATP players with the highest and lowest big-match scores in 2012–2018, and their records in 2019 – May 2026. Descriptive only. Big: big matches played; Won and Expected: wins and calibrated expected wins; Score: equation 3, in percentage points.</>}
+              head={PLAYER_HEAD} spans={PLAYER_SPANS} groups={playerGroups("ATP")} rows={playerRows("ATP")} />
+            <Table number={7} caption={<>WTA players with the highest and lowest big-match scores in 2012–2018, and their records in 2019 – May 2026. Descriptive only; columns as in Table 6.</>}
+              head={PLAYER_HEAD} spans={PLAYER_SPANS} groups={playerGroups("WTA")} rows={playerRows("WTA")} />
           </Subsection>
 
           <Subsection number="4.7" title="Robustness checks">
@@ -649,10 +736,10 @@ export default function BigMatchesPaper() {
                 points to playing style. The clutch spread on game margins is {two(game("ATP").clutch.ratio)} on the ATP tour ({pEq(game("ATP").clutch.p)}) and {two(game("WTA").clutch.ratio)} on the WTA tour ({pEq(game("WTA").clutch.p)}).</p>
               <p><i>Format.</i> Best-of-five matches make up a larger share of ATP big matches than of regular ones
                 ({pct(bo5Share("big_matches"))} against {pct(bo5Share("regular_matches"))}), so a difference between big and
-                regular matches could partly reflect format. Comparing big and
-                regular ATP matches within one format (Appendix Table A8), the clutch spread is {two(byFormat(3).wins.ratio)} in
-                best-of-three matches ({pEq(byFormat(3).wins.p)}; games {two(byFormat(3).games.ratio)}, {pEq(byFormat(3).games.p)}) and
-                {" "}{two(byFormat(5).wins.ratio)} in best-of-five ({pEq(byFormat(5).wins.p)}).</p>
+                regular matches could partly reflect format. Comparing big and regular ATP matches within one format (Appendix
+                Table A8), the clutch spread is {two(byFormat(3).wins.ratio)} in best-of-three matches ({pEq(byFormat(3).wins.p)};
+                games {two(byFormat(3).games.ratio)}, {pEq(byFormat(3).games.p)}) and {two(byFormat(5).wins.ratio)} in best-of-five
+                ({pEq(byFormat(5).wins.p)}).</p>
               <p>These checks leave a small, unresolved ATP pattern. The win-based clutch spread on all matches is not significant
                 ({pEq(atpClutch.p)}), but the game-margin version and the best-of-three comparison give nominal p-values below 0.05.
                 Those checks are not corrected for multiple testing, they re-test the same hypothesis with overlapping data, and the
@@ -662,7 +749,7 @@ export default function BigMatchesPaper() {
                 event (Appendix Table A7) gives an ATP clutch spread of {two(within("ATP").clutch)} and split-half correlations
                 of {signed(within("ATP").split_half.r, 2)} and {signed(within("WTA").split_half.r, 2)}. Round-robin matches and
                 others without a complete earlier-round record keep the start-of-week rating ({pct(1 - within("ATP").eligible)} of
-                big matches).</p>
+                ATP big matches).</p>
             </Cols>
           </Subsection>
         </Section>
@@ -674,25 +761,29 @@ export default function BigMatchesPaper() {
               <p>Three kinds of significance need to be kept apart. Statistically, no trait statistic is significant once the
                 number of tests is taken into account. The nominal results either reflect general form (the WTA big-match
                 association, which disappears once regular-match form is removed) or come from robustness checks of an ATP clutch
-                spread whose main statistic is not significant. Practically, a trait of a few percentage points cannot be excluded, and the bounds
-                allow an effect large enough to matter in a forecast. Predictively, past big-match records did not improve
-                out-of-sample forecasts, which is the question the forecasting model needs answered.</p>
-              <p>The evidence therefore does not show that choking or clutch traits do not exist. It shows that tour-level
-                results contain no reliable, measurable player-specific big-match signal of a size that would justify an
-                adjustment. Records of a few dozen big matches are too noisy: at a typical win probability of 70%, chance alone
-                gives a record of 100 big matches a standard deviation of about {pts(PER_100_SD)} points per match, comparable to
-                the largest trait the bounds allow.</p>
+                spread whose main statistic is not significant. Practically, a trait of a few percentage points cannot be excluded,
+                and the bounds allow an effect large enough to matter in a forecast. Predictively, past big-match records did not
+                improve out-of-sample forecasts, which is the question the forecasting model needs answered.</p>
+              <p>The evidence therefore does not establish that choking or clutch performance is nonexistent. What it finds is
+                insufficient reliable evidence that a player&apos;s historical big-match results provide a useful forecasting signal
+                beyond the calibrated model. Records of a few dozen big matches are too noisy to reveal a modest trait: at a typical
+                win probability of 70%, chance alone gives a record of 100 big matches a standard deviation of about
+                {" "}{pts(PER_100_SD)} points per match, comparable to the largest trait the bounds allow. A latent trait of that size
+                could exist and still be hard to detect from the records players accumulate.</p>
             </Cols>
           </Subsection>
           <Subsection number="5.2" title="The WTA calibration pattern">
             <Cols>
               <p>The lower WTA big-match slope means favourites in WTA big matches win less often than Elo, calibrated on regular
-                matches, would predict. This study cannot tell apart the possible explanations. Players who reach late rounds are
-                selected for being in form that week, which narrows the true gap between them relative to their start-of-week
-                ratings. The players in big matches are stronger on average, and Elo&apos;s rating gaps near the top of the WTA may
-                be less informative than elsewhere. The larger gap in 2018–2026 coincides with changes in the WTA calendar and tier
-                structure, including the larger WTA 1000 tier, but nothing here shows that either caused it. Pressure on favourites
-                is one possibility among these, and the data do not single it out.</p>
+                matches, would predict. It is a separate finding from the player-level tests: it describes WTA favourites as a group
+                and does not show that particular WTA favourites choke. This study cannot tell apart the possible explanations.
+                Players who reach late rounds are selected for being in form that week, which narrows the true gap between them
+                relative to their start-of-week ratings. The players in big matches are stronger on average, and Elo&apos;s rating
+                gaps near the top of the WTA may be less informative than elsewhere. The larger gap in 2018–2026 coincides with
+                changes in the WTA calendar and tier structure, including the larger WTA 1000 tier, but nothing here shows that
+                either caused it. Pressure on favourites is one possibility among these, and the data do not single it out. Because
+                the pattern has varied over time and was found in a post-hoc study, it merits prospective testing on new matches
+                before it is relied on.</p>
             </Cols>
           </Subsection>
           <Subsection number="5.3" title="What the tests cannot see">
@@ -715,9 +806,11 @@ export default function BigMatchesPaper() {
             <Cols>
               <p>Matchup DNA&apos;s live model is a frozen logistic regression on Elo and other pre-match features, under evaluation
                 in a pre-registered prospective protocol. It has no big-match adjustment of any kind, and this exploratory study
-                does not change it. The results argue against adding a player-specific big-match feature. A tour-level adjustment for
-                WTA big matches is a better candidate, but its out-of-sample gain is small, it has varied over time, and it would
-                have to be specified in advance and evaluated on new matches as a new model version.</p>
+                does not change it. The results argue against adding a player-specific big-match feature: in a test that used only
+                information available at the time, such a feature did not improve forecasts, and records of the length players accumulate
+                are too noisy to estimate it reliably. A tour-level adjustment for WTA big matches is a better
+                candidate, but its out-of-sample gain is small, it has varied over time, and it would have to be specified in advance
+                and evaluated on new matches as a new model version.</p>
             </Cols>
           </Subsection>
         </Section>
@@ -726,11 +819,14 @@ export default function BigMatchesPaper() {
         <Section id="conclusion" number="6" title="Conclusion">
           <Cols>
             <p>In 26 years of tour-level results, players&apos; big-match records differ from one another by about as much as
-              chance would make them differ, they are only weakly consistent within careers, and they did not improve forecasts
-              of later big matches. The data rule out a large and stable choke or clutch trait, but not a modest one. The available
-              evidence does not establish a sufficiently reliable player-specific big-match adjustment to justify adding one to
-              Matchup DNA&apos;s forecasting model. The clearest result is a tour-level one: Elo is more overconfident in WTA big
-              matches than in regular WTA matches, and that pattern is worth testing prospectively.</p>
+              chance would make them differ, they are only weakly consistent within careers, and they did not improve forecasts of
+              later big matches. The data rule out a large and stable choke or clutch trait, but not a modest one. This research
+              therefore does not establish that choking is nonexistent; it finds insufficient reliable evidence that historical
+              player-specific big-match results provide a useful forecasting signal beyond the existing calibrated model, and so
+              no basis for adding a player-specific big-match adjustment to Matchup DNA&apos;s forecasting model.</p>
+            <p>The clearest result is a separate, tour-level one: Elo is more overconfident in WTA big matches than in regular WTA
+              matches. It is small, it has varied over time, and it was found after the fact, so it is a candidate for prospective
+              investigation rather than an established effect.</p>
           </Cols>
         </Section>
 
@@ -753,12 +849,13 @@ export default function BigMatchesPaper() {
               codes, and Holm&apos;s correction had covered only the variance ratios. The corrections changed the sample from
               131,649 to {count(r.matches)} matches and moved most figures. Versions 3.1 and 4.0 expanded the related research
               and attribution and made the split-half bootstrap reproducible (ATP interval now {signed(sh("ATP").low, 2)} to
-              {" "}{signed(sh("ATP").high, 2)}). The full history is in docs/research/big-matches/CHANGELOG.md in the project
-              repository.</> },
+              {" "}{signed(sh("ATP").high, 2)}). Version 4.1 is an editorial and typesetting revision: the text, tables and
+              figures were reorganised for clarity, no analysis was rerun and no reported result changed. The full history is in
+              docs/research/big-matches/CHANGELOG.md in the project repository.</> },
           ]} />
         </Section>
 
-        <section aria-labelledby="acknowledgements-h" className="statements grid gap-2">
+        <section aria-labelledby="acknowledgements-h" className="statements acknowledgements grid gap-2">
           <h2 id="acknowledgements-h" className="text-[23px] font-semibold sm:text-[25px]">Acknowledgements</h2>
           <p className="text-[15.5px] leading-[1.6]">Claude Code (Anthropic) was used to assist with the implementation of
             statistical analyses, generation of figures and tables, and drafting and editing of the manuscript. The author
@@ -798,67 +895,83 @@ export default function BigMatchesPaper() {
 
         {/* ───────────────────────── Appendix A ───────────────────────── */}
         <div className="page-break" />
-        <Section id="appendix-a" number="Appendix A" title="Supplementary Tables">
+        <Section id="appendix-a" number="Appendix A" title="Supplementary Tables" className="appendix">
           <Table number="A1"
             caption={<>Simulation tests: each statistic against {count(rb.sims.null)} simulated data sets with no trait. Holm-adjusted p across the {family.length} trait statistics (both tours) and within each tour.</>}
-            head={["Statistic", "ATP obs.", "ATP p", "Holm", "Holm (tour)", "WTA obs.", "WTA p", "Holm", "Holm (tour)"]}
+            head={["Statistic", "Observed", "p", "Holm", "Holm (tour)", "Observed", "p", "Holm", "Holm (tour)"]}
+            spans={[{ label: "ATP", from: 1, to: 4 }, { label: "WTA", from: 5, to: 8 }]}
+            groups={[{ at: 0, label: "Variance ratios" }, { at: 4, label: "Clutch spread, consistency and association" }]}
             rows={NULL_LABELS.map(([test, label]) => {
               const a = nullRow("ATP", test), w = nullRow("WTA", test);
               const h = (x?: number) => (x === undefined ? "–" : pv(x));
-              return [label, signed(a.observed, 2), pv(a.p), h(a.holm), h(a.holm_tour), signed(w.observed, 2), pv(w.p), h(w.holm), h(w.holm_tour)];
-            })} />
+              const shown = label.startsWith("Variance ratio, ") ? label.slice("Variance ratio, ".length).replace(/^./, (c) => c.toUpperCase()) : label;
+              return [shown, signed(a.observed, 2), pv(a.p), h(a.holm), h(a.holm_tour), signed(w.observed, 2), pv(w.p), h(w.holm), h(w.holm_tour)];
+            })}
+            note={<>The regular-match variance ratio is a reference and is not in the Holm family (–).</>} />
           <Table number="A2"
-            caption={<>Power at each trait size and the 95% upper bound on the trait, with its Monte Carlo range. Trait sizes τ = {rb.power.taus.map((t) => t.toFixed(2)).join(", ")}, an edge at even odds of {rb.power.evens.map(pts).join(", ")} points.</>}
-            head={["Tour and test", ...rb.power.evens.map((e) => pts(e)), "Bound (range)"]}
+            caption={<>Power at each trait size and the 95% upper bound on the trait, with its Monte Carlo range. Trait sizes τ = {rb.power.taus.map((t) => t.toFixed(2)).join(", ")}, an edge at even odds of {rb.power.evens.map(pts).join(", ")} points. The bounds hold under the simulation model of Section 3.7.</>}
+            head={["Test", ...rb.power.evens.map((e) => pts(e)), "Bound (range)"]}
+            spans={[{ label: "Power at a trait of this size (points at even odds)", from: 1, to: rb.power.evens.length }]}
+            groups={TOURS.map((tour, i) => ({ at: i * (NULL_LABELS.length - 1), label: tour }))}
             rows={TOURS.flatMap((tour) => NULL_LABELS.filter(([t]) => t !== "ratio regular matches").map(([test, label]) => {
               const p = powerRow(tour, test);
-              return [`${tour}, ${label.toLowerCase()}`, ...p.power.map(pct),
+              return [label, ...p.power.map(pct),
                       p.bound_points === null ? "–" : `${pts(p.bound_points)} (${pts(p.bound_low_points!)}–${pts(p.bound_high_points!)})`];
-            }))} />
+            }))}
+            note={<>–: the bound is not reached on the grid of trait sizes.</>} />
           <Table number="A3"
-            caption={<>Out-of-sample evaluation in full: differences from M1 in thousandths of log loss (and, for both tours, of Brier score) with 95% edition-bootstrap intervals. The lower block is limited to big matches in which both players had at least {r.min_big} earlier big matches.</>}
-            head={["Model", "ATP Δ log loss", "WTA Δ log loss", "Both Δ log loss", "Both Δ Brier"]}
+            caption={<>Out-of-sample evaluation in full: differences from M1 in thousandths of log loss (and, for both tours, of Brier score) with 95% edition-bootstrap intervals; negative means better. The lower block is limited to big matches in which both players had at least {r.min_big} earlier big matches.</>}
+            head={["Model", "Δ", "95% interval", "Δ", "95% interval", "Δ", "95% interval", "Δ", "95% interval"]}
+            spans={[{ label: "ATP log loss", from: 1, to: 2 }, { label: "WTA log loss", from: 3, to: 4 }, { label: "Both tours, log loss", from: 5, to: 6 }, { label: "Both tours, Brier", from: 7, to: 8 }]}
+            groups={[{ at: 0, label: "All big matches" }, { at: 7, label: `Both players with at least ${r.min_big} earlier big matches` }]}
+            keep
             rows={["big matches", "big matches, both players with 10+ earlier big"].flatMap((subset) =>
               (["M0", "big", "clutch", "big_eb", "clutch_eb", "big_recent", "clutch_recent"] as const).map((name) => {
-                const cell = (tour: string) => { const m = model(tour, name, subset); return diffCell(m.log_loss_diff!, m.log_loss_low!, m.log_loss_high!); };
+                const cells = (tour: string) => { const m = model(tour, name, subset); return diffCells(m.log_loss_diff!, m.log_loss_low!, m.log_loss_high!); };
                 const b = model("both", name, subset);
-                return [`${OOS_LABELS.find(([n]) => n === name)![1]}${subset === "big matches" ? "" : " (long histories)"}`, cell("ATP"), cell("WTA"), cell("both"),
-                        diffCell(b.brier_diff!, b.brier_low!, b.brier_high!)];
+                return [name === "M0" ? "M0 (minus M1)" : OOS_LABELS.find(([n]) => n === name)![1], ...cells("ATP"), ...cells("WTA"), ...cells("both"),
+                        ...diffCells(b.brier_diff!, b.brier_low!, b.brier_high!)];
               }))}
             note={<>Matches: all big matches {count(evaluation("ATP").matches)} ATP, {count(evaluation("WTA").matches)} WTA; long histories {count(evaluation("ATP", "big matches, both players with 10+ earlier big").matches)} ATP, {count(evaluation("WTA", "big matches, both players with 10+ earlier big").matches)} WTA. Baseline log loss (M1), all big matches: ATP {model("ATP", "M1").log_loss.toFixed(4)}, WTA {model("WTA", "M1").log_loss.toFixed(4)}.</>} />
           <Table number="A4"
             caption={<>Calibration slopes by period, big against regular, with model-based p-values.</>}
-            head={["Period", "Tour and format", "Big", "Regular", "Difference", "Wald p"]}
-            rows={fc.calibration.periods.map((c) => [c.period.replace("-", "–"), c.key.replace(" bo", ", best of "), three(c.big), three(c.regular), signed(c.difference), pv(c.wald_p)])} />
+            head={["Tour and format", "Big", "Regular", "Difference", "Wald p"]}
+            groups={fc.calibration.periods.flatMap((c, i, all) => (i === 0 || all[i - 1]!.period !== c.period ? [{ at: i, label: c.period.replace("-", "–") }] : []))}
+            rows={fc.calibration.periods.map((c) => [c.key.replace(" bo", ", best of "), three(c.big), three(c.regular), signed(c.difference), pv(c.wald_p)])} />
           <Table number="A5"
             caption={<>Sensitivity of the carry-over association, one setting changed at a time: clutch-score correlation with 95% interval, and β with permutation p for each score ({count(rb.sims.permutations)} permutations, drawn afresh, so the first rows differ slightly from Table 4).</>}
-            head={["Tour and variant", "Players", "Clutch r (95%)", "β big (p)", "β clutch (p)"]}
-            rows={rb.sensitivity.map((s) => [`${s.tour}, ${SENS_LABEL[s.label] ?? s.label}`, s.players, `${signed(s.clutch_r, 2)} (${signed(s.clutch_low, 2)} to ${signed(s.clutch_high, 2)})`,
+            head={["Variant", "Players", "r", "95% interval", "Big-match score", "Clutch score"]}
+            spans={[{ label: "Clutch-score correlation", from: 2, to: 3 }, { label: "Association β (permutation p)", from: 4, to: 5 }]}
+            groups={rb.sensitivity.flatMap((s, i, all) => (i === 0 || all[i - 1]!.tour !== s.tour ? [{ at: i, label: s.tour }] : []))}
+            rows={rb.sensitivity.map((s) => [(SENS_LABEL[s.label] ?? s.label).replace(/^./, (c) => c.toUpperCase()), s.players, signed(s.clutch_r, 2), ci(s.clutch_low, s.clutch_high),
               `${signed(s.big_beta, 2)} (${pv(s.big_p)})`, `${signed(s.clutch_beta, 2)} (${pv(s.clutch_p)})`])} />
           <Table number="A6"
             caption={<>Game margins: share of games won against a fitted expectation. Variance ratios with permutation p ({count(rb.sims.game_permutations)} permutations within strata of format, match type and closeness).</>}
             head={["Statistic", "ATP", "WTA"]}
+            groups={[{ at: 1 }, { at: 6 }]}
             rows={[
               ["Matches", count(game("ATP").matches), count(game("WTA").matches)],
               ...SETS.map(([set, label]) => [`Variance ratio, ${label.toLowerCase()}`, `${two(gameSet("ATP", set).ratio)} (p ${pv(gameSet("ATP", set).p)})`, `${two(gameSet("WTA", set).ratio)} (p ${pv(gameSet("WTA", set).p)})`]),
               ["Clutch spread", `${two(game("ATP").clutch.ratio)} (p ${pv(game("ATP").clutch.p)})`, `${two(game("WTA").clutch.ratio)} (p ${pv(game("WTA").clutch.p)})`],
-              ["Split-half r", interval(game("ATP").split_half), interval(game("WTA").split_half)],
-              ["Carry-over r, clutch score", interval(game("ATP").correlations.clutch), interval(game("WTA").correlations.clutch)],
+              ["Split-half r [95% interval]", intervalCell(game("ATP").split_half), intervalCell(game("WTA").split_half)],
+              ["Carry-over r, clutch score [95% interval]", intervalCell(game("ATP").correlations.clutch), intervalCell(game("WTA").correlations.clutch)],
               ["Association β, clutch score (p)", `${signed(game("ATP").forecasts.clutch.beta, 2)} (${pv(game("ATP").forecasts.clutch.p)})`, `${signed(game("WTA").forecasts.clutch.beta, 2)} (${pv(game("WTA").forecasts.clutch.p)})`],
             ]} />
           <Table number="A7"
             caption={<>Within-tournament ratings: the main statistics with each player&apos;s rating updated through their earlier rounds of the same event.</>}
             head={["Statistic", "ATP", "WTA"]}
+            groups={[{ at: 1 }, { at: 6 }]}
             rows={[
               ["Big matches with a complete earlier-round record", pct(within("ATP").eligible), pct(within("WTA").eligible)],
               ...SETS.map(([set, label]) => [`Variance ratio, ${label.toLowerCase()}`, two(within("ATP").spread[set]!), two(within("WTA").spread[set]!)]),
               ["Clutch spread", two(within("ATP").clutch), two(within("WTA").clutch)],
-              ["Split-half r", interval(within("ATP").split_half), interval(within("WTA").split_half)],
+              ["Split-half r [95% interval]", intervalCell(within("ATP").split_half), intervalCell(within("WTA").split_half)],
               ["Association β, clutch score (p)", `${signed(within("ATP").forecasts.clutch.beta, 2)} (${pv(within("ATP").forecasts.clutch.p)})`, `${signed(within("WTA").forecasts.clutch.beta, 2)} (${pv(within("WTA").forecasts.clutch.p)})`],
             ]} />
           <Table number="A8"
             caption={<>ATP clutch spread within one format: big against regular matches of the same length. Wins against {count(rb.sims.null)} simulations; games against {count(rb.sims.game_permutations)} permutations. Added in version 2, after an ATP result had been seen.</>}
             head={["Format", "Big matches", "Regular matches", "Players", "Wins (p)", "Games (p)"]}
+            spans={[{ label: "Clutch spread", from: 4, to: 5 }]}
             rows={rb.format.map((f) => [`Best of ${f.best_of}`, count(f.big_matches), count(f.regular_matches), f.wins.players,
               `${two(f.wins.ratio)} (${pv(f.wins.p)})`, `${two(f.games.ratio)} (${pv(f.games.p)})`])} />
         </Section>

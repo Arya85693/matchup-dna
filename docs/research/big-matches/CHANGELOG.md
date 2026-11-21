@@ -1,3 +1,59 @@
+# Change log — working paper 1, version 4.0 → 4.1 (21 November 2026)
+
+An editorial and typesetting revision. No analysis was rerun, the exported results (`web/content/research/big-match.json`)
+are unchanged, and every number in the v4.0 PDF appears in the v4.1 PDF. The v4.0 PDF is kept as
+`archive/big-matches-v4.0.pdf`.
+
+- **Numbers.** An automated comparison of every number in the two PDFs found none missing. The v4.1 PDF has three
+  values that v4.0 does not: a 0.90 tick on the Figure 2 axis, and a worked example in §4.1. The example applies
+  equation 1 to the reported WTA slopes: where raw Elo gives a favourite 80%, the calibrated forecast is 75.7% in a
+  regular match and 74.0% in a big one. The page computes these values from the export; they are not typed in.
+- **Claim checks.** Four `ensure()` checks were added for new interpretive sentences:
+  - no big-match variance ratio is significant even before correction;
+  - the player-score point estimates are mixed in sign;
+  - both WTA slopes are below 1, the big-match slope more so;
+  - the two primary score changes are both above zero.
+  The build passes all checks.
+- **Abstract.** Rewritten for readability (about 225 words) with the same findings and uncertainty: the question, the
+  sample, the method, the null predictive result, the modest trait that cannot be excluded, the WTA calibration
+  pattern, and the implication for Matchup DNA.
+- **Explanations.** Plain-language readings were added for:
+  - calibration slopes (§3.3, §4.1): why a slope below 1 means overconfidence in the favourite, and that the WTA result
+    is a tour-level pattern, not evidence that individual favourites choke;
+  - variance ratios (§3.5, §4.2): what a ratio near 1 means for the question;
+  - split-half and carry-over persistence (§3.5) and Spearman–Brown (§4.3);
+  - log loss, the Brier score, empirical Bayes shrinkage, and the rule that an improvement counts only if its
+    interval excludes zero (§3.6, §4.4);
+  - the conditional nature of the power bounds (§3.7, §4.5).
+- **Discussion and conclusion.** Both now state the central distinction explicitly. The study does not establish that
+  choking is nonexistent; it finds insufficient reliable evidence that past big-match results add a forecasting
+  signal beyond the calibrated model. The WTA calibration finding is described as a separate, tour-level result for
+  prospective testing. The live model is unchanged.
+- **Tables.**
+  - Booktabs style: rules only at the top, under the header and at the bottom, with no shading.
+  - Spanning headers over column groups (for example ATP and WTA, or descriptive columns and test columns in Table 3).
+  - Labelled row groups (tour, period, model block).
+  - Intervals in their own columns in Tables 5 and A3, so that decimals align.
+  - Separate Won and Expected columns in Tables 6–7.
+  - Table 4's caption now opens by saying it is not an out-of-sample test.
+  - Short tables are kept on one page. Long tables split only between rows, with the header repeated.
+- **Figures.**
+  - Figure 1 was redrawn as a branching flow diagram and moved to §3.1.
+  - Figures 2–5 have full tick sets, a stronger reference line with a label, a heading over the value column, and
+    divider lines before reference rows. Figures 2 and 5 also have direction labels: overconfident/underconfident,
+    and better/worse than M1.
+  - Figure 6's panels were enlarged for legibility; its caption notes that the ATP and WTA curves nearly coincide.
+  - Captions explain what the reference values mean.
+- **Typography and pagination.**
+  - Body about 10.3 pt on 1.5 leading over a 162 mm measure.
+  - Equations: function names upright, a built-up fraction in equation 3, and stacked sub- and superscripts.
+  - Headings have more space above than below.
+  - The running footer gives "page n of N".
+  - Two print rules no longer chain each figure to the next block or stop tables splitting.
+  - Floats were placed so that every body page is at least 87% full; the PDF has 23 pages.
+- **Web page.** It renders from the same source, so it shows the same text and tables. Long reference URLs and code now
+  wrap, so the page no longer scrolls sideways at phone width; this overflow was already present in v4.0.
+
 # Change log — working paper 1, version 3.1 → 4.0 (16 November 2026)
 
 These are the corrections that `ATTRIBUTION.md` left for a separate step, plus two wording errors found in an external

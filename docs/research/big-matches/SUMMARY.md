@@ -1,7 +1,7 @@
 # Research summary (website / portfolio)
 
 **Do Players Choke in Big Matches? Evidence from 26 Years of Professional Tennis**
-Aryamaan Roy Choudhury · Independent research · Matchup DNA · Working paper v4.0, November 2026 (not peer reviewed)
+Aryamaan Roy Choudhury · Independent research · Matchup DNA · Working paper v4.1, November 2026 (not peer reviewed)
 
 **Question.** Matchup DNA forecasts ATP and WTA matches with an Elo-based model. Does a player's past record in big
 matches (semi-finals, finals, late Grand Slam rounds) carry information the ratings miss, enough to justify a

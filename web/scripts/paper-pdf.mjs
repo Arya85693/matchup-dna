@@ -27,8 +27,10 @@ const meta = await page.evaluate(() => {
 });
 await page.emulateMedia({ media: "print" });
 await page.evaluate(() => document.fonts.ready);
-const footer = `<div style="width:100%;padding:0 22mm;font-family:Georgia,serif;font-size:8.5px;color:#555;display:flex;justify-content:space-between;">
-  <span>${meta.author} · ${meta.short} · Working paper v${meta.version}</span><span class="pageNumber"></span></div>`;
+const footer = `<div style="width:100%;box-sizing:border-box;padding:0 24mm;font-family:Georgia,serif;font-size:8px;color:#555;">
+  <div style="border-top:0.5px solid #bbb;padding-top:2.5mm;display:flex;justify-content:space-between;">
+  <span>${meta.author} · <i>${meta.short}</i> · Working paper, version ${meta.version}</span>
+  <span><span class="pageNumber"></span> of <span class="totalPages"></span></span></div></div>`;
 await page.pdf({
   path: out, format: "A4", printBackground: true, preferCSSPageSize: true, scale: 0.86,
   displayHeaderFooter: true, headerTemplate: "<span></span>", footerTemplate: footer,
