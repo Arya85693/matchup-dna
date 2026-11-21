@@ -114,7 +114,7 @@ function MainRecord({ model, record, pool, counts }: { model: "tournament_start"
         <SectionHead title="Scores so far">
           {model === "tournament_start"
             ? "Log loss with a 95% interval, Brier score and how often the favourite won, on every scored match, with the Elo-only forecast on the same matches for reference."
-            : "Compared with tournament start on the same later-round matches. Below zero favours round-aware. The Elo-only forecast on the same matches is shown for reference."}
+            : "Log loss, Brier score and how often the favourite won on every scored later-round match, with the Elo-only forecast on the same matches for reference. Below them, the comparison with tournament start that the protocol uses."}
         </SectionHead>
         {model === "tournament_start"
           ? <TournamentStartScores ts={record.tournament_start.all} elo={record.tournament_start.surface_elo_benchmark} />
@@ -212,14 +212,66 @@ function RoundAwareScores({ record }: { record: TrackRecord }) {
       </p>
     );
   }
+  const ra = record.round_aware.all;
+  const weeks = num(pair, "weeks") ?? 0;
+  const tsSame = num(record.tournament_start_on_same_matches, "log_loss");
   return (
-    <FigureStrip items={[
-      { label: "Difference", value: sgn4(gap), note: `95%: ${sgn4(low)} to ${sgn4(high)}` },
-      { label: "Round-aware log loss", value: f4(num(record.round_aware.all, "log_loss") ?? 0) },
-      { label: "Tournament start", value: f4(num(record.tournament_start_on_same_matches, "log_loss") ?? 0), note: "Log loss, same matches" },
-      eloOnly(record.round_aware.surface_elo_benchmark, record.round_aware.all.n),
-      { label: "Matches", value: pair.n, note: `${num(pair, "weeks") ?? 0} weeks` },
-    ]} />
+    <div className="grid gap-10">
+      {/* The same five figures, in the same order, as the tournament-start and ITF M1 records. */}
+      <FigureStrip items={[
+        { label: "Log loss", value: f4(num(ra, "log_loss") ?? 0), note: num(ra, "log_loss_low") !== null ? `95%: ${f4(num(ra, "log_loss_low")!)} to ${f4(num(ra, "log_loss_high")!)}` : "Later-round matches" },
+        eloOnly(record.round_aware.surface_elo_benchmark, ra.n),
+        { label: "Brier", value: f4(num(ra, "brier") ?? 0) },
+        { label: "Favourite won", value: pc(num(ra, "accuracy") ?? 0) },
+        { label: "Matches", value: ra.n, note: `${weeks} ${weeks === 1 ? "week" : "weeks"}` },
+      ]} />
+
+      <div className="grid gap-5 border-t border-border pt-8">
+        <div>
+          <h4 className="text-[14px] font-medium">Against tournament start, on the same matches</h4>
+          <p className="mt-1 max-w-[70ch] text-[13px] text-muted">The protocol&apos;s test for the round-aware model.</p>
+        </div>
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-start">
+          <FigureStrip items={[
+            { label: "Difference", value: sgn4(gap), note: `95%: ${sgn4(low)} to ${sgn4(high)}` },
+            { label: "Tournament start", value: tsSame !== null ? f4(tsSame) : "–", note: "Log loss, same matches" },
+          ]} />
+          <DifferenceNote gap={gap} low={low} high={high} n={pair.n} weeks={weeks} tsSame={tsSame}
+                          finalDate={record.protocol.final_evaluation_not_before} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Plain-language reading of the paired difference, written from the figures so it always matches them. */
+function DifferenceNote({ gap, low, high, n, weeks, tsSame, finalDate }: {
+  gap: number; low: number; high: number; n: number; weeks: number; tsSame: number | null; finalDate: string;
+}) {
+  const better = gap < 0;
+  const size = Math.abs(gap).toFixed(4);
+  const share = tsSame ? ` (${f4(tsSame)} for tournament start against ${f4(tsSame + gap)} for round-aware, about ${Math.round((Math.abs(gap) / tsSame) * 100)}% ${better ? "lower" : "higher"})` : "";
+  const reading = high < 0
+    ? "The 95% interval is entirely below zero, so on these matches the gain is larger than chance alone would easily produce."
+    : low > 0
+      ? "The 95% interval is entirely above zero, so on these matches round-aware did worse by more than chance alone would easily produce."
+      : "The 95% interval includes zero, so on these matches the two models cannot yet be told apart.";
+  return (
+    <div className="grid gap-2 rounded-lg border border-border bg-card px-4 py-3.5 text-[13px] leading-relaxed text-muted">
+      <p className="text-[12px] font-medium text-text">How to read the difference</p>
+      <p>
+        Log loss measures how far a forecast was from the result; lower is better. For each of the {matchCount(n)}, the
+        difference is the round-aware model&apos;s log loss minus the tournament-start model&apos;s, and the figure is the
+        average. {sgn4(gap)} means the round-aware forecasts were {better ? "better" : "worse"} by {size} per match on
+        average{share}: {better
+          ? "knowing how the players did in the earlier rounds of the same event improved these forecasts."
+          : "knowing how the players did in the earlier rounds of the same event did not help these forecasts."}
+      </p>
+      <p>
+        {reading} With only {weeks} {weeks === 1 ? "week" : "weeks"} of matches the interval is rough and can move a lot as
+        weeks are added. Like every figure here it is interim: the single formal test is on or after {utcDate(finalDate)}.
+      </p>
+    </div>
   );
 }
 
